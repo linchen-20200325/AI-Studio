@@ -117,6 +117,15 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         return {"ok": True, "ffmpeg": registry.ffmpeg.available(), "tts": providers.tts.info.name,
                 "worker": orch.executor.worker_info().model_dump(mode="json")}
 
+    @app.get("/api/hardware")
+    def hardware() -> dict[str, Any]:
+        from see.core.hardware import hardware_report
+
+        rep = hardware_report(settings.workspace if settings.workspace.exists() else ".")
+        rep["image_provider"] = {"configured": settings.image_provider, "active": providers.image.info.model_dump(),
+                                 "skipped": getattr(providers.image, "skipped", [])}
+        return rep
+
     @app.get("/api/options")
     def options() -> dict[str, Any]:
         return {"aspects": ["16:9", "9:16", "1:1"], "speech_speeds": [{"label": "慢", "value": 0.85}, {"label": "正常", "value": 1.0}, {"label": "快", "value": 1.2}],

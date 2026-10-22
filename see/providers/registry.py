@@ -20,6 +20,9 @@ from see.providers.base import (
     TTSProvider,
     VideoProvider,
 )
+from see.providers.image.diffusers_local import DiffusersImageProvider
+from see.providers.image.fallback import FallbackImageProvider
+from see.providers.image.paid_stub import PaidImageProviderStub
 from see.providers.image.placeholder import PlaceholderImageProvider
 from see.providers.lipsync.null import NullLipSyncProvider
 from see.providers.llm.mock import MockLLMProvider
@@ -48,7 +51,16 @@ class ProviderRegistry:
             "mock": lambda: MockLLMProvider(settings.min_scene_duration, settings.max_scene_duration,
                                             settings.target_total_min, settings.target_total_max),
         }
-        self._image: dict[str, Callable[[], ImageProvider]] = {"placeholder": PlaceholderImageProvider}
+        self._image: dict[str, Callable[[], ImageProvider]] = {
+            "placeholder": PlaceholderImageProvider,
+            "diffusers": lambda: DiffusersImageProvider(preset=settings.image_model_preset, model_path=settings.image_model_path or None),
+            "paid-stub": PaidImageProviderStub,
+            # auto：本機 diffusers 有權重就用，否則 placeholder；永不自動跨到 PAID
+            "auto": lambda: FallbackImageProvider([
+                DiffusersImageProvider(preset=settings.image_model_preset, model_path=settings.image_model_path or None),
+                PlaceholderImageProvider(),
+            ]),
+        }
         self._video: dict[str, Callable[[], VideoProvider]] = {
             "kenburns": lambda: KenBurnsVideoProvider(self.ffmpeg),
         }

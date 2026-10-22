@@ -42,7 +42,7 @@ Phase 0 的「VideoProvider」是 `KenBurnsVideoProvider`：以 FFmpeg `zoompan`
 ```
 see/
   app/        cli.py — 命令列入口（run / status / set-scene / regen / approve / final）
-  core/       config.py（設定）、cost.py（CostTier / CostEstimate）、approval.py（ApprovalGate）、
+  core/       config.py（設定）、hardware.py（GPU/VRAM/RAM/disk/torch 偵測 + image tier 建議）、cost.py（CostTier / CostEstimate）、approval.py（ApprovalGate）、
               errors.py、hashing.py（fingerprint）、subtitles.py（SRT 切句）、ffmpeg.py（ffmpeg/ffprobe 封裝）
   models/     Pydantic schema：project / script / character / scene / asset / render_job /
               provider / worker / cost / approval / timeline
@@ -98,7 +98,10 @@ class LipSyncProvider: lipsync(req, out_path) -> LipSyncResult
 | 介面 | 實作 | cost_tier | 備註 |
 |---|---|---|---|
 | LLM | `MockLLMProvider` | LOCAL_FREE | 確定性規則切句分景；不需要網路 |
-| Image | `PlaceholderImageProvider` | LOCAL_FREE | PIL 產生 1920×1080 漸層 + 文字 |
+| Image | `PlaceholderImageProvider` | LOCAL_FREE | PIL 漸層 + 文字（預設；永遠保留為 fallback） |
+| Image | `DiffusersImageProvider` | LOCAL_FREE | 本機 open-weight（FLUX.1-schnell / SD 1.5 preset），`local_files_only`，缺權重即拒絕 |
+| Image | `FallbackImageProvider`（`auto`） | LOCAL_FREE | diffusers → placeholder；不跨 PAID |
+| Image | `PaidImageProviderStub` | PAID | 占位，永不連線；證明 ApprovalGate 接線 |
 | Video | `KenBurnsVideoProvider` | LOCAL_FREE | FFmpeg zoompan；camera_motion → 鏡頭運動 |
 | TTS | `EspeakTTSProvider` | LOCAL_FREE | espeak-ng `cmn`；品質低但離線可用 |
 | TTS | `SilentTTSProvider` | LOCAL_FREE | 靜音 + 以字數估算時長；測試與無 TTS 環境 fallback |

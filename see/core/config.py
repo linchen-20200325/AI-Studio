@@ -46,6 +46,8 @@ class Settings:
     workspace: Path = field(default_factory=lambda: Path(_env("SEE_WORKSPACE", "./workspace")).resolve())
     llm_provider: str = field(default_factory=lambda: _env("SEE_LLM_PROVIDER", "mock"))
     image_provider: str = field(default_factory=lambda: _env("SEE_IMAGE_PROVIDER", "placeholder"))
+    image_model_preset: str = field(default_factory=lambda: _env("SEE_IMAGE_MODEL_PRESET", "flux-schnell"))
+    image_model_path: str = field(default_factory=lambda: _env("SEE_IMAGE_MODEL_PATH", ""))
     video_provider: str = field(default_factory=lambda: _env("SEE_VIDEO_PROVIDER", "kenburns"))
     tts_provider: str = field(default_factory=lambda: _env("SEE_TTS_PROVIDER", "auto"))
     audio_provider: str = field(default_factory=lambda: _env("SEE_AUDIO_PROVIDER", "null"))

@@ -48,10 +48,11 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - 使用者偏好：全程繁體中文（台灣）；程式碼附內部審核（邏輯審查／邊界測試／效能評估）；防禦性設計與向量化；SSOT 原則。
 - Commit 訊息不含模型識別字串；不得 push 到未授權分支；不自行開 PR。
 - 分支慣例：功能開發在指派分支；`main` 只以 fast-forward 指向已驗證 SHA（tests 全綠、tree clean、remote 未漂移），不在 main 上重新產生內容。
+- AI Image：`DiffusersImageProvider` 絕不自動下載權重；下載是人工步驟且需使用者同意（停手條件）。
 - Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 
 ## 8. 必讀文件順序
-1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時）
+1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`（AI Image Phase）
 
 ## 9. 快速啟動
 ```bash

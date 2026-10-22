@@ -124,11 +124,37 @@ def cmd_check_env(args: argparse.Namespace) -> int:
     rows = {
         "ffmpeg": shutil.which(s.ffmpeg), "ffprobe": shutil.which(s.ffprobe), "espeak-ng": shutil.which("espeak-ng"),
         "subtitle_font": s.subtitle_font or "(none detected)", "workspace": str(s.workspace),
-        "tts_provider": s.tts_provider, "llm_provider": s.llm_provider,
+        "tts_provider": s.tts_provider, "llm_provider": s.llm_provider, "image_provider": s.image_provider,
     }
     for k, v in rows.items():
         print(f"{k:14s} {v}")
     return 0 if rows["ffmpeg"] and rows["ffprobe"] else 1
+
+
+def cmd_hardware(args: argparse.Namespace) -> int:
+    from see.core.hardware import hardware_report
+
+    rep = hardware_report(args.path)
+    if args.json:
+        print(json.dumps(rep, ensure_ascii=False, indent=2))
+        return 0
+    hw, rec = rep["hardware"], rep["image_recommendation"]
+    print(f"OS        {hw['os']} {hw['arch']} · Python {hw['python']} · CPU x{hw['cpu_cores']}")
+    print(f"RAM       {hw['ram_total_mb']} MB (avail {hw['ram_available_mb']}) · disk free {hw['disk_free_mb']} MB @ {hw['disk_path']}")
+    for g in hw["gpus"] or [{"vendor": "-", "name": "(none)", "vram_total_mb": None, "source": ""}]:
+        print(f"GPU       {g['vendor']} {g['name']} VRAM {g['vram_total_mb']} MB [{g['source']}]")
+    t = hw["torch"]
+    print(f"torch     installed={t['installed']} {t['version']} cuda={t['cuda_available']} {t['cuda_version']} rocm={t['rocm']} mps={t['mps']} directml={t['directml']} diffusers={t['diffusers_installed']}")
+    for n in hw["notes"]:
+        print(f"note      {n}")
+    print("--- image provider recommendation")
+    for k in ("recommended", "fallback"):
+        tier = rec[k]
+        print(f"{k:11s} " + (f"{tier['label']} · {tier['model_id']} · {tier['license']} · 下載≈{tier['download_gb']}GB · VRAM≥{tier['min_vram_mb']}MB" if tier else "(none)"))
+    print(f"cpu_only    {rec['cpu_only']}")
+    for r in rec["reasons"]:
+        print(f"reason      {r}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -152,6 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     apv.add_argument("--by", default="human"); apv.add_argument("--note"); apv.set_defaults(fn=cmd_approve)
     fn = sub.add_parser("final", help="Final render（需 APPROVED）"); fn.add_argument("project_id"); fn.set_defaults(fn=cmd_final)
     ce = sub.add_parser("check-env"); ce.set_defaults(fn=cmd_check_env)
+    hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
+    hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")
+    hw.set_defaults(fn=cmd_hardware)
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

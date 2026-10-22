@@ -25,7 +25,8 @@
 ## 4. 已完成 Phase
 - Phase 0：中文文字 → 劇本 → 分鏡 → placeholder 圖 + Ken Burns + espeak 旁白 + 字幕 → FFmpeg → `preview.mp4`（證據：`docs/PHASE0_EVIDENCE.md`）。
 - Phase 0.5：FastAPI 手機友善 Web UI（貼故事 → Preview → 播放 → 單景修改／重做 → 核准 → Final）。
-- 治理：Conversation Handoff & Crash Recovery 制度（PROJECT_RULES §11）。
+- 治理：Conversation Handoff & Crash Recovery 制度（PROJECT_RULES §11）；最小 CI。
+- AI Image Phase 第一批：盤點 + 硬體偵測 + Provider 骨架（未下載模型，D-017）。
 
 ## 5. Current Phase
 看 `docs/STATE.md`。

@@ -78,3 +78,10 @@
 - `.github/workflows/ci.yml`：ubuntu-latest、Python 3.12、apt 安裝 ffmpeg／espeak-ng／fonts-wqy-zenhei、`pip install -r requirements.txt`、`check-env`、`pytest`。
 - 不使用任何 secret；`permissions: contents: read`；不呼叫外部／付費 AI Provider（測試只用 Mock／Placeholder／espeak／silent）。
 - 觸發：push 到 `main` 與 `ccr-*`、pull_request、手動。
+
+## D-017 2026-10-22 AI Image Provider Phase — 盤點與骨架（未下載模型）
+- 盤點結果與三方案見 `docs/AI_IMAGE_PROVIDER_PLAN.md`：A 推薦 FLUX.1-schnell（Apache-2.0）、B 低需求 SD 1.5（OpenRAIL-M）、C 付費 stub（永不連線）。
+- 不採用：FLUX.1-dev、SDXL-Turbo、Sana（非商用授權）。SD 3.5 Medium 因 Community License 營收門檻列備選。
+- 不引入 ComfyUI：diffusers in-process，使用者只操作 AI-Studio。
+- 實作：`see/core/hardware.py`（能力偵測 + 建議）、`DiffusersImageProvider`（`local_files_only=True`，缺權重即拒絕，絕不自動下載）、`FallbackImageProvider`、`PaidImageProviderStub`、`SEE_IMAGE_PROVIDER=auto`、CLI `hardware`、API `/api/hardware`。預設仍為 `placeholder`。
+- 停手點：下載模型需使用者明確同意；方案 A/B 擇一需使用者先貼回 `python -m see.app.cli hardware` 結果（DG-8）。
