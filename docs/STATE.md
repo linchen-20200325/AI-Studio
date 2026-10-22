@@ -4,19 +4,19 @@
 
 | 欄位 | 值 |
 |---|---|
-| Current Phase | Phase 0.5（Phase 0 pipeline + 最小 Web UI + 治理制度完成） |
-| Last Verified Commit | `5a3e05a`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；CI run #2 success；43 tests passed） |
+| Current Phase | Phase 1 啟動：AI Image Provider（盤點＋骨架完成，模型未下載） |
+| Last Verified Commit | `088932a`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；55 tests passed；CI 見 Actions） |
 | Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
-| Last Completed Batch | Batch 5：最小 GitHub Actions CI（`7cad7f8`，CI #1/#2 皆 success） |
-| Current Task | 無；下一批已指定：Web UI Batch（貼文字 → Preview → 狀態 → 播放 → 單景修改／重做 → 核准） |
+| Last Completed Batch | Batch 6：AI Image Provider 盤點、硬體偵測、Provider 骨架（`088932a`） |
+| Current Task | 無；等待 DG-8（使用者貼回 `python -m see.app.cli hardware` 結果並同意模型下載） |
 | Current Status | 閒置；可安全換新對話 |
 | Blocked By | 無 |
-| Next Action | 等待使用者裁示下一個功能 Batch 與 DG-5；期間可做 BACKLOG 中標示「可自主」的項目 |
+| Next Action | DG-8 裁示後：人工下載模型 → `image_prompt_en` → 真機 auto 生圖驗證。期間可自主：image_prompt_en Mock 模板、UI 顯示 provider/fallback 原因 |
 | Cost Used | NT$0（全部 LOCAL_FREE） |
 | Paid Provider Approved | 無（budget = 0） |
 | Last Updated | 2026-10-22 |
 
 ## 待裁示（細節見 BACKLOG）
-- DG-7：使用者需在 GitHub 設定手動：預設分支改 `main`、visibility 改 Private（D-015）。
-- Web UI Batch 範圍已由使用者指定（見 Current Task）；尚未開工。
+- DG-8：AI Image 方案 A（FLUX.1-schnell，12GB+ VRAM）或 B（SD 1.5，4GB VRAM／CPU）；需 Windows 端 `python -m see.app.cli hardware` 輸出 + 同意下載模型。
+- DG-7（殘留）：repo visibility 是否改 Private（預設分支已改 main）。

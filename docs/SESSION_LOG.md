@@ -51,3 +51,13 @@
 - Tests: 43 passed（本機 + CI）
 - Decision: D-014、D-015、D-016
 - Next: Web UI Batch；DG-7 待使用者手動改 GitHub 設定
+
+---
+- Date: 2026-10-22
+- Start SHA: 16fd107
+- End SHA: 088932a
+- Batch: Batch 6 — AI Image Provider Phase 第一批：盤點、硬體偵測、diffusers 骨架、fallback、paid stub
+- Result: 未下載模型；`hardware` 命令與 /api/hardware 可用；auto 模式缺權重自動退 placeholder
+- Tests: 55 passed
+- Decision: D-017；開 DG-8
+- Next: 使用者貼回 hardware 輸出 → 選 A/B → 同意下載 → 真機驗證
