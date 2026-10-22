@@ -1,0 +1,37 @@
+# 最小 CI：安裝相依 → 確認 ffmpeg → pytest。不使用任何 secret，不呼叫任何外部／付費 AI Provider。
+name: ci
+
+on:
+  push:
+    branches: ["main", "ccr-*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: System packages (ffmpeg, espeak-ng, CJK font)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg espeak-ng fonts-wqy-zenhei
+      - name: Python dependencies
+        run: pip install -r requirements.txt
+      - name: ffmpeg availability
+        run: |
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          python -m see.app.cli check-env
+      - name: pytest
+        env:
+          SEE_TTS_PROVIDER: auto
+        run: python -m pytest -q
