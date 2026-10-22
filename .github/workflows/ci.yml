@@ -21,9 +21,21 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: System packages (ffmpeg, espeak-ng, CJK font)
+        # 曾因 apt 卡住 20 分鐘被 job timeout 取消（D-019）；加上非互動、重試、步驟逾時
+        timeout-minutes: 8
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q ffmpeg espeak-ng fonts-wqy-zenhei
+          set -euxo pipefail
+          for i in 1 2 3; do
+            sudo timeout 240 apt-get update -q -o Acquire::Retries=3 && break
+            echo "apt-get update attempt $i failed; retrying"; sleep 10
+          done
+          for i in 1 2 3; do
+            sudo timeout 300 apt-get install -y -q --no-install-recommends -o Acquire::Retries=3 ffmpeg espeak-ng fonts-wqy-zenhei && break
+            echo "apt-get install attempt $i failed; retrying"; sleep 10
+          done
+          ffmpeg -version | head -1
       - name: Python dependencies
         run: pip install -r requirements.txt
       - name: ffmpeg availability

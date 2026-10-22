@@ -95,4 +95,5 @@
 
 ## D-019 2026-10-22 CI run 被 cancelled 的紀錄
 - `16fd107`（分支 run）與 `ec669e7`（分支與 main 兩個 run）狀態為 cancelled，非 failed；同 SHA 的 main run 在 `16fd107` 成功。本 session 以 GitHub App 身分 re-run／dispatch 皆 403。
-- 不以空 commit 規避；下一個真實 push 會自然觸發。若再出現 cancelled，請使用者在 Actions 頁查看 cancel 來源（可能是手動取消或帳號層級限制）。
+- 根因（`bc5f568` 兩個 run 的 jobs API）：`System packages` 步驟 apt-get 卡住約 20 分鐘，被 job `timeout-minutes: 20` 取消 → GitHub 顯示 cancelled。成功的 run 該步驟只需 1 分鐘，屬 apt 鏡像偶發卡死。
+- 修正：該步驟加 `DEBIAN_FRONTEND=noninteractive`、`timeout` 包住 apt、`Acquire::Retries=3`、重試 3 次、`--no-install-recommends`、步驟 `timeout-minutes: 8`。不以空 commit 規避。
