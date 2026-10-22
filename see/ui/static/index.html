@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>see · 文字變影片</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --fg:#e8eaf0; --muted:#9aa3b2; --accent:#4f8cff; --ok:#3ccf7a; --warn:#f5b84b; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:18px; margin:0; }
+  header small { color:var(--muted); }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .card h2 { font-size:15px; margin:0 0 10px; color:var(--muted); font-weight:600; letter-spacing:.02em; }
+  textarea, input, select { width:100%; background:#0c0e12; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+  textarea { min-height:140px; resize:vertical; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > * { flex:1 1 140px; }
+  label { font-size:13px; color:var(--muted); display:block; margin-bottom:4px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:12px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  button.secondary { background:#262b36; }
+  button.ok { background:var(--ok); color:#06240f; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .status { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:13px; background:#262b36; }
+  .pill.DRAFT { background:#3a3f4c; } .pill.PREVIEW { background:#2d4c8a; } .pill.APPROVED { background:#2d6b45; } .pill.FINAL { background:#6b4e2d; }
+  .pill.running, .pill.queued { background:#6b5a1f; } .pill.failed { background:#6b2d2d; } .pill.done { background:#2d6b45; }
+  .spinner { width:14px; height:14px; border:2px solid var(--muted); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  video { width:100%; border-radius:10px; background:#000; }
+  .scene { border-top:1px solid var(--line); padding:12px 0; display:grid; grid-template-columns:96px 1fr; gap:12px; }
+  .scene img { width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:6px; background:#000; }
+  .scene .meta { font-size:13px; color:var(--muted); }
+  .scene textarea { min-height:60px; margin-top:6px; }
+  .scene .actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .scene .actions button { padding:8px 12px; font-size:14px; }
+  .muted { color:var(--muted); font-size:13px; }
+  .err { color:var(--bad); white-space:pre-wrap; font-size:13px; }
+  .cost { font-size:22px; font-weight:700; }
+  .list a { color:var(--accent); text-decoration:none; }
+  @media (max-width:480px) { .scene { grid-template-columns:72px 1fr; } .scene img { width:72px; } }
+</style>
+</head>
+<body>
+<header><h1>see <small>· 中文故事 → Preview 影片</small></h1><small id="health">…</small></header>
+<main>
+  <section class="card" id="create">
+    <h2>1. 貼入中文故事</h2>
+    <textarea id="text" placeholder="貼入一篇短篇中文故事（建議 100～200 字，約 30～60 秒）"></textarea>
+    <div class="row" style="margin-top:10px">
+      <div><label>標題（選填）</label><input id="title" placeholder="自動從第一句取"></div>
+      <div><label>比例</label><select id="aspect"><option value="16:9">16:9 橫式</option><option value="9:16">9:16 直式</option><option value="1:1">1:1 方形</option></select></div>
+      <div><label>旁白語速（影響長度）</label><select id="speed"><option value="0.85">慢</option><option value="1.0" selected>正常</option><option value="1.2">快</option></select></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="btnCreate">建立 Preview</button></div>
+    <div id="createErr" class="err"></div>
+  </section>
+
+  <section class="card" id="projectCard" hidden>
+    <h2>2. 處理狀態</h2>
+    <div class="status">
+      <span id="pTitle" style="font-weight:600"></span>
+      <span id="pStatus" class="pill"></span>
+      <span id="jobPill" class="pill"></span>
+      <span id="spin" class="spinner" hidden></span>
+      <span id="jobMsg" class="muted"></span>
+    </div>
+    <div id="jobErr" class="err"></div>
+    <div class="muted" style="margin-top:6px">專案 <code id="pid"></code> · <span id="pAspect"></span> · <a href="#" id="newLink">建立另一個</a></div>
+  </section>
+
+  <section class="card" id="previewCard" hidden>
+    <h2>3. Preview</h2>
+    <video id="video" controls playsinline preload="metadata"></video>
+    <div class="muted" id="previewNote" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card" id="scenesCard" hidden>
+    <h2>4. 各 Scene（修改旁白／字幕／鏡頭後只重做該景）</h2>
+    <div id="scenes"></div>
+  </section>
+
+  <section class="card" id="approveCard" hidden>
+    <h2>5. 核准</h2>
+    <div class="muted">PREVIEW ≠ FINAL。確認內容無誤後核准，再產生 Final。任何修改都會使核准失效。</div>
+    <div class="row" style="margin-top:10px">
+      <input id="approver" placeholder="核准者名稱" value="human">
+      <button id="btnApprove" class="ok">核准此 Preview</button>
+      <button id="btnFinal" class="secondary">產生 Final</button>
+    </div>
+    <div id="finalLink" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card" id="costCard" hidden>
+    <h2>6. 成本</h2>
+    <div class="cost" id="cost">NT$0</div>
+    <div class="muted" id="costDetail"></div>
+  </section>
+
+  <section class="card" id="listCard">
+    <h2>最近專案</h2>
+    <div id="list" class="list muted">載入中…</div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let current = null, timer = null, opts = null;
+const api = async (path, method = "GET", body) => {
+  const r = await fetch(path, { method, headers: body ? {"Content-Type": "application/json"} : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function init() {
+  try { const h = await api("/api/health"); $("health").textContent = `ffmpeg ${h.ffmpeg ? "✓" : "✗"} · TTS ${h.tts} · worker ${h.worker.worker_id}`; } catch (e) { $("health").textContent = "API 離線"; }
+  opts = await api("/api/options");
+  const hash = location.hash.replace("#", "");
+  if (hash) open(hash);
+  refreshList();
+}
+
+async function refreshList() {
+  const items = await api("/api/projects");
+  $("list").innerHTML = items.length ? items.map(p => `<div><a href="#${p.project_id}" onclick="open('${p.project_id}');return false;">${esc(p.title)}</a> <span class="pill ${p.status}">${p.status}</span> <span class="muted">${p.scenes} 景 · ${new Date(p.created_at).toLocaleString()}</span></div>`).join("") : "尚無專案";
+}
+
+$("btnCreate").onclick = async () => {
+  $("createErr").textContent = "";
+  const text = $("text").value.trim();
+  if (!text) { $("createErr").textContent = "請先貼入故事"; return; }
+  $("btnCreate").disabled = true;
+  try {
+    const r = await api("/api/projects", "POST", { text, title: $("title").value || null, aspect: $("aspect").value, speech_speed: parseFloat($("speed").value) });
+    open(r.project_id);
+  } catch (e) { $("createErr").textContent = e.message; }
+  finally { $("btnCreate").disabled = false; }
+};
+$("newLink").onclick = (e) => { e.preventDefault(); current = null; clearInterval(timer); location.hash = ""; for (const id of ["projectCard","previewCard","scenesCard","approveCard","costCard"]) $(id).hidden = true; window.scrollTo(0,0); };
+
+function open(pid) { current = pid; location.hash = pid; clearInterval(timer); poll(); timer = setInterval(poll, 2000); }
+
+async function poll() {
+  if (!current) return;
+  let p;
+  try { p = await api(`/api/projects/${current}`); } catch (e) { $("jobErr").textContent = e.message; return; }
+  render(p);
+  if (p.job.state !== "running" && p.job.state !== "queued") { clearInterval(timer); timer = null; refreshList(); }
+}
+
+let lastPreview = null, lastScenesKey = null;
+function render(p) {
+  $("projectCard").hidden = false; $("costCard").hidden = false;
+  $("pTitle").textContent = p.title; $("pid").textContent = p.project_id; $("pAspect").textContent = p.aspect;
+  $("pStatus").textContent = p.status; $("pStatus").className = `pill ${p.status}`;
+  const j = p.job; const busy = j.state === "running" || j.state === "queued";
+  $("jobPill").textContent = j.state === "idle" ? "待命" : `${j.state}${j.stage ? " · " + j.stage : ""}`; $("jobPill").className = `pill ${j.state}`;
+  $("spin").hidden = !busy; $("jobMsg").textContent = busy ? j.message : "";
+  $("jobErr").textContent = j.state === "failed" ? (j.error + "\n" + (j.message || "")) : "";
+  // preview
+  $("previewCard").hidden = !p.preview_url;
+  if (p.preview_url) {
+    const key = p.preview_url + "?v=" + (p.render_jobs.at(-1)?.finished_at || "");
+    if (key !== lastPreview) { $("video").src = key; lastPreview = key; }
+    $("previewNote").textContent = busy ? "正在重新產生，播放的是上一版 preview。" : `${p.scenes.length} 景 · 可直接播放 / 下載`;
+  }
+  // scenes（只在內容變動時重繪，避免打斷使用者輸入）
+  $("scenesCard").hidden = !p.scenes.length;
+  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url])) + busy;
+  if (sk !== lastScenesKey) { lastScenesKey = sk; $("scenes").innerHTML = p.scenes.map(s => sceneHtml(s, busy)).join(""); }
+  // approve
+  $("approveCard").hidden = !p.preview_url;
+  $("btnApprove").disabled = busy || p.status !== "PREVIEW";
+  $("btnFinal").disabled = busy || p.status !== "APPROVED";
+  $("finalLink").innerHTML = p.final_url ? `Final：<a href="${p.final_url}" style="color:var(--accent)">下載 final.mp4</a>` : (p.status === "FINAL" ? "" : "尚未產生 Final");
+  // cost
+  $("cost").textContent = p.cost.display;
+  $("costDetail").textContent = `預算 ${p.cost.budget_display} · ` + Object.entries(p.cost.providers).map(([k, v]) => `${k}: ${v.name} (${v.cost_tier})`).join(" · ");
+}
+
+function sceneHtml(s, busy) {
+  const sel = (name, list, val) => `<select id="${name}-${s.scene_id}" ${busy ? "disabled" : ""}>${list.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+  return `<div class="scene" id="scene-${s.scene_id}">
+    <div>${s.image_url ? `<img src="${s.image_url}" alt="">` : ""}<div class="meta">${s.scene_id}<br>${s.duration.toFixed(1)}s</div></div>
+    <div>
+      <div class="meta"><span class="pill ${s.status}">${s.status}</span> ${esc(s.visual_description)}</div>
+      <label>旁白</label><textarea id="nar-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.narration)}</textarea>
+      <label>字幕覆寫（留空＝同旁白）</label><input id="sub-${s.scene_id}" value="${esc(s.subtitle_override ?? "")}" ${busy ? "disabled" : ""}>
+      <div class="row" style="margin-top:6px"><div><label>鏡頭</label>${sel("cam", opts.camera_motions, s.camera_motion)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition)}</div></div>
+      <div class="actions">
+        <button onclick="saveScene('${s.scene_id}')" ${busy ? "disabled" : ""}>儲存並重做此景</button>
+        <button class="secondary" onclick="regenScene('${s.scene_id}')" ${busy ? "disabled" : ""}>重做此景</button>
+      </div>
+    </div></div>`;
+}
+
+async function saveScene(sid) {
+  const body = { narration: $(`nar-${sid}`).value.trim() || null, subtitle_override: $(`sub-${sid}`).value.trim() || null,
+                 camera_motion: $(`cam-${sid}`).value, transition: $(`tr-${sid}`).value };
+  try { await api(`/api/projects/${current}/scenes/${sid}`, "POST", body); open(current); } catch (e) { alert(e.message); }
+}
+async function regenScene(sid) { try { await api(`/api/projects/${current}/scenes/${sid}/regen`, "POST", {}); open(current); } catch (e) { alert(e.message); } }
+$("btnApprove").onclick = async () => { try { await api(`/api/projects/${current}/approve`, "POST", { by: $("approver").value || "human" }); poll(); } catch (e) { alert(e.message); } };
+$("btnFinal").onclick = async () => { try { await api(`/api/projects/${current}/final`, "POST", {}); open(current); } catch (e) { alert(e.message); } };
+init();
+</script>
+</body>
+</html>

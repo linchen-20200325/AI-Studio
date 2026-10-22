@@ -54,7 +54,7 @@ see/
   pipeline/   stages.py（各階段純函式）、orchestrator.py（串接 + per-scene cache + 狀態機）
   render/     renderer.py（FFmpeg 組裝：xfade / acrossfade / 編碼參數）
   storage/    project_store.py（workspace 目錄佈局 + JSON 持久化）
-  ui/         Phase 0 只有 README（Web UI 在 BACKLOG）
+  ui/         server.py（FastAPI + JSON API）、runner.py（BackgroundRunner）、static/index.html（手機友善單頁）
 tests/        pytest（schema / providers / cost gate / incremental / e2e）
 examples/     短篇中文故事
 docs/         本文件、DECISIONS、BACKLOG、HANDOFF、PHASE0_EVIDENCE
@@ -163,3 +163,17 @@ workspace/projects/<project_id>/
 - Fail-closed schema：只接受驗證通過的結構化輸出。
 - 逐景時間預算：每景 3–12 秒、整支 30–60 秒的規劃約束放在 storyboard 階段。
 - 離線合成 fixture 測 CI：e2e 測試不依賴網路或付費服務。
+
+## 11. Web UI（Phase 0.5）
+
+```
+瀏覽器 ──HTTP──▶ FastAPI (see/ui/server.py) ──▶ BackgroundRunner (單 worker thread) ──▶ Orchestrator ──▶ Executor
+                     │                                                                       ▲
+                     └── GET /api/projects/{id}  (每 2 秒輪詢 job state / stage / scenes) ────┘
+                     └── GET /api/projects/{id}/preview.mp4  (FileResponse, HTTP Range → 手機可播)
+```
+
+- 一個 Project 同時只允許一個 job（409）；job 狀態 idle / queued / running / done / failed 與 stage（script / storyboard / assets / render）。
+- 每個 Project 有 `OutputSpec`（16:9 / 9:16 / 1:1）與 `speech_speed`；兩者都進 fingerprint，改了才重做。
+- 幣別預設 TWD，UI 顯示 `NT$0`；成本區同時列出每個 Provider 的 cost_tier。
+- UI 的修改／重做／核准／Final 全部走 Orchestrator 的同一套方法，與 CLI 行為一致。

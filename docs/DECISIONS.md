@@ -37,3 +37,17 @@
 
 ## D-008 2026-10-22 不做的事（放 BACKLOG）
 - 付費 API、Lip Sync、真正 AI Video、登入系統、NAS 部署、GPU Worker、Web UI。
+
+## D-009 2026-10-22 裁示紀錄（使用者）
+- DG-1：以 `026206c` 建立 `main`（已完成，local/remote 一致）。
+- DG-2：暫緩 Ollama／大型本機 LLM；不下載模型；保留 LLMProvider 架構。
+- DG-3：edge-tts 僅在可連網環境驗證；必須 FREE_TIER／零 key／零付費。本容器 DNS 無法解析 `speech.platform.bing.com`，尚未實測。
+- DG-4：Web UI 採 FastAPI + 簡單手機友善單頁。
+
+## D-010 2026-10-22 Web UI 最小設計
+- 無框架前端（單一 index.html，vanilla JS 輪詢），避免建置鏈與相依。
+- `BackgroundRunner`：ThreadPoolExecutor(1) 作為 Phase 0.5 的 queue 替身；介面只有 submit/status，為 NAS queue 預留。
+- 影片以 FileResponse 直出並支援 Range；不做轉碼或串流伺服器。
+- 「影片長度」設定以旁白語速（0.85/1.0/1.2）實作：總長由字數決定，語速是唯一誠實可調的長度參數；不自動刪改原文。
+- 幣別改為 TWD 預設（使用者在台灣），顯示 `NT$0`。
+- 已知：headless Chromium 無 H.264 解碼，故 Playwright 煙霧測試只驗證頁面流程與 206 Range，不驗證瀏覽器內播放；手機 Safari/Chrome 皆原生支援 H.264/AAC。

@@ -77,3 +77,12 @@ python -m pytest -q
 - `cut` 轉場以 0.08 秒 fade 模擬；字幕在轉場重疊區會跟著淡出。
 - 無 BGM / SFX（NullAudioProvider）。
 - edge-tts（FREE_TIER）在此容器因網路政策無法連線，未實測。
+
+## 7. Web UI（Phase 0.5，2026-10-22）
+
+- 流程：Playwright（手機視窗 390×844）開啟 `/` → 貼入 138 字故事 → 選 9:16 → 建立 Preview → 輪詢至 `done · render` → 出現播放器、5 景、核准區、成本 `NT$0`。
+- 伺服器日誌：`GET /api/projects/prj_bf1cc5c3/preview.mp4 → 206 Partial Content`（Range 支援）。
+- 輸出：`720×1280`、45.09 s、H.264/AAC、`ffmpeg -f null` 解碼無錯誤。
+- 截圖：[`evidence/ui_processing.jpg`](evidence/ui_processing.jpg)（處理中：running · assets）、[`evidence/ui_preview.jpg`](evidence/ui_preview.jpg)（完成頁）。
+- 測試：`tests/test_web_api.py` 4 項（建立→播放→單景修改→核准→final、驗證/404、單景重做不動其他景）。總計 42 passed。
+- 限制：headless Chromium 無 H.264，瀏覽器內播放以手機實機驗證為準（檔案本身經 ffprobe/ffmpeg 驗證）。

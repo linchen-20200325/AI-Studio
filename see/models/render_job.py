@@ -20,7 +20,7 @@ class RenderJob(BaseModel):
     model: str = "libx264"
     estimated_cost: float = Field(default=0.0, ge=0)
     actual_cost: float | None = Field(default=None, ge=0)
-    currency: str = "USD"
+    currency: str = "TWD"
     output_path: str | None = None
     created_at: datetime = Field(default_factory=_now)
     finished_at: datetime | None = None

@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 import uuid
+
+from pydantic import ValidationError
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +19,7 @@ from see.core.hashing import fingerprint, short_id
 from see.core.subtitles import build_cues, to_srt
 from see.models.approval import Approval
 from see.models.enums import ApprovalKind, JobKind, JobStatus, Status
-from see.models.project import Project
+from see.models.project import OutputSpec, Project
 from see.models.render_job import RenderJob
 from see.models.scene import Scene
 from see.models.timeline import Timeline
@@ -28,7 +30,7 @@ from see.render.renderer import FINAL_PROFILE, PREVIEW_PROFILE, ClipInput, Encod
 from see.storage.project_store import AssetRecord, ProjectStore, SceneManifest
 from see.workers.base import Executor, Task
 
-IMAGE_W, IMAGE_H = 1920, 1080
+IMAGE_SCALE = 1.5  # placeholder 圖以輸出尺寸 1.5 倍產生，減少 zoompan 抖動
 SUBTITLE_MAX_CHARS = 18
 
 
@@ -61,9 +63,13 @@ class Orchestrator:
         self.renderer = renderer or Renderer()
 
     # ------------------------------------------------------------ project lifecycle
-    def create_project(self, text: str, title: str | None = None, project_id: str | None = None) -> Project:
+    def create_project(self, text: str, title: str | None = None, project_id: str | None = None,
+                       output: OutputSpec | None = None, speech_speed: float = 1.0) -> Project:
         pid = project_id or f"prj_{short_id(text + datetime.now(timezone.utc).isoformat(), 8)}"
-        project = Project(project_id=pid, title=title or "untitled", input_text=text)
+        s = self.settings
+        project = Project(project_id=pid, title=title or "untitled", input_text=text,
+                          output=output or OutputSpec(width=s.width, height=s.height, fps=s.fps),
+                          speech_speed=speech_speed)
         self.store.save(project)
         return project
 
@@ -112,8 +118,9 @@ class Orchestrator:
         s = self.settings
 
         # ---- image
-        img_req = ImageRequest(prompt=scene.image_prompt, width=IMAGE_W, height=IMAGE_H, seed=scene.index,
-                               caption=scene.visual_description)
+        out = project.output
+        img_req = ImageRequest(prompt=scene.image_prompt, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
+                               seed=scene.index, caption=scene.visual_description)
         img_fp = fingerprint("image", img_req.model_dump(), self.p.image.info.fingerprint_key)
         img_path = sdir / "image.png"
         if manifest.valid("image", img_fp):
@@ -126,7 +133,7 @@ class Orchestrator:
             report.rebuilt.append("image")
 
         # ---- narration (TTS)
-        tts_req = TTSRequest(text=scene.narration, language=project.language, voice=scene.voice)
+        tts_req = TTSRequest(text=scene.narration, language=project.language, voice=scene.voice, speed=project.speech_speed)
         tts_fp = fingerprint("narration", tts_req.model_dump(), self.p.tts.info.fingerprint_key)
         wav_path = sdir / "narration.wav"
         rec = manifest.valid("narration", tts_fp)
@@ -158,7 +165,7 @@ class Orchestrator:
 
         # ---- clip (image → video)
         vid_req = VideoRequest(prompt=scene.video_prompt, image_path=str(img_path), duration=scene.duration,
-                               width=s.width, height=s.height, fps=s.fps, camera_motion=scene.camera_motion.value,
+                               width=out.width, height=out.height, fps=out.fps, camera_motion=scene.camera_motion.value,
                                audio_path=str(wav_path), subtitle_path=str(srt_path), subtitle_font=s.subtitle_font)
         clip_fp = fingerprint("clip", img_fp, tts_fp, sub_fp, vid_req.model_dump(exclude={"image_path", "audio_path", "subtitle_path"}),
                               s.fingerprint_params(), self.p.video.info.fingerprint_key)
@@ -186,8 +193,8 @@ class Orchestrator:
                 raise RenderError(f"scene {scene.scene_id} has no clip; run build_scene_assets first")
             clips.append(ClipInput(scene_id=scene.scene_id, index=scene.index, path=Path(rec.path),
                                    duration=rec.duration or scene.duration, transition_in=scene.transition))
-        s = self.settings
-        return build_timeline(clips, s.transition_duration, s.fps, s.width, s.height)
+        out = project.output
+        return build_timeline(clips, self.settings.transition_duration, out.fps, out.width, out.height)
 
     def render(self, project: Project, kind: JobKind = JobKind.PREVIEW) -> tuple[RenderJob, Timeline]:
         if kind == JobKind.FINAL and project.status != Status.APPROVED:
@@ -237,8 +244,9 @@ class Orchestrator:
         path.write_text(to_srt(cues), encoding="utf-8")
 
     # ------------------------------------------------------------ full run / edits / approval
-    def run(self, text: str, title: str | None = None, project_id: str | None = None) -> RunReport:
-        project = self.create_project(text, title, project_id)
+    def run(self, text: str, title: str | None = None, project_id: str | None = None,
+            output: OutputSpec | None = None, speech_speed: float = 1.0) -> RunReport:
+        project = self.create_project(text, title, project_id, output=output, speech_speed=speech_speed)
         self.write_script(project, title)
         self.storyboard(project)
         return self.rebuild(project)
@@ -256,8 +264,12 @@ class Orchestrator:
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")
-        updated = scene.model_copy(update={k: v for k, v in fields.items() if v is not None})
-        updated = Scene.model_validate(updated.model_dump())  # 重新驗證
+        data = scene.model_dump()
+        data.update({k: v for k, v in fields.items() if v is not None})
+        try:
+            updated = Scene.model_validate(data)  # 重新驗證（enum / 長度 / 型別）
+        except ValidationError as e:
+            raise ValueError(f"invalid scene edit: {e}") from e
         updated.status = Status.DRAFT
         project.scenes[project.scenes.index(scene)] = updated
         project.status = Status.DRAFT  # 任何修改都使 PREVIEW/APPROVED/FINAL 失效，需重新 preview → 核准

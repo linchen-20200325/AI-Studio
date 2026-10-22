@@ -12,7 +12,7 @@ from see.models.enums import (
     Status,
     Transition,
 )
-from see.models.project import Project
+from see.models.project import OutputSpec, Project
 from see.models.provider import ProviderInfo
 from see.models.render_job import RenderJob
 from see.models.scene import AudioCue, Dialogue, Scene, SceneDraft, StoryboardDraft
@@ -22,7 +22,7 @@ from see.models.worker import TaskSpec, WorkerInfo
 
 __all__ = [
     "Approval", "ApprovalKind", "Asset", "AssetKind", "AudioCue", "Beat", "CameraMotion",
-    "Character", "CostEstimate", "CostTier", "Dialogue", "JobKind", "JobStatus", "Project",
+    "Character", "CostEstimate", "CostTier", "Dialogue", "JobKind", "JobStatus", "OutputSpec", "Project",
     "ProviderInfo", "ProviderKind", "RenderJob", "Scene", "SceneDraft", "Script", "ScriptDraft",
     "Status", "StoryboardDraft", "TaskSpec", "Timeline", "TimelineItem", "Transition", "WorkerInfo",
 ]
