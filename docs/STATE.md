@@ -5,10 +5,10 @@
 | 欄位 | 值 |
 |---|---|
 | Current Phase | Phase 0.5（Phase 0 pipeline + 最小 Web UI + 治理制度完成） |
-| Last Verified Commit | `e38004d`（分支 `ccr-2968bce1-ym4kkc`，42 tests passed） |
+| Last Verified Commit | `24ecbc2`（分支 `ccr-2968bce1-ym4kkc` 與 `main`，43 tests passed） |
 | Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
-| Last Completed Batch | Batch 3：Conversation Handoff & Crash Recovery 治理文件（`e38004d`） |
+| Last Completed Batch | Batch 4：main 快進、DG-5 落地、edge-tts 驗證嘗試（`24ecbc2`） |
 | Current Task | 無（等待下一個功能 Batch 指派） |
 | Current Status | 閒置；可安全換新對話 |
 | Blocked By | 無 |

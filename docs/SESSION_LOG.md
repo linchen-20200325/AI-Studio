@@ -31,3 +31,13 @@
 - Tests: 42 passed（未動程式碼）
 - Decision: 無新裁示
 - Next: 等待下一個功能 Batch；待裁示：併入 main、DG-5、edge-tts 連網驗證
+
+---
+- Date: 2026-10-22
+- Start SHA: 1e42a81
+- End SHA: 24ecbc2
+- Batch: Batch 4 — main fast-forward、DG-5（loopback 預設入口）、edge-tts 連網驗證嘗試、repo 實況盤點
+- Result: main = 1e42a81 → 再 ff 至 24ecbc2；edge-tts 本容器無法連網（D-012）；repo public、預設分支非 main（D-013）
+- Tests: 43 passed
+- Decision: D-011、D-012、D-013
+- Next: 等待 Web UI Batch 範圍；待裁示 DG-6、DG-7
