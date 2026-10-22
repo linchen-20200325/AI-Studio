@@ -65,9 +65,9 @@
 ---
 - Date: 2026-10-22
 - Start SHA: ec669e7
-- End SHA: 1e81668
+- End SHA: ca7d286
 - Batch: Batch 7 — DG-8 方案 B：SD 1.5 低 VRAM runtime plan、image_prompt_en、模型下載器（需 --yes）、Windows 安裝文件
-- Result: 程式端就緒；模型未下載（需使用者手動）；CI cancelled 記錄 D-019
-- Tests: 66 passed
+- Result: 程式端就緒；模型未下載（需使用者手動）；CI cancelled 根因＝apt 卡住→job timeout，已加固（ca7d286 success）
+- Tests: 66 passed；CI success
 - Decision: D-018、D-019
 - Next: 使用者在 Windows 依 AI_IMAGE_SD15_WINDOWS.md §4 操作並貼回 hardware / run 輸出

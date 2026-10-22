@@ -5,7 +5,7 @@
 | 欄位 | 值 |
 |---|---|
 | Current Phase | Phase 1：AI Image Provider（SD 1.5 方案程式端完成；等使用者實機安裝與下載） |
-| Last Verified Commit | `1e81668`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；66 tests passed；CI 見 Actions） |
+| Last Verified Commit | `ca7d286`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；CI success；66 tests passed） |
 | Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
 | Last Completed Batch | Batch 7：SD 1.5 低 VRAM provider、image_prompt_en、下載器、Windows 文件（`1e81668`） |
@@ -20,4 +20,4 @@
 ## 待裁示（細節見 BACKLOG）
 - 無新裁示；等待使用者實機操作結果。
 - DG-7（殘留）：repo visibility 是否改 Private。
-- CI：`ec669e7` 兩個 run 為 cancelled（D-019），請在 Actions 頁 Re-run 或待下一個 push。
+- CI：cancelled 根因為 apt 卡住觸發 job timeout，已修（D-019）；`ca7d286` run success。
