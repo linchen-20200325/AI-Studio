@@ -61,3 +61,13 @@
 - Tests: 55 passed
 - Decision: D-017；開 DG-8
 - Next: 使用者貼回 hardware 輸出 → 選 A/B → 同意下載 → 真機驗證
+
+---
+- Date: 2026-10-22
+- Start SHA: ec669e7
+- End SHA: 1e81668
+- Batch: Batch 7 — DG-8 方案 B：SD 1.5 低 VRAM runtime plan、image_prompt_en、模型下載器（需 --yes）、Windows 安裝文件
+- Result: 程式端就緒；模型未下載（需使用者手動）；CI cancelled 記錄 D-019
+- Tests: 66 passed
+- Decision: D-018、D-019
+- Next: 使用者在 Windows 依 AI_IMAGE_SD15_WINDOWS.md §4 操作並貼回 hardware / run 輸出
