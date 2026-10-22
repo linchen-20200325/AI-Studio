@@ -32,6 +32,7 @@ renders/
 *.mp3
 *.flac
 !docs/evidence/*.png
+!docs/evidence/*.jpg
 
 # --- Model weights / caches ---
 models/weights/

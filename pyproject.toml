@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "see"
+version = "0.0.1"
+description = "see — 中文文字到影片的 provider-agnostic 自動化管線（Phase 0 MVP）"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.5",
+  "pillow>=10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+edge = ["edge-tts>=7"]
+
+[project.scripts]
+see = "see.app.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["see*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "e2e: end-to-end tests that invoke ffmpeg",
+]

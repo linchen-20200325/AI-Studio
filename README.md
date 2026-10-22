@@ -19,3 +19,19 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 - [docs/DECISIONS.md](docs/DECISIONS.md) — 決策紀錄
 - [docs/BACKLOG.md](docs/BACKLOG.md) — 待辦
 - [docs/HANDOFF.md](docs/HANDOFF.md) — 交接狀態
+
+## 快速開始
+
+```bash
+pip install -r requirements.txt
+# 系統需求：ffmpeg + ffprobe（必要）、espeak-ng（建議）、CJK 字型（字幕）
+python -m see.app.cli check-env
+python -m see.app.cli run examples/story_short.txt --project-id demo01
+#   → workspace/projects/demo01/renders/preview.mp4
+python -m see.app.cli set-scene demo01 scene_003 --narration "新的旁白"   # 只重做 scene_003
+python -m see.app.cli approve demo01 --by <name>
+python -m see.app.cli final demo01                                       # → renders/final.mp4
+python -m pytest -q
+```
+
+Phase 0 證據：[docs/PHASE0_EVIDENCE.md](docs/PHASE0_EVIDENCE.md)
