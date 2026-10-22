@@ -3,7 +3,7 @@
 > 讓新的治理 AI 對話重新查 GitHub 後直接接手，不需要使用者重新解釋專案。本文件不描述「現在在哪」——現況看 `STATE.md` 並與 GitHub 比對。
 
 ## 1. 專案目的
-`see`：使用者貼入中文文章／故事 → 自動產生影片（劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效 → 字幕 → 剪輯 → QA → Preview → 人工核准 → Final）。採階段性 MVP，目前完成 Phase 0（pipeline）與 Phase 0.5（最小 Web UI）。Repo：`linchen-20200325/AI-Studio`。
+`see`：使用者貼入中文文章／故事 → 自動產生影片（劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效 → 字幕 → 剪輯 → QA → Preview → 人工核准 → Final）。採階段性 MVP，目前完成 Phase 0（pipeline）與 Phase 0.5（最小 Web UI）。Repo：`linchen-20200325/AI-Studio`（GitHub 上為 public；`main` 為已驗證版本，開發分支 `ccr-2968bce1-ym4kkc`）。
 
 ## 2. 使用者核心偏好
 - 全程繁體中文（台灣）。

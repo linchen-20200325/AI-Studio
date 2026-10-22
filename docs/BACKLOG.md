@@ -7,7 +7,9 @@
 - [x] DG-2：暫緩 Ollama；維持 Mock，架構保留。
 - [x] DG-3：edge-tts 待可連網環境驗證（FREE_TIER、零 key）。→ 待辦：在有網路的機器執行 `SEE_TTS_PROVIDER=edge python -m see.app.cli run examples/story_tiny.txt`。
 - [x] DG-4：FastAPI + 手機友善單頁（已完成）。
-- [ ] DG-5：Web UI 若要離開信任網路使用，需要最低限度存取控制（簡單 token）還是維持無登入？
+- [x] DG-5：第一版限可信任區網，無登入（D-011）。未來 NAS／遠端部署再開 Access Control DG。
+- [ ] DG-6：edge-tts 是否採用為 optional TTS（非官方端點、服務條款疑義，見 D-012）。
+- [ ] DG-7：repo 目前 public、GitHub 預設分支非 main（D-013）：是否改 private、是否把預設分支改為 main（使用者在 GitHub 設定操作）。
 
 ## P0
 - [ ] CI workflow（GitHub Actions：pytest + ffmpeg）— 讓 §11 的「PR / CI」真的有東西可查。（可自主）

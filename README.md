@@ -27,7 +27,7 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 pip install -r requirements.txt
 # 系統需求：ffmpeg + ffprobe（必要）、espeak-ng（建議）、CJK 字型（字幕）
 python -m see.app.cli check-env
-uvicorn see.ui.server:app --host 0.0.0.0 --port 8000   # Web UI：手機開 http://<IP>:8000/
+python -m see.ui --lan   # Web UI：手機開 http://<IP>:8000/
 python -m see.app.cli run examples/story_short.txt --project-id demo01
 #   → workspace/projects/demo01/renders/preview.mp4
 python -m see.app.cli set-scene demo01 scene_003 --narration "新的旁白"   # 只重做 scene_003

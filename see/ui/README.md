@@ -1,7 +1,7 @@
 # see/ui — Web UI（Phase 0.5）
 
 ```bash
-uvicorn see.ui.server:app --host 0.0.0.0 --port 8000
+python -m see.ui --lan
 # 手機瀏覽器開啟 http://<主機IP>:8000/
 ```
 

@@ -47,6 +47,8 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - 每批開頭標示 **Model / Mode / Effort**。預設 Model：Claude Fable 5.1；Mode：靜默自主巡航；Effort：Minimum Sufficient Effort——架構／憲章級工作 High，一般實作 Medium，文件／小修 Low。可自行下調，不可因省事跳過測試與證據。
 - 使用者偏好：全程繁體中文（台灣）；程式碼附內部審核（邏輯審查／邊界測試／效能評估）；防禦性設計與向量化；SSOT 原則。
 - Commit 訊息不含模型識別字串；不得 push 到未授權分支；不自行開 PR。
+- 分支慣例：功能開發在指派分支；`main` 只以 fast-forward 指向已驗證 SHA（tests 全綠、tree clean、remote 未漂移），不在 main 上重新產生內容。
+- Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 
 ## 8. 必讀文件順序
 1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時）
@@ -56,6 +58,6 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 pip install -r requirements.txt            # 系統另需 ffmpeg/ffprobe；建議 espeak-ng + CJK 字型
 python -m see.app.cli check-env
 python -m see.app.cli run examples/story_short.txt --project-id demo01
-uvicorn see.ui.server:app --host 0.0.0.0 --port 8000      # 手機開 http://<IP>:8000/
+python -m see.ui --lan      # 手機開 http://<IP>:8000/
 python -m pytest -q
 ```

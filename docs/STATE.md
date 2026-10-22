@@ -6,7 +6,7 @@
 |---|---|
 | Current Phase | Phase 0.5（Phase 0 pipeline + 最小 Web UI + 治理制度完成） |
 | Last Verified Commit | `e38004d`（分支 `ccr-2968bce1-ym4kkc`，42 tests passed） |
-| Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` = `026206c`（Phase 0） |
+| Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
 | Last Completed Batch | Batch 3：Conversation Handoff & Crash Recovery 治理文件（`e38004d`） |
 | Current Task | 無（等待下一個功能 Batch 指派） |
@@ -18,6 +18,6 @@
 | Last Updated | 2026-10-22 |
 
 ## 待裁示（細節見 BACKLOG）
-- 是否將 `ccr-2968bce1-ym4kkc` 併入 `main`。
-- DG-5：Web UI 存取控制（無登入 vs. 簡單 token）。
-- DG-3 待辦：edge-tts 需在可連網機器驗證（本容器 DNS 不通）。
+- DG-6：edge-tts 是否採用（非官方端點疑義；本容器無法連網驗證）。
+- DG-7：repo public → private？GitHub 預設分支改為 main？（使用者在 GitHub 設定操作）
+- 下一個 Web UI Batch 的範圍尚未指定。
