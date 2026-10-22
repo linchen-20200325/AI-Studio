@@ -21,3 +21,13 @@
 - Tests: 42 passed
 - Decision: D-009、D-010
 - Next: DG-5、是否併入 main；edge-tts 需連網驗證
+
+---
+- Date: 2026-10-22
+- Start SHA: ff2b6f9
+- End SHA: e38004d
+- Batch: Batch 3 — Conversation Handoff & Crash Recovery 治理制度
+- Result: PROJECT_RULES §11；STATE / HANDOFF_PROJECT_AI / HANDOFF_CHATGPT / SESSION_LOG 建立；HANDOFF.md 改為索引
+- Tests: 42 passed（未動程式碼）
+- Decision: 無新裁示
+- Next: 等待下一個功能 Batch；待裁示：併入 main、DG-5、edge-tts 連網驗證
