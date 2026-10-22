@@ -6,7 +6,7 @@
 ```bash
 git fetch origin && git status -sb && git branch -a
 git log --oneline -10 origin/main; git log --oneline -10            # main 與目前分支
-# open/draft PR 與 CI：用 GitHub 工具查；本專案目前無 CI workflow（BACKLOG）
+# open/draft PR 與 CI：用 GitHub 工具查 Actions workflow `ci.yml` 最近一次 run 的 conclusion
 python -m pytest -q                                                   # 必須全綠才算「已驗證」
 ```
 然後讀：`PROJECT_RULES.md` → `docs/STATE.md` → `docs/DECISIONS.md` → `docs/BACKLOG.md` → 本文件 → `docs/ARCHITECTURE.md`。

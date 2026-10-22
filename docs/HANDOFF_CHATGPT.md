@@ -36,7 +36,7 @@
 ## 7. GitHub 驗證規則（Verification Gate）
 在提供「下一步、Project AI 提示語、完成度判斷、PR 合併建議、架構重大裁示」之前，**必須先獨立重新查 GitHub 最新實況**：
 1. `main` HEAD 與開發分支 HEAD 的 SHA、最近 commits。
-2. open/draft PR 與 CI 狀態（目前無 CI workflow）。
+2. open/draft PR 與 CI 狀態：Actions workflow `ci.yml` 在該 SHA 的 conclusion 必須為 success。
 3. `docs/STATE.md` 內容是否與上述一致；`docs/SESSION_LOG.md` 最後一筆的 End SHA。
 4. 測試數與結果以 commit 內 `tests/` 與最近回報為準；有疑慮要求 Project AI 重跑。
 不得只依 Claude 的回報或 HANDOFF 文件下判斷。文件與 GitHub 不一致 → GitHub 為準，先要求修正文件。

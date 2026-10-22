@@ -64,3 +64,17 @@
 ## D-013 2026-10-22 main 快進與 repository 實況
 - `main` 以 fast-forward 指向已驗證治理版本 `1e42a81`（Recovery Verification：tree clean、remote 未漂移、42 passed）。
 - GitHub 實況：`linchen-20200325/AI-Studio`，**visibility = public**；GitHub 預設分支仍是 `ccr-2968bce1-ym4kkc`（非 main）。兩者皆為 repo 設定，非程式問題，由使用者決定是否改為 private / 將預設分支改為 main。
+
+## D-014 2026-10-22 DG-6 裁示：不採用 edge-tts
+- 保留 optional adapter（`see/providers/tts/edge.py`），不再投入時間處理其非官方端點；espeak／silent fallback 保留。未來另開 TTS Provider Decision Gate。
+
+## D-015 2026-10-22 DG-7 裁示：預設分支改 main、建議改 Private
+- 本 session 的 GitHub 工具無修改 repo 設定的權限／工具（無 gh CLI，MCP 無 update-repository），**不繞過權限**，由使用者在 GitHub 手動操作：
+  - Settings → General → Default branch → 切換為 `main`。
+  - Settings → General → Danger Zone → Change repository visibility → Private。
+- 改 Private 後需確認 ChatGPT GitHub connector 與 Claude GitHub App 仍被授權此 repo。
+
+## D-016 2026-10-22 最小 CI
+- `.github/workflows/ci.yml`：ubuntu-latest、Python 3.12、apt 安裝 ffmpeg／espeak-ng／fonts-wqy-zenhei、`pip install -r requirements.txt`、`check-env`、`pytest`。
+- 不使用任何 secret；`permissions: contents: read`；不呼叫外部／付費 AI Provider（測試只用 Mock／Placeholder／espeak／silent）。
+- 觸發：push 到 `main` 與 `ccr-*`、pull_request、手動。

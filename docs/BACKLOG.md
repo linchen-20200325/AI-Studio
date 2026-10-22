@@ -8,11 +8,11 @@
 - [x] DG-3：edge-tts 待可連網環境驗證（FREE_TIER、零 key）。→ 待辦：在有網路的機器執行 `SEE_TTS_PROVIDER=edge python -m see.app.cli run examples/story_tiny.txt`。
 - [x] DG-4：FastAPI + 手機友善單頁（已完成）。
 - [x] DG-5：第一版限可信任區網，無登入（D-011）。未來 NAS／遠端部署再開 Access Control DG。
-- [ ] DG-6：edge-tts 是否採用為 optional TTS（非官方端點、服務條款疑義，見 D-012）。
-- [ ] DG-7：repo 目前 public、GitHub 預設分支非 main（D-013）：是否改 private、是否把預設分支改為 main（使用者在 GitHub 設定操作）。
+- [x] DG-6：不採用 edge-tts，adapter 保留（D-014）。
+- [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。
 
 ## P0
-- [ ] CI workflow（GitHub Actions：pytest + ffmpeg）— 讓 §11 的「PR / CI」真的有東西可查。（可自主）
+- [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3）。
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。
