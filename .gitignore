@@ -1,0 +1,54 @@
+# --- Secrets (never commit) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials*.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# --- Generated media / workspaces (large, reproducible) ---
+workspace/
+output/
+renders/
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.wav
+*.mp3
+*.flac
+!docs/evidence/*.png
+
+# --- Model weights / caches ---
+models/weights/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.gguf
+*.onnx
+.cache/
+
+# --- Private material ---
+private/
+assets/private/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
