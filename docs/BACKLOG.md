@@ -12,10 +12,11 @@
 - [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。
 
 ## P0
-- [ ] DG-8：AI Image 方案 A（FLUX.1-schnell）或 B（SD 1.5）；需使用者在 Windows 跑 `python -m see.app.cli hardware` 貼回結果，並同意下載對應模型（見 AI_IMAGE_PROVIDER_PLAN）。
-- [ ] `image_prompt_en`：storyboard 多產英文 prompt（Mock 模板）＋ negative prompt 預設（可自主，不需模型）。
-- [ ] 真機以 `SEE_IMAGE_PROVIDER=auto` 產生 preview，記錄速度與證據（需模型，待 DG-8）。
-- [ ] UI 顯示實際使用的 image provider 與 fallback 原因（可自主）。
+- [x] DG-8：採 B（SD 1.5），D-018。
+- [x] `image_prompt_en` + negative prompt（D-018）。
+- [ ] **使用者手動**：依 `docs/AI_IMAGE_SD15_WINDOWS.md` §4 安裝 torch/diffusers、下載 SD 1.5（≈2.2 GB）、真機跑 auto；貼回結果後記證據。
+- [ ] UI 顯示實際使用的 image provider 與 fallback 原因（`/api/health` 已有 `image`/`image_skipped`；前端顯示待做）。
+- [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3）。

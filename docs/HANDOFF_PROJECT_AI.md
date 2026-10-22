@@ -52,7 +52,7 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 
 ## 8. 必讀文件順序
-1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`（AI Image Phase）
+1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`、`docs/AI_IMAGE_SD15_WINDOWS.md`（AI Image Phase）
 
 ## 9. 快速啟動
 ```bash

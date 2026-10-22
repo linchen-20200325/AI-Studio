@@ -39,6 +39,7 @@ class SceneEditIn(BaseModel):
     narration: str | None = None
     subtitle_override: str | None = None
     image_prompt: str | None = None
+    image_prompt_en: str | None = None
     camera_motion: str | None = None
     transition: str | None = None
 
@@ -96,7 +97,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             "scenes": [{
                 "scene_id": s.scene_id, "index": s.index, "status": s.status, "duration": s.duration,
                 "narration": s.narration, "subtitle_override": s.subtitle_override, "subtitle_text": s.subtitle_text,
-                "visual_description": s.visual_description, "image_prompt": s.image_prompt,
+                "visual_description": s.visual_description, "image_prompt": s.image_prompt, "image_prompt_en": s.image_prompt_en,
                 "camera_motion": s.camera_motion, "transition": s.transition,
                 "image_url": f"/api/projects/{project.project_id}/scenes/{s.scene_id}/image.png"
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
@@ -115,6 +116,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
     @app.get("/api/health")
     def health() -> dict[str, Any]:
         return {"ok": True, "ffmpeg": registry.ffmpeg.available(), "tts": providers.tts.info.name,
+                "image": providers.image.info.name, "image_skipped": getattr(providers.image, "skipped", []),
                 "worker": orch.executor.worker_info().model_dump(mode="json")}
 
     @app.get("/api/hardware")

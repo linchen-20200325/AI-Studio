@@ -85,7 +85,8 @@ def cmd_set_scene(args: argparse.Namespace) -> int:
     _, orch = build()
     project = orch.store.load(args.project_id)
     orch.update_scene(project, args.scene_id, narration=args.narration, subtitle_override=args.subtitle,
-                      image_prompt=args.image_prompt, camera_motion=args.camera, transition=args.transition)
+                      image_prompt=args.image_prompt, image_prompt_en=args.image_prompt_en,
+                      camera_motion=args.camera, transition=args.transition)
     report = orch.rebuild(project)
     for r in report.scene_reports:
         print(f"{r.scene_id}: rebuilt={r.rebuilt} reused={r.reused}")
@@ -157,6 +158,60 @@ def cmd_hardware(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_image_setup(args: argparse.Namespace) -> int:
+    """印出此機器安裝本機生圖所需的單一步驟指令（不執行任何安裝）。"""
+    from see.core.hardware import detect_hardware
+    from see.providers.image.diffusers_local import download_plan
+
+    s = Settings()
+    hw = detect_hardware(s.models_dir.parent if s.models_dir.parent.exists() else ".")
+    gpu = hw.best_gpu
+    cuda = gpu is not None and gpu.vendor == "nvidia"
+    plan = download_plan(s.image_model_preset)
+    win = hw.os == "Windows"
+    act = r".venv\Scripts\activate" if win else "source .venv/bin/activate"
+    torch_cmd = ("pip install torch --index-url https://download.pytorch.org/whl/cu126" if cuda else "pip install torch")
+    print(f"# 機器：{hw.os} · Python {hw.python} · GPU {(gpu.name if gpu else '(none)')} VRAM {(gpu.vram_total_mb if gpu else '-')} MB")
+    print(f"# 方案：{plan['preset']} ({plan['model_id']}) · 預估下載 ≈{plan['estimated_gb']} GB · 存放 {s.models_dir}")
+    print("# 依序在專案根目錄執行（每行一步；已裝過可跳過）：")
+    print("python -m venv .venv" if not win else "py -3.12 -m venv .venv")
+    print(act)
+    print("pip install -r requirements.txt")
+    print(torch_cmd)
+    print("pip install diffusers transformers accelerate safetensors huggingface_hub")
+    print(f"python -m see.app.cli image-download --preset {plan['preset']} --yes")
+    print("python -m see.app.cli hardware        # 確認 torch/cuda/diffusers 皆為 True")
+    print(f"set SEE_IMAGE_PROVIDER=auto" if win else "export SEE_IMAGE_PROVIDER=auto")
+    return 0
+
+
+def cmd_image_download(args: argparse.Namespace) -> int:
+    """下載 open-weight 模型到 SEE_MODELS_DIR/<preset>。沒有 --yes 只印計畫，不下載。"""
+    from see.providers.image.diffusers_local import download_plan
+
+    s = Settings()
+    preset = args.preset or s.image_model_preset
+    plan = download_plan(preset)
+    dest = Path(args.dest).resolve() if args.dest else s.models_dir / preset
+    print(json.dumps({"plan": plan, "dest": str(dest)}, ensure_ascii=False, indent=2))
+    if not args.yes:
+        print("未加 --yes：只顯示計畫，未下載任何檔案。", file=sys.stderr)
+        return 0
+    if (dest / "model_index.json").exists():
+        print(f"已存在：{dest}（略過下載）")
+        return 0
+    try:
+        from huggingface_hub import snapshot_download  # type: ignore
+    except ImportError:
+        print("需要 huggingface_hub：pip install huggingface_hub", file=sys.stderr)
+        return 1
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # 雙重保險：模型資料夾永不進 Git
+    path = snapshot_download(repo_id=plan["model_id"], local_dir=str(dest), allow_patterns=plan["allow_patterns"])
+    print(f"下載完成：{path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="see", description="文字 → 影片（Phase 0 MVP）")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -170,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     st = sub.add_parser("status"); st.add_argument("project_id"); st.set_defaults(fn=cmd_status)
     ss = sub.add_parser("set-scene", help="修改單一 scene 後只重做該 scene 並重新組裝 preview")
     ss.add_argument("project_id"); ss.add_argument("scene_id")
-    ss.add_argument("--narration"); ss.add_argument("--subtitle"); ss.add_argument("--image-prompt")
+    ss.add_argument("--narration"); ss.add_argument("--subtitle"); ss.add_argument("--image-prompt"); ss.add_argument("--image-prompt-en")
     ss.add_argument("--camera"); ss.add_argument("--transition")
     ss.set_defaults(fn=cmd_set_scene)
     rg = sub.add_parser("regen", help="強制重做單一 scene"); rg.add_argument("project_id"); rg.add_argument("scene_id"); rg.set_defaults(fn=cmd_regen)
@@ -181,6 +236,10 @@ def main(argv: list[str] | None = None) -> int:
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
     hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")
     hw.set_defaults(fn=cmd_hardware)
+    ise = sub.add_parser("image-setup", help="印出本機 AI 生圖安裝步驟（不執行安裝）"); ise.set_defaults(fn=cmd_image_setup)
+    idl = sub.add_parser("image-download", help="下載 open-weight 模型（需 --yes 才真的下載）")
+    idl.add_argument("--preset", default=None); idl.add_argument("--dest", default=None); idl.add_argument("--yes", action="store_true")
+    idl.set_defaults(fn=cmd_image_download)
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

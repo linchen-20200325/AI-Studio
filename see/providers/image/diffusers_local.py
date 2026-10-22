@@ -1,13 +1,16 @@
-"""DiffusersImageProvider：本機 open-weight 模型生圖（LOCAL_FREE）。骨架 — 不會自動下載任何權重。
+"""DiffusersImageProvider：本機 open-weight 模型生圖（LOCAL_FREE）。**絕不自動下載權重。**
 
-- 模型由 `model_id` 指定（FLUX.1-schnell / SD 1.5 / 未來 Qwen-Image、Z-Image 等皆可），核心 pipeline 不知道是哪個模型。
-- `local_files_only=True`：權重必須已在本機 HF cache 或 `model_path`；缺權重 → ProviderUnavailable，絕不觸發下載。
-- 下載權重是人工步驟（見 docs/AI_IMAGE_PROVIDER_PLAN.md），符合「需要下載大型模型 → 停止並詢問」。
+- 模型由 preset / model_id 指定；核心 pipeline 不知道是哪個模型（Provider Agnostic）。
+- `local_files_only=True`：權重必須已在本機 HF cache 或 `model_path`；缺權重 → ProviderUnavailable。
+- 低 VRAM（≤ 6 GB，例如 GTX 1650 4 GB）自動啟用：fp16、attention slicing、VAE slicing/tiling、
+  model CPU offload、較低生成解析度；OOM 時再降一級重試一次，仍失敗才交給 Fallback（placeholder）。
 """
 
 from __future__ import annotations
 
+import gc
 import importlib.util
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -18,10 +21,57 @@ from see.models.provider import ProviderInfo
 from see.providers.base import ImageProvider, ImageRequest, ImageResult
 
 MODEL_PRESETS: dict[str, dict[str, Any]] = {
-    # key → diffusers 載入參數；steps/guidance 為該模型建議值
-    "flux-schnell": {"model_id": "black-forest-labs/FLUX.1-schnell", "steps": 4, "guidance": 0.0, "max_side": 1024},
-    "sd15": {"model_id": "stable-diffusion-v1-5/stable-diffusion-v1-5", "steps": 25, "guidance": 7.0, "max_side": 512},
+    "flux-schnell": {"model_id": "black-forest-labs/FLUX.1-schnell", "steps": 4, "guidance": 0.0, "max_side": 1024,
+                     "variant": None, "multiple": 16, "download_gb": 24.0, "allow_patterns": None},
+    "sd15": {"model_id": "stable-diffusion-v1-5/stable-diffusion-v1-5", "steps": 25, "guidance": 7.0, "max_side": 512,
+             "variant": "fp16", "multiple": 8, "download_gb": 2.2,
+             # 只抓 fp16 權重與設定；略過 safety_checker（省 ~600MB 與 VRAM）
+             "allow_patterns": ["*.json", "*.txt", "tokenizer/*", "scheduler/*", "feature_extractor/*",
+                                "unet/diffusion_pytorch_model.fp16.safetensors",
+                                "vae/diffusion_pytorch_model.fp16.safetensors",
+                                "text_encoder/model.fp16.safetensors"]},
 }
+LOW_VRAM_MB = 6_500
+
+
+@dataclass(frozen=True)
+class RuntimePlan:
+    """純函式可測的推理策略（不碰 torch）。"""
+
+    device: str
+    dtype: str
+    low_vram: bool
+    attention_slicing: bool
+    vae_slicing: bool
+    cpu_offload: bool
+    max_side: int
+
+    def downgrade(self) -> "RuntimePlan":
+        """OOM 後的下一級：解析度減 128（下限 384），並強制全部省記憶體選項。"""
+        return RuntimePlan(self.device, self.dtype, True, True, True, True, max(self.max_side - 128, 384))
+
+
+def make_runtime_plan(device: str, vram_mb: int | None, preset_max_side: int) -> RuntimePlan:
+    if device == "cuda":
+        low = vram_mb is None or vram_mb <= LOW_VRAM_MB
+        return RuntimePlan(device="cuda", dtype="float16", low_vram=low, attention_slicing=low, vae_slicing=low,
+                           cpu_offload=low, max_side=min(preset_max_side, 512) if low else preset_max_side)
+    if device == "mps":
+        return RuntimePlan("mps", "float32", False, True, True, False, preset_max_side)
+    return RuntimePlan("cpu", "float32", True, True, True, False, min(preset_max_side, 512))
+
+
+def gen_size(width: int, height: int, max_side: int, multiple: int) -> tuple[int, int]:
+    scale = min(max_side / max(width, height), 1.0)
+    gw = max(int(width * scale) // multiple * multiple, 256)
+    gh = max(int(height * scale) // multiple * multiple, 256)
+    return gw, gh
+
+
+def download_plan(preset: str) -> dict[str, Any]:
+    cfg = MODEL_PRESETS[preset]
+    return {"preset": preset, "model_id": cfg["model_id"], "estimated_gb": cfg["download_gb"],
+            "allow_patterns": cfg["allow_patterns"], "variant": cfg["variant"]}
 
 
 def _torch_available() -> bool:
@@ -30,7 +80,7 @@ def _torch_available() -> bool:
 
 def _weights_present(model_id: str, model_path: str | None) -> bool:
     if model_path:
-        return Path(model_path).exists()
+        return (Path(model_path) / "model_index.json").exists()
     if importlib.util.find_spec("huggingface_hub") is None:
         return False
     try:
@@ -42,57 +92,93 @@ def _weights_present(model_id: str, model_path: str | None) -> bool:
 
 
 class DiffusersImageProvider(ImageProvider):
-    def __init__(self, preset: str = "flux-schnell", model_path: str | None = None, device: str = "auto",
+    def __init__(self, preset: str = "sd15", model_path: str | None = None, device: str = "auto",
                  steps: int | None = None, guidance: float | None = None) -> None:
         if preset not in MODEL_PRESETS:
             raise ValueError(f"unknown preset '{preset}'; known: {sorted(MODEL_PRESETS)}")
         cfg = MODEL_PRESETS[preset]
-        self.preset = preset
+        self.preset, self.cfg = preset, cfg
         self.model_id: str = cfg["model_id"]
         self.model_path = model_path
         self.device = device
         self.steps = steps or cfg["steps"]
         self.guidance = cfg["guidance"] if guidance is None else guidance
-        self.max_side: int = cfg["max_side"]
         self._pipe: Any = None
+        self._plan: RuntimePlan | None = None
         self.calls = 0
+        self.last_plan: RuntimePlan | None = None
 
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(name=f"diffusers-{self.preset}", kind=ProviderKind.IMAGE, cost_tier=CostTier.LOCAL_FREE,
-                            model=self.model_id, version="1")
+                            model=self.model_id, version="2")
 
     def is_available(self) -> bool:
         return _torch_available() and _weights_present(self.model_id, self.model_path)
 
     def unavailable_reason(self) -> str:
         if not _torch_available():
-            return "torch / diffusers 未安裝（見 docs/AI_IMAGE_PROVIDER_PLAN.md 安裝步驟）"
+            return "torch / diffusers 未安裝（執行 `python -m see.app.cli image-setup` 看步驟）"
         if not _weights_present(self.model_id, self.model_path):
-            return f"模型權重 {self.model_id} 不在本機；下載需人工執行（不自動下載）"
+            return f"模型 {self.model_id} 不在本機；執行 `python -m see.app.cli image-download --preset {self.preset} --yes`（不會自動下載）"
         return ""
 
     def estimate_cost(self, request: ImageRequest) -> CostEstimate:
         return self._estimate(units=1, unit_name="image")
 
-    def _load(self) -> Any:
-        if self._pipe is not None:
+    # ------------------------------------------------------------ torch side
+    def _resolve_device(self) -> tuple[str, int | None]:
+        import torch  # type: ignore
+
+        if self.device != "auto":
+            dev = self.device
+        elif torch.cuda.is_available():
+            dev = "cuda"
+        elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            dev = "mps"
+        else:
+            dev = "cpu"
+        vram = int(torch.cuda.get_device_properties(0).total_memory / 2**20) if dev == "cuda" else None
+        return dev, vram
+
+    def _load(self, plan: RuntimePlan) -> Any:
+        if self._pipe is not None and self._plan == plan:
             return self._pipe
+        self._release()
         import torch  # type: ignore
         from diffusers import AutoPipelineForText2Image  # type: ignore
 
-        device = self.device
-        if device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "mps" if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available() else "cpu"
-        dtype = torch.bfloat16 if device == "cuda" else torch.float32
-        src = self.model_path or self.model_id
-        pipe = AutoPipelineForText2Image.from_pretrained(src, torch_dtype=dtype, local_files_only=True)
-        if device == "cuda" and hasattr(pipe, "enable_model_cpu_offload"):
-            pipe.enable_model_cpu_offload()  # 低 VRAM 友善；足夠 VRAM 時 diffusers 仍會用 GPU 運算
+        dtype = getattr(torch, plan.dtype)
+        kwargs: dict[str, Any] = {"torch_dtype": dtype, "local_files_only": True}
+        if self.cfg["variant"] and plan.dtype == "float16":
+            kwargs["variant"] = self.cfg["variant"]
+        if self.preset == "sd15":
+            kwargs["safety_checker"] = None  # 未下載 safety_checker；省 VRAM
+        pipe = AutoPipelineForText2Image.from_pretrained(self.model_path or self.model_id, **kwargs)
+        if plan.attention_slicing and hasattr(pipe, "enable_attention_slicing"):
+            pipe.enable_attention_slicing()
+        if plan.vae_slicing and hasattr(pipe, "enable_vae_slicing"):
+            pipe.enable_vae_slicing()
+            if hasattr(pipe, "enable_vae_tiling"):
+                pipe.enable_vae_tiling()
+        if plan.cpu_offload and plan.device == "cuda" and hasattr(pipe, "enable_model_cpu_offload"):
+            pipe.enable_model_cpu_offload()
         else:
-            pipe.to(device)
-        self._pipe = pipe
+            pipe.to(plan.device)
+        pipe.set_progress_bar_config(disable=True)
+        self._pipe, self._plan = pipe, plan
         return pipe
+
+    def _release(self) -> None:
+        self._pipe = None
+        gc.collect()
+        try:
+            import torch  # type: ignore
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:  # noqa: BLE001
+            pass
 
     def generate_image(self, request: ImageRequest, out_path: Path) -> ImageResult:
         if not self.is_available():
@@ -100,18 +186,30 @@ class DiffusersImageProvider(ImageProvider):
         self.calls += 1
         import torch  # type: ignore
 
-        pipe = self._load()
-        # 生成解析度：長邊 ≤ max_side，且為 16 的倍數；之後縮放到請求尺寸
-        scale = min(self.max_side / max(request.width, request.height), 1.0)
-        gw = max(int(request.width * scale) // 16 * 16, 256)
-        gh = max(int(request.height * scale) // 16 * 16, 256)
-        gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
-        try:
-            img = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
-                       num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen).images[0]
-        except Exception as e:  # noqa: BLE001
-            raise ProviderError(f"diffusers generation failed: {type(e).__name__}: {e}") from e
-        if (gw, gh) != (request.width, request.height):
+        dev, vram = self._resolve_device()
+        plan = make_runtime_plan(dev, vram, int(self.cfg["max_side"]))
+        last_err: Exception | None = None
+        for attempt in range(2):
+            try:
+                pipe = self._load(plan)
+                gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+                gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
+                with torch.inference_mode():
+                    img = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
+                               num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen).images[0]
+                self.last_plan = plan
+                break
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                is_oom = "out of memory" in str(e).lower() or type(e).__name__ in ("OutOfMemoryError",)
+                if attempt == 0 and is_oom:
+                    plan = plan.downgrade()
+                    self._release()
+                    continue
+                raise ProviderError(f"diffusers generation failed ({type(e).__name__}): {e}") from e
+        else:  # pragma: no cover
+            raise ProviderError(f"diffusers generation failed: {last_err}")
+        if img.size != (request.width, request.height):
             from PIL import Image
 
             img = img.resize((request.width, request.height), Image.LANCZOS)

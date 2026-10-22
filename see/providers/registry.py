@@ -51,15 +51,16 @@ class ProviderRegistry:
             "mock": lambda: MockLLMProvider(settings.min_scene_duration, settings.max_scene_duration,
                                             settings.target_total_min, settings.target_total_max),
         }
+        def _diffusers() -> DiffusersImageProvider:
+            path = settings.image_model_path or str(settings.models_dir / settings.image_model_preset)
+            return DiffusersImageProvider(preset=settings.image_model_preset, model_path=path)
+
         self._image: dict[str, Callable[[], ImageProvider]] = {
             "placeholder": PlaceholderImageProvider,
-            "diffusers": lambda: DiffusersImageProvider(preset=settings.image_model_preset, model_path=settings.image_model_path or None),
+            "diffusers": _diffusers,
             "paid-stub": PaidImageProviderStub,
             # auto：本機 diffusers 有權重就用，否則 placeholder；永不自動跨到 PAID
-            "auto": lambda: FallbackImageProvider([
-                DiffusersImageProvider(preset=settings.image_model_preset, model_path=settings.image_model_path or None),
-                PlaceholderImageProvider(),
-            ]),
+            "auto": lambda: FallbackImageProvider([_diffusers(), PlaceholderImageProvider()]),
         }
         self._video: dict[str, Callable[[], VideoProvider]] = {
             "kenburns": lambda: KenBurnsVideoProvider(self.ffmpeg),

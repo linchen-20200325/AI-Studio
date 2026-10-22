@@ -11,6 +11,7 @@ from typing import TypeVar
 from pydantic import BaseModel, ValidationError
 
 from see.core.errors import SchemaViolation
+from see.core.prompting import build_image_prompt_en, default_negative_prompt
 from see.core.subtitles import split_sentences
 from see.models.cost import CostEstimate
 from see.models.enums import CameraMotion, CostTier, ProviderKind, Transition
@@ -121,6 +122,8 @@ class MockLLMProvider(LLMProvider):
                 narration=beat.narration,
                 visual_description=f"{visual}（場景 {i+1}）",
                 image_prompt=f"插畫風格，{visual}，柔和光線，電影感構圖",
+                image_prompt_en=build_image_prompt_en(visual),
+                negative_prompt=default_negative_prompt(),
                 video_prompt=f"{visual}，緩慢鏡頭運動",
                 camera_motion=_CAMERA_CYCLE[i % len(_CAMERA_CYCLE)],
                 transition=Transition.FADE if i == 0 else _TRANSITION_CYCLE[i % len(_TRANSITION_CYCLE)],

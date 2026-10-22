@@ -34,8 +34,12 @@ renders/
 !docs/evidence/*.png
 !docs/evidence/*.jpg
 
-# --- Model weights / caches ---
+# --- Model weights / caches (never commit) ---
+models/
 models/weights/
+*.bin
+huggingface/
+.hf_cache/
 *.safetensors
 *.ckpt
 *.pt

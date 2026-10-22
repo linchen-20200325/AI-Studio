@@ -119,7 +119,8 @@ class Orchestrator:
 
         # ---- image
         out = project.output
-        img_req = ImageRequest(prompt=scene.image_prompt, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
+        img_req = ImageRequest(prompt=scene.effective_image_prompt, negative_prompt=scene.negative_prompt,
+                               width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
                                seed=scene.index, caption=scene.visual_description)
         img_fp = fingerprint("image", img_req.model_dump(), self.p.image.info.fingerprint_key)
         img_path = sdir / "image.png"
@@ -259,7 +260,7 @@ class Orchestrator:
     def update_scene(self, project: Project, scene_id: str, **fields: object) -> Scene:
         """修改單一 Scene 的欄位（narration / subtitle_override / image_prompt / camera_motion / transition ...）。"""
         scene = project.scene(scene_id)
-        allowed = {"narration", "subtitle_override", "image_prompt", "visual_description", "video_prompt",
+        allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
                    "camera_motion", "transition", "voice", "duration"}
         bad = set(fields) - allowed
         if bad:

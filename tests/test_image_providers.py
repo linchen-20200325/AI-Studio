@@ -16,6 +16,7 @@ from see.providers.registry import ProviderRegistry
 
 def test_diffusers_scaffold_never_downloads(tmp_path: Path):
     p = DiffusersImageProvider(preset="flux-schnell")
+    assert p.preset == "flux-schnell"
     assert p.info.cost_tier == "LOCAL_FREE" and p.info.model == "black-forest-labs/FLUX.1-schnell"
     assert not p.is_available()  # 本環境無 torch/權重
     with pytest.raises(ProviderUnavailable):
@@ -30,7 +31,7 @@ def test_auto_image_falls_back_to_placeholder(tmp_path: Path):
     assert isinstance(prov, FallbackImageProvider)
     res = prov.generate_image(ImageRequest(prompt="山", width=64, height=36), tmp_path / "a.png")
     assert res.provider == "placeholder-image" and prov.info.name == "placeholder-image"
-    assert prov.skipped and "diffusers-flux-schnell" in prov.skipped[0]
+    assert prov.skipped and "diffusers-sd15" in prov.skipped[0]
 
 
 def test_fallback_stops_before_paid(tmp_path: Path):

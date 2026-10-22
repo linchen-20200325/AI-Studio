@@ -24,7 +24,9 @@ class SceneDraft(BaseModel):
     narration: str = Field(min_length=1)
     dialogue: list[Dialogue] = Field(default_factory=list)
     visual_description: str = Field(min_length=1)
-    image_prompt: str = Field(min_length=1)
+    image_prompt: str = Field(min_length=1, description="中文／原語言 prompt（Placeholder 與中文模型用）")
+    image_prompt_en: str = Field(default="", description="英文 prompt（SD/FLUX 類模型用；空則退回 image_prompt）")
+    negative_prompt: str = ""
     video_prompt: str = ""
     camera_motion: CameraMotion = CameraMotion.STATIC
     transition: Transition = Transition.FADE
@@ -52,6 +54,10 @@ class Scene(SceneDraft):
     subtitle_override: str | None = Field(default=None, description="人工覆寫字幕；None 則用 narration")
     voice: str = Field(default="default", description="TTS voice id（provider 自行解讀）")
     measured_narration_duration: float | None = Field(default=None, ge=0)
+
+    @property
+    def effective_image_prompt(self) -> str:
+        return self.image_prompt_en.strip() or self.image_prompt
 
     @property
     def subtitle_text(self) -> str:

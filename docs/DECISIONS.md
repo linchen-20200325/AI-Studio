@@ -85,3 +85,14 @@
 - 不引入 ComfyUI：diffusers in-process，使用者只操作 AI-Studio。
 - 實作：`see/core/hardware.py`（能力偵測 + 建議）、`DiffusersImageProvider`（`local_files_only=True`，缺權重即拒絕，絕不自動下載）、`FallbackImageProvider`、`PaidImageProviderStub`、`SEE_IMAGE_PROVIDER=auto`、CLI `hardware`、API `/api/hardware`。預設仍為 `placeholder`。
 - 停手點：下載模型需使用者明確同意；方案 A/B 擇一需使用者先貼回 `python -m see.app.cli hardware` 結果（DG-8）。
+
+## D-018 2026-10-22 DG-8 裁示：採方案 B（Stable Diffusion 1.5）
+- 實機：Windows、GTX 1650 4 GB、RAM 64 GB、磁碟 2.7 TB。預設 preset 改為 `sd15`；低 VRAM 策略見 `docs/AI_IMAGE_SD15_WINDOWS.md`。
+- 模型與 repo 分離：`SEE_MODELS_DIR`（預設 `./models`）整個 gitignore，另加 `*.bin`、`huggingface/`；下載器在模型資料夾再寫 `.gitignore`。
+- 下載是人工單步：`python -m see.app.cli image-download --preset sd15 --yes`（無 `--yes` 只印計畫）。
+- `image_prompt_en` 路徑：`see/core/prompting.py` 關鍵詞對照（Mock／fallback）；Scene 新增 `image_prompt_en`、`negative_prompt`；Orchestrator 以 `effective_image_prompt` 餵 ImageProvider。真正 LLM 接上後可直接產生。
+- 核心 pipeline 未綁 SD 1.5：仍透過 `ImageProvider`／registry `auto`；Placeholder 永遠保留為 fallback。
+
+## D-019 2026-10-22 CI run 被 cancelled 的紀錄
+- `16fd107`（分支 run）與 `ec669e7`（分支與 main 兩個 run）狀態為 cancelled，非 failed；同 SHA 的 main run 在 `16fd107` 成功。本 session 以 GitHub App 身分 re-run／dispatch 皆 403。
+- 不以空 commit 規避；下一個真實 push 會自然觸發。若再出現 cancelled，請使用者在 Actions 頁查看 cancel 來源（可能是手動取消或帳號層級限制）。
