@@ -10,6 +10,7 @@
 - [ ] DG-5：Web UI 若要離開信任網路使用，需要最低限度存取控制（簡單 token）還是維持無登入？
 
 ## P0
+- [ ] CI workflow（GitHub Actions：pytest + ffmpeg）— 讓 §11 的「PR / CI」真的有東西可查。（可自主）
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3）。
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。

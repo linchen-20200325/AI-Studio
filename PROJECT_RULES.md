@@ -107,3 +107,61 @@ Provider 必須標記 `cost_tier ∈ {LOCAL_FREE, FREE_TIER, PAID}`。
 - Spec 有重大缺口
 
 其餘安全、免費、可逆的工作可自主完成。
+
+## 11. Conversation Handoff & Crash Recovery（對話交接與中斷恢復）
+
+**對話不是正式狀態來源；GitHub 才是。** 任何 AI 對話（Claude Code、ChatGPT 或其他）都可能因 token、額度、context 或意外而消失。
+
+### 11.1 Source of Truth 優先順序
+1. GitHub 實際 commit / tree / code
+2. PR / CI / tests
+3. `docs/STATE.md`
+4. `docs/DECISIONS.md`
+5. `docs/BACKLOG.md`
+6. `docs/HANDOFF_PROJECT_AI.md` / `docs/HANDOFF_CHATGPT.md`
+7. 對話內容
+
+HANDOFF 不得單獨作為事實證據。新 AI 對話接手時必須重新驗證 GitHub 實況；文件與 GitHub 不一致時 GitHub 優先，先修正文件再繼續功能工作。禁止依靠「上一個 AI 說已完成」直接繼續。
+
+### 11.2 文件職責（各司其職，不重複）
+| 文件 | 職責 | 長度 |
+|---|---|---|
+| `docs/STATE.md` | 目前狀態快照（唯一的「現在在哪」） | 極短，不寫歷史 |
+| `docs/DECISIONS.md` | 為什麼這樣做（含使用者裁示） | append |
+| `docs/BACKLOG.md` | 還沒做的事與 Decision Gates | 持續整理 |
+| `docs/HANDOFF_PROJECT_AI.md` | 給 Coding Agent 的恢復手冊 | 穩定，少改 |
+| `docs/HANDOFF_CHATGPT.md` | 給治理／協作 AI 的恢復手冊 | 穩定，少改 |
+| `docs/SESSION_LOG.md` | 每個工作階段一筆 append-only 紀錄 | 每筆 ≤ 8 行 |
+| `docs/HANDOFF.md` | 只是索引，指向以上文件 | 不放狀態 |
+
+### 11.3 Checkpoint Rule
+超過一個小型 Batch 的工作不得長時間只存在 working tree。切分原則是「可獨立恢復」：
+implementation → tests → commit → 更新 STATE → 再進下一批。不為極小修改製造無意義 commit。
+SHA 慣例：`STATE.md` 的 Last Verified Commit 與 `SESSION_LOG.md` 的 End SHA 指向「已跑過測試的功能 commit」；更新這兩個檔案本身的 `chore(state)` checkpoint commit 緊跟其後，不再回填自己的 SHA。
+
+### 11.4 Conversation End Protocol
+出現以下任一：context 接近上限、token／額度接近上限、準備換對話、客戶要求結束、長工作階段完成 → 必須依序：
+1. 停止開始新功能。
+2. 完成目前可安全完成的 checkpoint。
+3. 跑必要測試。
+4. commit / push。
+5. 更新 `STATE.md`。
+6. 更新相關 HANDOFF（只在規則／架構／Phase 改變時）。
+7. 在 `SESSION_LOG.md` append 一筆。
+8. 確認 secrets / 生成影片 / 模型權重未進 Git（`git ls-files | grep -E '\.(mp4|wav|safetensors|key)$|\.env$'` 應為空）。
+9. 回報最後 SHA、未完成工作、下一步。
+10. 明確告知「可安全換新對話」。
+若意外中斷未能完成，下一個 session 以 GitHub 實況重建狀態，不猜測前一個對話做到哪裡。
+
+### 11.5 New Conversation Recovery Protocol（Project AI）
+1. 讀 `PROJECT_RULES.md`。
+2. 重新取得：remote、branches、main HEAD、open/draft PR、CI、working tree（同一環境時）、最近 commits。
+3. 讀 `STATE.md` → `DECISIONS.md` → `BACKLOG.md` → `HANDOFF_PROJECT_AI.md`。
+4. 比對文件與 GitHub；不一致以 GitHub 為準，先修正文件。
+5. 才開始功能工作。
+
+### 11.6 ChatGPT Verification Gate
+治理 AI 在提供「下一步、Project AI 提示語、完成度判斷、PR 合併建議、架構重大裁示」之前，必須先獨立重新查 GitHub 最新實況，不得只依 Claude 回報或 HANDOFF。
+
+### 11.7 Silent Autonomous Cruise
+安全、免費、可逆且規格明確的工作靜默自主完成；只有需要客戶裁示、遇到停手條件、整批完成時才回報。checkpoint commit 不逐次通知。

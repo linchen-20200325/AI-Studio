@@ -18,7 +18,8 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 架構與資料模型
 - [docs/DECISIONS.md](docs/DECISIONS.md) — 決策紀錄
 - [docs/BACKLOG.md](docs/BACKLOG.md) — 待辦
-- [docs/HANDOFF.md](docs/HANDOFF.md) — 交接狀態
+- [docs/STATE.md](docs/STATE.md) — 目前狀態快照
+- [docs/HANDOFF.md](docs/HANDOFF.md) — 交接文件索引（Project AI / ChatGPT / SESSION_LOG）
 
 ## 快速開始
 
