@@ -41,3 +41,13 @@
 - Tests: 43 passed
 - Decision: D-011、D-012、D-013
 - Next: 等待 Web UI Batch 範圍；待裁示 DG-6、DG-7
+
+---
+- Date: 2026-10-22
+- Start SHA: f39d72f
+- End SHA: 5a3e05a
+- Batch: Batch 5 — 最小 GitHub Actions CI；DG-6/DG-7 裁示入檔
+- Result: ci.yml 兩次 run 皆 success（#1 7cad7f8、#2 5a3e05a）；無 secret、無外部 Provider
+- Tests: 43 passed（本機 + CI）
+- Decision: D-014、D-015、D-016
+- Next: Web UI Batch；DG-7 待使用者手動改 GitHub 設定

@@ -5,11 +5,11 @@
 | 欄位 | 值 |
 |---|---|
 | Current Phase | Phase 0.5（Phase 0 pipeline + 最小 Web UI + 治理制度完成） |
-| Last Verified Commit | `24ecbc2`（分支 `ccr-2968bce1-ym4kkc` 與 `main`，43 tests passed） |
+| Last Verified Commit | `5a3e05a`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；CI run #2 success；43 tests passed） |
 | Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
-| Last Completed Batch | Batch 4：main 快進、DG-5 落地、edge-tts 驗證嘗試（`24ecbc2`） |
-| Current Task | 無（等待下一個功能 Batch 指派） |
+| Last Completed Batch | Batch 5：最小 GitHub Actions CI（`7cad7f8`，CI #1/#2 皆 success） |
+| Current Task | 無；下一批已指定：Web UI Batch（貼文字 → Preview → 狀態 → 播放 → 單景修改／重做 → 核准） |
 | Current Status | 閒置；可安全換新對話 |
 | Blocked By | 無 |
 | Next Action | 等待使用者裁示下一個功能 Batch 與 DG-5；期間可做 BACKLOG 中標示「可自主」的項目 |
@@ -18,6 +18,5 @@
 | Last Updated | 2026-10-22 |
 
 ## 待裁示（細節見 BACKLOG）
-- DG-6：edge-tts 是否採用（非官方端點疑義；本容器無法連網驗證）。
-- DG-7：repo public → private？GitHub 預設分支改為 main？（使用者在 GitHub 設定操作）
-- 下一個 Web UI Batch 的範圍尚未指定。
+- DG-7：使用者需在 GitHub 設定手動：預設分支改 `main`、visibility 改 Private（D-015）。
+- Web UI Batch 範圍已由使用者指定（見 Current Task）；尚未開工。
