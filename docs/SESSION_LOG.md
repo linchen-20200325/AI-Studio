@@ -81,3 +81,13 @@
 - Tests: 73 passed（+7 Windows 回歸）；CI 先因 Azure apt 鏡像慢紅、改 setup-ffmpeg 後因漏列 numpy 紅、補上後 success
 - Decision: D-020、D-019 修正二
 - Next: 使用者 git pull 重跑並貼回結果
+
+---
+- Date: 2026-10-23
+- Start SHA: 02fac28
+- End SHA: 02fac28（本輪無程式變更；僅 STATE/SESSION_LOG 追查筆記 commit 於其後）
+- Batch: Batch 9 前置 — Verification Gate 通過；追查「黑 PNG 卻回報成功」路徑，列出 4 個假設與修法（見 STATE「Batch 9 交接筆記」）
+- Result: 未修復；使用者要求換新對話，依 §11.4 收尾
+- Tests: 73 passed；CI success @ 02fac28
+- Decision: 無
+- Next: 新對話依 STATE 筆記執行 Batch 9
