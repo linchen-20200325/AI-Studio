@@ -356,6 +356,62 @@ def cmd_style(args: argparse.Namespace) -> int:
     return 0
 
 
+STYLE_TEST_SCENE = "小貓咪在院子裡追蝴蝶，陽光很溫暖"
+STYLE_TEST_SEED = 1234
+
+
+def cmd_style_test(args: argparse.Namespace) -> int:
+    """Style 真機驗收（DG-18 A）：同一場景／seed／尺寸，只換 Style Profile，出一張圖。
+    輸出到 workspace/style_tests/（**不建立專案、不寫任何 manifest、不動快取**）；同時寫 evidence json。"""
+    import time
+
+    from see.core.hashing import file_sha256
+    from see.core.image_qa import image_stats
+    from see.core.prompting import build_image_prompt_en, default_negative_prompt
+    from see.core.styles import apply_style, get_style
+    from see.pipeline.orchestrator import IMAGE_SCALE
+    from see.providers.base import ImageRequest
+
+    s = Settings()
+    if s.image_provider == "placeholder":
+        s.image_provider = "auto"  # 風格驗收必須走本機生圖；沒有權重時 auto 會退回 placeholder，下面會標為無效
+    _, orch = build(s)
+    style = get_style(args.style)
+    base_prompt, base_negative = build_image_prompt_en(args.scene), default_negative_prompt()
+    prompt, negative, params = apply_style(base_prompt, base_negative, style, orch.p.image.info.name)
+    req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(s.width * IMAGE_SCALE), height=int(s.height * IMAGE_SCALE),
+                       seed=args.seed, caption=f"style-test {style.style_id}", params={"style": params} if params else {})
+    orch._gate(orch.p.image.estimate_cost, _StyleTestBudget(), req)
+    out_dir = s.workspace / "style_tests"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{style.style_id}_seed{args.seed}.png"
+    t0 = time.perf_counter()
+    res = orch.p.image.generate_image(req, out)
+    elapsed = round(time.perf_counter() - t0, 2)
+    generated_by = res.meta.get("generated_by", res.provider)
+    ev = {"style_id": style.style_id, "style_display_name": style.display_name, "style_validated": style.validated,
+          "scene": args.scene, "seed": args.seed, "width": req.width, "height": req.height,
+          "base_prompt": base_prompt, "prompt": prompt, "negative_prompt": negative, "style_params": params,
+          "provider": res.provider, "generated_by": generated_by, "final_dtype": res.meta.get("final_dtype"),
+          "fallback": res.meta.get("fallback"), "fallback_from": res.meta.get("fallback_from"),
+          "image_stats": image_stats(Path(res.path)).to_dict(), "image_sha256": file_sha256(Path(res.path)),
+          "elapsed_s": elapsed, "image_path": str(res.path),
+          "valid_for_style_test": generated_by.startswith("diffusers"), "cost": "NT$0"}
+    out.with_suffix(".json").write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(ev, ensure_ascii=False, indent=2))
+    if not ev["valid_for_style_test"]:
+        print(f"警告：本張由 {generated_by} 產生，不是本機 SD 生圖，不能作為風格驗收證據。", file=sys.stderr)
+        return 3
+    return 0
+
+
+class _StyleTestBudget:
+    """style-test 沒有專案；ApprovalGate 需要 project 物件時以 budget=0、無核准的空殼代替 → PAID 一律拒絕。"""
+
+    budget = 0.0
+    approvals: list = []
+
+
 def cmd_appearance(args: argparse.Namespace) -> int:
     """設定角色外觀錨點（Character Consistency；D-032）。--clear 移除。"""
     from see.models.project import CharacterAppearance
@@ -466,6 +522,9 @@ def main(argv: list[str] | None = None) -> int:
     chp.add_argument("--list", action="store_true"); chp.set_defaults(fn=cmd_character)
     sty = sub.add_parser("style", help="列出 Style Profile，或 `style <project_id> <style_id>` 設定專案風格")
     sty.add_argument("project_id", nargs="?"); sty.add_argument("style_id", nargs="?"); sty.set_defaults(fn=cmd_style)
+    stt = sub.add_parser("style-test", help="Style 真機驗收：固定場景／seed 只換風格出一張圖（不建專案、不動快取）")
+    stt.add_argument("--style", required=True); stt.add_argument("--seed", type=int, default=STYLE_TEST_SEED)
+    stt.add_argument("--scene", default=STYLE_TEST_SCENE); stt.set_defaults(fn=cmd_style_test)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")

@@ -8,13 +8,13 @@
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
-| Current Status | Batch 21 完成（E2-3 真機入庫；Style／Character／Lip-sync foundation，D-032）；工作樹乾淨；**等待 DG-18**；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 22 進行中：E2-4 Style 真機出圖驗收（D-033；工具 `style-test` 已就緒）；等待 Windows 逐張回報；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
-- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：130 passed、1 skipped（espeak 缺時 skip）。
+- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：131 passed、1 skipped（espeak 缺時 skip）。
 - Open / draft PR：無（流程不開 PR；開發分支驗證後 fast-forward `main`）。
 
 ## Current validated environment（last known validated snapshot，非永久硬體假設）
@@ -51,11 +51,11 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - 開放、非阻塞：DG-14 永久預設 voice（zm_010 僅目前人耳偏好候選）；DG-15 Voice Selector UI；DG-10 LLM／DG-11 Video／DG-12 Queue。
 - DG-16 **已裁示 A（D-031）**：Audio Layer。
 - DG-17：真機聽感 OK（D-032）；**BGM 預設開啟延後**到完整產品流程／UI（維持 null）。
-- **DG-18（現在等待）**：Phase 2 下一步優先順序 A Style 真機視覺驗收／B Character Consistency 模型研究／C Lip-sync 模型研究（見 BACKLOG）。
+- DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4）。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-客戶裁示 DG-18。可自主（不需裁示）：Script.characters 自動建立角色設定、SFX 真機測試指引、evidence 擴充到 clip、QA 規則。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
+Windows E2-4（一次一條）：`python -m see.app.cli style-test --style picture_book` → anime → realistic → cinematic → 3d；每張回報 json 重點＋人眼判斷 → 全部完成後寫 PHASE2_EVIDENCE E2-4 與結論。可自主（不需裁示）：Script.characters 自動建立角色設定、SFX 真機測試指引、evidence 擴充到 clip、QA 規則。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

@@ -63,5 +63,16 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 - 客戶主觀驗收：**「OK」**（單一使用者聽感，非客觀評分）。
 - **本次 SFX = 0**（mock 分鏡不產生 sfx cue）→ **SFX 真機聽感尚未驗證**；需以 `set-scene … --sfx 描述@秒數 --audio procedural` 另測。
 
+## E2-4 Style Profile 真機出圖驗收（D-033；進行中）
+方法：`python -m see.app.cli style-test --style <id>`（固定場景／seed 1234／同尺寸／同 base prompt，只換 style terms；不建專案、不動快取）。輸出 `workspace\style_tests\<id>_seed1234.png`＋`.json`。
+
+| style | generated_by | dtype | is_black/flat | 耗時 | 客戶人眼判斷（主觀） |
+|---|---|---|---|---|---|
+| picture_book | ⏳ | | | | |
+| anime | ⏳ | | | | |
+| realistic | ⏳ | | | | |
+| cinematic | ⏳ | | | | |
+| 3d | ⏳ | | | | |
+
 ## 狀態
 E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。E2-3（Audio Layer）自動測試 ✅、真機 BGM／ducking ✅（客戶「OK」）、SFX 真機 ⏳；BGM 預設維持 null（D-032）。

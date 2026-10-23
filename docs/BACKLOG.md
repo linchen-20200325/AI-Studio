@@ -16,7 +16,8 @@
 - [x] DG-13：裁示 A（D-029）— Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider；Provider Agnostic、DG-14／DG-15 獨立。
 - [x] DG-16：裁示 A（D-031）— Audio Layer（BGM／SFX／ducking），程序生成、NT$0。
 - [x] DG-17（部分）：Audio 真機聽感「OK」（D-032）。**BGM 預設開啟與否：延後到完整產品流程／UI 一起決定（維持 null）**；CC0／使用者素材仍需另核准。
-- [ ] **DG-18（下一個）**：Phase 2 下一步優先順序——A Style 真機視覺驗收（無下載）／B Character Consistency 模型研究（IP-Adapter／LoRA 等，任何下載需裁示）／C Lip-sync 模型研究（授權風險高，需裁示）。🚦
+- [x] DG-18：裁示 A（D-033）— Style 真機出圖驗收（進行中，E2-4）。B 角色一致性模型研究、C Lip-sync 研究待之後裁示。
+- [ ] **E2-4 Style 真機驗收**：picture_book → anime → realistic → cinematic → 3d（`style-test --style <id>`，一次一條）；完成後整理技術結果＋客戶主觀＋是否值得進角色一致性研究。🖥️
 - [ ] DG-19（之後）：BGM 預設開啟、Voice Selector／Style／角色 UI 一併的產品流程 UI 裁示（合併 DG-14／DG-15）。🚦
 - [ ] **DG-14**：產品永久預設 voice（目前候選 zm_010 僅為內部首選，未鎖死；D-028）。🚦
 - [ ] **DG-15**：Voice Selector UI 形式（角色→選 voice→試聽→語速→確認）；屬產品 UI 決策。🚦

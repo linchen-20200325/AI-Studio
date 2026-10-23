@@ -25,6 +25,7 @@
 | D-030 | Voice Selection 非 UI 實作：角色 voice／語速、優先序、試聽、確認閘門（使用角色時 Final 需確認） | 有效 | 可逆 |
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
+| D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -235,3 +236,9 @@
   - **Character Consistency**：`CharacterAppearance`（description_en／outfit_en／features_en／reference_images／seed／adapter）掛在 `Project.characters`（與 voice 同一角色實體，`CharacterProfile` 別名）；`scene.character_ids` 中有外觀者 → 文字錨點前置到 image prompt，結構化 refs 進 `ImageRequest.params["characters"]` 供未來 IP-Adapter／LoRA 類 provider。SD 1.5 目前只吃文字錨點；不綁 SD 1.5。
   - **Lip-sync**：`LipSyncRequest`（clip、實際 narration 音檔、靜態圖、character、fps）／`LipSyncResult.meta`、能力旗標（applies／requires_face／accepts_image_input／requires_gpu）；pipeline 新增 per-scene lipsync stage（`scene.lipsync` opt-in；null provider → 跳過，clip 與 fingerprint 不變；失敗 → 保留原 clip 記 degraded；PAID → ApprovalGate 拒絕）；timeline 有同步產物才使用。**未選定任何 lip-sync 模型**。
 - 下一個 Decision Gate：DG-18（見 BACKLOG）。
+
+## D-033 2026-10-23 DG-18 裁示 A：Style Profile 真機出圖驗收（進行中）
+- 範圍：picture_book（繪本）、anime（日系動畫）、realistic（寫實）、cinematic（電影感）、3d（3D）在既有 SD 1.5 上是否產生可辨識且合理的視覺差異。
+- 規則：不下載模型、不用 PAID、不研究 IP-Adapter／LoRA／Lip-sync；**不修改 Style Profile 內容迎合結果（先驗證現況）**；NT$0。
+- 方法（公平比較）：CLI `style-test --style <id>`：固定場景「小貓咪在院子裡追蝴蝶，陽光很溫暖」、seed 1234（CPU generator，跨風格確定性）、尺寸 1920×1080 請求（SD 1.5 低 VRAM 計畫自動縮到 512 長邊）、同一 base prompt／negative，只換 style terms。輸出 `workspace/style_tests/<style>_seed1234.png/.json`；**不建立專案、不寫 manifest、不動任何快取**；非 diffusers 產生者標 `valid_for_style_test=false`（exit 3）。
+- 每張：技術證據（generated_by、dtype、fallback、image_stats、sha256、耗時、實際 prompt）＋客戶人眼判斷（主觀，不寫成客觀品質結論）。Windows 一次一條命令。

@@ -194,3 +194,27 @@ def test_style_and_appearance_api(settings):
     assert c.post(f"/api/projects/{pid}/style", json={"style_id": "anime"}).json()["style_id"] == "anime"
     v = c.post(f"/api/projects/{pid}/characters/hero/appearance", json={"description_en": "a girl", "outfit_en": "red coat"}).json()
     assert v["characters"]["hero"]["appearance"]["outfit_en"] == "red coat"
+
+
+# ---------------------------------------------------------------- style-test CLI（DG-18 A 真機驗收工具）
+def test_style_test_cli_isolated_and_fair(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
+    evs = []
+    for sid in ("anime", "realistic"):
+        rc = main(["style-test", "--style", sid])
+        assert rc == 3  # 沒有本機 SD 權重 → placeholder → 明確標為無效，不當成功
+        evs.append(_json.loads((tmp_path / "ws" / "style_tests" / f"{sid}_seed1234.json").read_text(encoding="utf-8")))
+    capsys.readouterr()
+    a, r = evs
+    assert a["seed"] == r["seed"] == 1234 and a["base_prompt"] == r["base_prompt"] and (a["width"], a["height"]) == (r["width"], r["height"])
+    assert a["prompt"] != r["prompt"] and "anime style" in a["prompt"] and "photorealistic" in r["prompt"]
+    assert not a["valid_for_style_test"] and a["generated_by"] == "placeholder-image"
+    assert not (tmp_path / "ws" / "projects").exists()  # 不建立任何專案／manifest
+    with pytest.raises(ValueError):
+        main(["style-test", "--style", "vaporwave"])
