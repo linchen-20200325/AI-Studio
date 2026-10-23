@@ -19,6 +19,7 @@
 | D-024 | Phase 1 COMPLETE；Phase 2 待裁示 | 有效 | — |
 | D-025 | GitHub＝長期記憶 SSOT；canonical 文件；Model/Effort/Token Gate；Windows 互動規則 | 有效 | 治理，可修訂（需裁示） |
 | D-026 | DG-9 TTS 候選研究結論（Project AI 建議 Kokoro；待客戶裁示） | 研究紀錄，裁示未下 | 可逆 |
+| D-027 | DG-9 裁示：Kokoro-82M v1.1-zh **Candidate Validation Approval**（非 Final Provider Approval）；授權下載 ≈330 MB 權重做 Windows 真機驗證 | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -185,3 +186,10 @@
 - 比較表與理由：`docs/TTS_PROVIDER_PLAN.md`。排除不可商用權重（IndexTTS、F5-TTS、Fish Speech）；大模型（CosyVoice2、GPT-SoVITS）列為未來 DG。
 - Project AI 建議：Kokoro-82M v1.1-zh（Apache-2.0、CPU、≈330 MB、100 中文語者，可對應 `scene.voice`）。備選 MeloTTS（MIT，≈1.5 GB）、Piper zh_CN-huayan（≈60 MB，權重授權待確認）。
 - 本輪未下載模型、未改 production。客戶裁示後補記 D-027。
+
+## D-027 2026-10-23 DG-9 裁示：Kokoro-82M v1.1-zh 候選驗證核准（Candidate Validation Approval）
+- 使用者裁示：同意採 Kokoro-82M v1.1-zh 為 Phase 2 第一個自然中文 TTS **候選**，授權下載約 330 MB 權重於 Windows 真機驗證。
+- **本裁示性質＝Candidate Validation Approval，不是 Final TTS Provider Approval。** 技術成功不得直接宣布 Kokoro 為最終 TTS；真機驗證後停在新 Decision Gate（DG-13），由客戶依聽感裁示：正式採用／繼續調整／測試第二候選／放棄。
+- 實作約束：依 provider-agnostic 架構加入 `kokoro` provider；保留既有 fallback（kokoro → espeak → silent），不綁死；LOCAL_FREE、NT$0、不用付費 API；不改 SD 1.5 成功路徑；不自行新增其他大型模型；下載僅限已核准之 v1.1-zh ≈330 MB；下載來源／版本／實際大小／hash／provenance 必須記錄（`PHASE2_EVIDENCE.md`）；自動測試通過後才進真機。
+- 真機驗證至少確認：中文發音正確、自然度、大陸口音明顯度、不同 voice 差異、生成速度、CPU／RAM／VRAM、與 GTX 1650＋SD 1.5 工作流共存、narration duration 正確進影片流程、fallback／fail-closed 正常。
+- Windows 操作：一次一個 action／command（§14）。

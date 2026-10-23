@@ -7,10 +7,10 @@
 | 欄位 | 值 |
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
-| Current Phase | **Phase 1 COMPLETE**（SD 1.5 本機 AI 生圖，GTX 1650 真機驗收；D-024）。Phase 2 **尚未開始**，方向待裁示 |
+| Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 已開始**：第一目標＝自然中文 TTS，候選 Kokoro-82M v1.1-zh（D-027，候選驗證階段） |
 | Current Status | 閒置；工作樹乾淨；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
-| Last Updated | 2026-10-23（Batch 14：DG-9 TTS 候選研究，未下載） |
+| Last Updated | 2026-10-23（DG-9 裁示 D-027；Batch 15 待開） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
@@ -44,11 +44,12 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - 無 Phase 1 blocker。Phase 2 開工前需裁示方向（見下）。
 
 ## Current Decision Gate（現在正等待的裁示）
-- **DG-9（研究完成，等待裁示）**：候選比較與首選見 `docs/TTS_PROVIDER_PLAN.md`。Project AI 首選 **Kokoro-82M v1.1-zh**（Apache-2.0、CPU、≈330 MB、100 中文語者）；備選 MeloTTS／Piper。**尚未下載任何模型。**
+- DG-9 **已裁示（D-027）**：Kokoro-82M v1.1-zh 為候選，Candidate Validation Approval（非最終採用）；授權下載 ≈330 MB 做真機驗證。**尚未下載。**
+- **DG-13（下一個，尚未到）**：Kokoro 真機聽感驗證後，客戶裁示 正式採用／繼續調整／測試第二候選／放棄。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-使用者裁示 DG-9（見 `TTS_PROVIDER_PLAN.md` §6）→ Batch 15 實作 `kokoro` provider（Medium）；權重下載僅在 Windows 真機、經客戶同意後執行。期間可自主（不下載模型、不改 production 語意）：`image_prompt_en` UI 欄、evidence 擴充到 TTS/clip、QA 規則、GTX 16xx 直起 fp32。
+Batch 15（Medium）：實作 `see/providers/tts/kokoro.py` + registry + fake-backend 測試 + TTS evidence/provenance → CI 綠 → Windows 真機（一次一指令）下載 v1.1-zh 權重並驗證 → `PHASE2_EVIDENCE.md` → 停在 DG-13。期間可自主（不下載模型、不改 production 語意）：`image_prompt_en` UI 欄、evidence 擴充到 TTS/clip、QA 規則、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

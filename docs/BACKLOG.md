@@ -12,7 +12,8 @@
 - [x] DG-5：第一版限可信任區網，無登入（D-011）。未來 NAS／遠端部署再開 Access Control DG。
 - [x] DG-6：不採用 edge-tts，adapter 保留（D-014）。
 - [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。🚦（使用者手動）
-- [ ] **DG-9（研究完成 2026-10-23，等待裁示；見 `docs/TTS_PROVIDER_PLAN.md`，首選 Kokoro-82M v1.1-zh）**：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
+- [x] DG-9：裁示 D-027 — Kokoro-82M v1.1-zh 候選驗證核准（非最終採用）。原題：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
+- [ ] **DG-13（真機驗證後）**：Kokoro 聽感裁示：正式採用／繼續調整／測試第二候選（MeloTTS）／放棄。🚦🖥️
 - [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
 - [ ] DG-11：真正 VideoProvider（image-to-video）模型／provider：本機模型下載或 API 皆需裁示。🚦📦💰🖥️
 - [ ] DG-12：`QueueExecutor`／NAS worker：需客戶提供 NAS／GPU 硬體資訊（停手條件）。🚦
@@ -31,7 +32,7 @@
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
-- [ ] 自然中文 TTS provider（LOCAL_FREE）— Phase 2 候選第一目標，先過 DG-9。🚦📦🖥️
+- [ ] 自然中文 TTS provider（LOCAL_FREE）— **Batch 15 進行中**：`kokoro` provider + fallback 鏈 + fake-backend 測試 + TTS evidence；真機下載 v1.1-zh（≈330 MB，D-027 已核准）並驗證；停 DG-13。📦🖥️
 - [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色；依 TTS provider 能力。🖥️
 - [ ] Evidence／provenance 擴充到 TTS 與 clip（manifest meta、CLI、UI；目前只有 image）。🤖
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
