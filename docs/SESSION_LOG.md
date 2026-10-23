@@ -75,9 +75,9 @@
 ---
 - Date: 2026-10-23
 - Start SHA: e220890
-- End SHA: 5979892
+- End SHA: 3597e1e
 - Batch: Batch 8 — Windows 真機第一次 SD 1.5 執行失敗之 root cause 修復
 - Result: root cause = cp950 subprocess 解碼（非 warning）；修 UTF-8 subprocess、fp16 NaN 偵測與 fp32 升級、feature_extractor=None；模型未重下載
-- Tests: 73 passed（+7 Windows 回歸）
-- Decision: D-020
+- Tests: 73 passed（+7 Windows 回歸）；CI 先因 Azure apt 鏡像慢紅、改 setup-ffmpeg 後因漏列 numpy 紅、補上後 success
+- Decision: D-020、D-019 修正二
 - Next: 使用者 git pull 重跑並貼回結果

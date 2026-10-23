@@ -98,7 +98,7 @@
 - 根因（`bc5f568` 兩個 run 的 jobs API）：`System packages` 步驟 apt-get 卡住約 20 分鐘，被 job `timeout-minutes: 20` 取消 → GitHub 顯示 cancelled。成功的 run 該步驟只需 1 分鐘，屬 apt 鏡像偶發卡死。
 - 修正一：該步驟加非互動、timeout、重試、`timeout-minutes: 8`（`ca7d286` 綠）。
 - 2026-10-23 `495ef83` 再紅：日誌顯示 Azure apt 鏡像下載 ffmpeg 相依（75 MB）速度約 50 KB/s，8 分鐘逾時 → failure。根因是 runner 鏡像，不是程式差異。
-- 修正二：ffmpeg 改用 `FedericoCarboni/setup-ffmpeg@v3`（MIT，取 GitHub release 的靜態 GPL build，含 libass）；espeak-ng／字型改為 best-effort（`continue-on-error`），缺少時 espeak 測試自動 skip、字幕用預設字型。CI 不再依賴 apt 鏡像速度。
+- 修正二：ffmpeg 改用 `FedericoCarboni/setup-ffmpeg@v3`（MIT，取 GitHub release 的靜態 GPL build，含 libass）；espeak-ng／字型改為 best-effort（`continue-on-error`），缺少時 espeak 測試自動 skip、字幕用預設字型。CI 不再依賴 apt 鏡像速度。隨後一次紅為 requirements 漏列 `numpy`（本容器預裝掩蓋），已補；`3597e1e` success。
 
 ## D-020 2026-10-23 Windows 真機第一次 SD 1.5 執行：root cause 與修正
 - 實機：Windows、Python 3.12.10、GTX 1650 4 GB、PyTorch 2.14.1+cu126、CUDA 12.6、diffusers 已裝、模型 `D:\ai-models\sd15`（2.13 GB）。模型載入 100% 成功 → 模型未損壞，不重新下載。

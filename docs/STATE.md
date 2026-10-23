@@ -5,10 +5,10 @@
 | 欄位 | 值 |
 |---|---|
 | Current Phase | Phase 1：AI Image Provider（SD 1.5 已在使用者 Windows 實機安裝並載入成功；第一次執行的 Windows 編碼失敗已修，等重跑驗證） |
-| Last Verified Commit | `5979892`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；73 tests passed；CI 見 Actions） |
+| Last Verified Commit | `3597e1e`（分支 `ccr-2968bce1-ym4kkc` 與 `main`；CI success；73 tests passed） |
 | Current Branch | `ccr-2968bce1-ym4kkc`（開發）；`main` 與其同步（fast-forward） |
 | Open PR | 無 |
-| Last Completed Batch | Batch 8：Windows 真機 root cause 修復（cp950 subprocess、fp16 NaN 升級、無 torchvision）（`5979892`） |
+| Last Completed Batch | Batch 8：Windows 真機 root cause 修復 + CI 改用 setup-ffmpeg（`3597e1e`） |
 | Current Task | 等使用者 `git pull` 後重跑 `python -m see.app.cli run examples\story_short.txt --project-id sd15test` 並貼回結果 |
 | Current Status | 閒置；可安全換新對話 |
 | Blocked By | 使用者實機重跑（本容器無 GPU，無法複現 CUDA 路徑） |
