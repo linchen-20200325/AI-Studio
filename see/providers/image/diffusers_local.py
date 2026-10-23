@@ -219,6 +219,34 @@ def _weights_present(model_id: str, model_path: str | None) -> bool:
         return False
 
 
+SCHEDULERS = ("default", "dpmpp_2m_karras", "euler_a")
+
+
+def make_scheduler(name: str, config: Any) -> Any:
+    """依名稱建立 diffusers scheduler（A1111 名稱對照）；default＝模型自帶（SD 1.5＝PNDM）。"""
+    if name == "dpmpp_2m_karras":
+        from diffusers import DPMSolverMultistepScheduler  # type: ignore
+
+        return DPMSolverMultistepScheduler.from_config(config, use_karras_sigmas=True, algorithm_type="dpmsolver++")
+    if name == "euler_a":
+        from diffusers import EulerAncestralDiscreteScheduler  # type: ignore
+
+        return EulerAncestralDiscreteScheduler.from_config(config)
+    raise ValueError(f"unknown scheduler '{name}'; known: {SCHEDULERS}")
+
+
+def _cuda_peak_mb(torch: Any, reset: bool = False) -> float | None:
+    try:
+        if not torch.cuda.is_available():
+            return None
+        if reset:
+            torch.cuda.reset_peak_memory_stats()
+            return None
+        return round(torch.cuda.max_memory_allocated() / 2**20, 1)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
     """CLIP tokenizer 實際 token 數；超過 model_max_length（SD 1.5＝77，含 BOS/EOS）的部分會被 pipeline 靜默截斷。"""
     tok = getattr(pipe, "tokenizer", None)
@@ -235,7 +263,8 @@ def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
 
 class DiffusersImageProvider(ImageProvider):
     def __init__(self, preset: str = "sd15", model_path: str | None = None, device: str = "auto",
-                 steps: int | None = None, guidance: float | None = None) -> None:
+                 steps: int | None = None, guidance: float | None = None, checkpoint: Any = None,
+                 checkpoint_path: str | None = None, scheduler: str | None = None) -> None:
         if preset not in MODEL_PRESETS:
             raise ValueError(f"unknown preset '{preset}'; known: {sorted(MODEL_PRESETS)}")
         cfg = MODEL_PRESETS[preset]
@@ -251,16 +280,32 @@ class DiffusersImageProvider(ImageProvider):
         self.last_plan: RuntimePlan | None = None
         self.weights_variant: str | None = None
         self._floor: RuntimePlan | None = None  # 本程序內已證實需要的最低精度階梯（避免每景重走 fp16→NaN→fp32）
+        # D-039：單檔 checkpoint（SD 1.5 架構）；model_path 仍是 base SD 1.5 diffusers 資料夾，只借它的 config／tokenizer
+        self.checkpoint = checkpoint
+        self.checkpoint_path = checkpoint_path
+        if checkpoint is not None and preset != "sd15":
+            raise ValueError("single-file checkpoints are SD 1.5 architecture; use preset 'sd15'")
+        self.scheduler_name = scheduler or (checkpoint.scheduler if checkpoint is not None else "default")
+        if self.scheduler_name not in SCHEDULERS:
+            raise ValueError(f"unknown scheduler '{self.scheduler_name}'; known: {SCHEDULERS}")
 
     @property
     def info(self) -> ProviderInfo:
+        if self.checkpoint is not None:
+            return ProviderInfo(name=f"diffusers-{self.preset}-ckpt", kind=ProviderKind.IMAGE, cost_tier=CostTier.LOCAL_FREE,
+                                model=f"{self.checkpoint.checkpoint_id}@{self.checkpoint.sha256[:12]}", version=PROVIDER_VERSION)
         return ProviderInfo(name=f"diffusers-{self.preset}", kind=ProviderKind.IMAGE, cost_tier=CostTier.LOCAL_FREE,
                             model=self.model_id, version=PROVIDER_VERSION)
 
     def is_available(self) -> bool:
+        if self.checkpoint is not None and not (self.checkpoint_path and Path(self.checkpoint_path).is_file()):
+            return False
         return _torch_available() and _weights_present(self.model_id, self.model_path)
 
     def unavailable_reason(self) -> str:
+        if self.checkpoint is not None and not (self.checkpoint_path and Path(self.checkpoint_path).is_file()):
+            return (f"checkpoint {self.checkpoint.checkpoint_id} 不在 {self.checkpoint_path}；"
+                    f"執行 `python -m see.app.cli checkpoint-download {self.checkpoint.checkpoint_id} --yes`")
         if not _torch_available():
             return "torch / diffusers 未安裝（執行 `python -m see.app.cli image-setup` 看步驟）"
         if not _weights_present(self.model_id, self.model_path):
@@ -294,6 +339,8 @@ class DiffusersImageProvider(ImageProvider):
         from diffusers import AutoPipelineForText2Image  # type: ignore
 
         dtype = getattr(torch, plan.dtype)
+        if self.checkpoint is not None:
+            return self._load_checkpoint(plan, torch, dtype)
         variant = pick_variant(self.model_path, self.cfg["variant"], plan.dtype)
         self.weights_variant = variant
         supports_dtype = diffusers_supports_dtype_kwarg()
@@ -312,6 +359,23 @@ class DiffusersImageProvider(ImageProvider):
             except Exception as e:  # noqa: BLE001
                 log.warning("separate fp32 VAE load failed (%s); falling back to .to(float32)", e)
         pipe = AutoPipelineForText2Image.from_pretrained(src, **kwargs)
+        return self._finish_load(pipe, plan, torch)
+
+    def _load_checkpoint(self, plan: RuntimePlan, torch: Any, dtype: Any) -> Any:
+        """D-039：單檔 safetensors → `from_single_file`，config 取本機 base SD 1.5 資料夾（離線，不另下載）。
+        fp16 權重在 dtype=float32 時於載入 upcast（同 D-022）；VAE 以 `.to(float32)` 處理。"""
+        from diffusers import StableDiffusionPipeline  # type: ignore
+
+        self.weights_variant = "single-file"
+        # from_single_file 長期支援 torch_dtype（新版僅 FutureWarning）；feature_extractor／safety_checker 不使用
+        kw: dict[str, Any] = {"torch_dtype": dtype, "local_files_only": True, "config": self.model_path,
+                              "safety_checker": None, "feature_extractor": None, "requires_safety_checker": False}
+        pipe = StableDiffusionPipeline.from_single_file(self.checkpoint_path, **kw)
+        return self._finish_load(pipe, plan, torch)
+
+    def _finish_load(self, pipe: Any, plan: RuntimePlan, torch: Any) -> Any:
+        if self.scheduler_name != "default":
+            pipe.scheduler = make_scheduler(self.scheduler_name, pipe.scheduler.config)
         if plan.attention_slicing and hasattr(pipe, "enable_attention_slicing"):
             pipe.enable_attention_slicing()
         if plan.vae_slicing and hasattr(pipe, "enable_vae_slicing"):
@@ -356,20 +420,27 @@ class DiffusersImageProvider(ImageProvider):
             gw, gh = gen_size_native(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
         else:
             gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+        clip_skip = self.checkpoint.diffusers_clip_skip if self.checkpoint is not None else None
         self._gen_info = {"gen_policy": policy, "gen_width": gw, "gen_height": gh, "steps": self.steps,
                           "guidance": self.guidance, "scheduler": type(getattr(pipe, "scheduler", None)).__name__,
+                          "scheduler_name": self.scheduler_name,
+                          **({"clip_skip_a1111": self.checkpoint.clip_skip_a1111, "clip_skip_diffusers": clip_skip}
+                             if self.checkpoint is not None else {}),
                           **_prompt_token_info(pipe, request.prompt, request.negative_prompt)}
         gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
+        call_kw: dict[str, Any] = {"clip_skip": clip_skip} if clip_skip else {}
+        _cuda_peak_mb(torch, reset=True)
         with torch.inference_mode():
             latents = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
                            num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen,
-                           output_type="latent").images
+                           output_type="latent", **call_kw).images
             if not torch.isfinite(latents).all():
                 return None  # UNet 階段 NaN/Inf
             vae = pipe.vae
             scaling = float(getattr(getattr(vae, "config", None), "scaling_factor", 0.18215))
             z = (latents / scaling).to(dtype=vae.dtype)
             image = vae.decode(z, return_dict=False)[0]
+            self._gen_info["vram_peak_mb"] = _cuda_peak_mb(torch)
             return pipe.image_processor.postprocess(image, output_type="np")[0]
 
     def generate_image(self, request: ImageRequest, out_path: Path) -> ImageResult:
@@ -453,4 +524,8 @@ class DiffusersImageProvider(ImageProvider):
             "fp32_source": self.cfg.get("fp32_escalation", "n/a") if final.dtype == "float32" or final.vae_fp32 else None,
             "image_stats": image_stats(out_path).to_dict(),
             **getattr(self, "_gen_info", {}),
+            **({"checkpoint": {k: getattr(self.checkpoint, k) for k in ("checkpoint_id", "display_name", "version", "sha256",
+                                                                         "official_source", "license_status", "commercial_cleared",
+                                                                         "usage", "attribution")},
+                "checkpoint_path": self.checkpoint_path} if self.checkpoint is not None else {}),
         }

@@ -281,3 +281,13 @@
 - Tests: 138 passed、1 skipped（僅文件）
 - Decision: D-038；DG-20 下載／DG-22 待裁示
 - Next: 客戶裁示
+
+---
+- Date: 2026-10-23
+- Start SHA: ade24ee
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 28 — DG-20 核准下載的安全機制（checkpoint 型錄／下載驗證／single-file 載入／style-test 接線）
+- Result: D-039；`see/providers/image/checkpoints.py`、`checkpoint-download`、`style-test --checkpoint/--scheduler`、evidence（vram_peak、clip skip、scheduler、checkpoint provenance、commercial_cleared=false）；Civitai 下載需 API key（401）→ MeinaMix 改 HF 鏡像＋官方 sha256 強制比對；production default 不變；容器未下載任何權重
+- Tests: 149 passed、1 skipped
+- Decision: D-039
+- Next: Windows `git pull`

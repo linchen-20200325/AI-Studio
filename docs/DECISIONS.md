@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-039 | DG-20 裁示：核准下載 MeinaMix V12 Final＋CyberRealistic Final FP16，**僅限內部品質驗證**、commercial_cleared=false；DG-22＝(a) 動畫商用延後＋僅研究 (c) 自訓 LoRA（不得下載資料／訓練）；下載機制 `checkpoint-download`（只 safetensors、固定 revision、bytes＋sha256 前後核對、provenance） | 有效 | 可逆 |
 | D-038 | DG-20 原始證據補完：三份 Civitai license 原文＋HF revision／sha256 入庫；MeinaMix 上游含 basil_mix（現行條款衍生物禁商用）＋NAI 無法排除 → commercial_cleared=false（已證實）；ACertainModel 排除（Anything-3.0 合成資料蒸餾）；CyberRealistic 作者層全開放但 merge 來源未公開 → false | 有效 | 可逆 |
 | D-037 | DG-20 第一輪裁示：**不核准下載**；先補授權／來源／血統證據；MeinaMix 第一候選但 NAI lineage 未排除不得 commercial_cleared；CyberRealistic 暫列第一；cinematic 共用寫實；DG-21 延後與專用 checkpoint 一起裁示 | 有效 | 可逆 |
 | D-036 | native A/B：picture_book scene／style PASS（H1 證實）；anime＋girl_city_night scene PASS／style FAIL；**停止以 Base SD1.5 調 Anime**；啟動 DG-20 現成專用模型研究（只研究、不下載） | 有效 | 可逆 |
@@ -287,3 +288,11 @@
 - 已證實的血統問題：MeinaMix 自述含 PastelMix；PastelMix 公開 recipe 含 `nuigurumi/basil_mix`；basil_mix 自 2023-04-17 起條款為「衍生物（含生成物、merge）僅限非營利」→ MeinaMix `commercial_cleared=false`。ACertainModel 卡片自述以 Anything-3.0 生成圖訓練（OpenRAIL-M 定義下屬衍生物）→ 排除。
 - 規則：`commercial_cleared` 需作者授權＋上游鏈＋NAI 三項皆通過；目前全部 false。
 - 結論：SD 1.5 級無「P1 品質＋商用乾淨」動畫模型；寫實以 CyberRealistic 為第一（作者授權最寬、hash 交叉驗證），但上游未證實。
+
+## D-039 2026-10-23 DG-20／DG-22 裁示與 checkpoint 下載機制
+- 核准下載：MeinaMix V12 Final、CyberRealistic Final FP16；用途**只限內部品質驗證**；`commercial_cleared=false`；不得用於正式商用輸出。順序：MeinaMix → 完整性驗證 → 真機測試 → 路線正常後才 CyberRealistic；Windows 一次一條命令。
+- DG-22：採 (a) 動畫商用延後；允許**研究** (c) 以授權乾淨素材自訓 base SD1.5 Anime LoRA（可行性／資料授權／硬體／流程），未再裁示前不得下載訓練資料或開始訓練。DG-21 暫不裁示。
+- 實作：`see/providers/image/checkpoints.py`（型錄＝資料，非 Router；每筆帶名稱、版本、官方來源、下載 repo＋固定 revision、bytes、sha256、license_status、attribution、commercial_cleared=false、usage）；CLI `checkpoint-download <id> [--check|--yes]`：先比對遠端檔名／大小／LFS sha256／revision，不符不下載；下載後重算 sha256，不符刪檔；寫 `provenance.json`；`models/checkpoints/.gitignore`。
+- **來源變更（需知會）**：Civitai 官方下載端點需登入 API key（實測 HTTP 401，API key＝停手條件）→ MeinaMix 改由 HF 鏡像 `xuanha31/meinamix_v12`（revision `034320de…`）下載，**強制 sha256＝Civitai 官方公告值 `a5e5a941…`**（逐位元同一檔案）；授權仍以 Civitai 官方 license 頁為準（鏡像無授權卡片）。CyberRealistic 由作者官方 HF repo 下載（sha256 與 Civitai 一致）。
+- 載入：`DiffusersImageProvider(checkpoint=…)` → `StableDiffusionPipeline.from_single_file(config=<本機 base sd15>, local_files_only=True)`；沿用 fp16→fp32 階梯、OOM 階梯、native policy；模型必要參數（clip skip、scheduler）寫入 evidence；provider 名 `diffusers-sd15-ckpt`、model 含 sha 前綴 → 不與 base 快取混用。**production default 不變**（checkpoint 只能由 `style-test --checkpoint` 明確指定；無 fallback 到 placeholder，fail-closed）。
+- 公平比較：同 case／seed／尺寸／native／steps 25／CFG 7；scheduler 以 `--scheduler dpmpp_2m_karras` 讓 base SD 1.5 對照組同 scheduler；evidence 新增 vram_peak_mb、clip_skip、scheduler_name、dtype 階梯。

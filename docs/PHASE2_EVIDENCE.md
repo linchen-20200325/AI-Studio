@@ -84,3 +84,13 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 
 ## 狀態
 E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。E2-3（Audio Layer）自動測試 ✅、真機 BGM／ducking ✅（客戶「OK」）、SFX 真機 ⏳；BGM 預設維持 null（D-032）。
+
+## E2-5 專用 checkpoint 真機驗證（D-039；內部品質驗證，commercial_cleared=false）
+共同條件：`--case girl_city_night --gen-policy native`、seed 1234、1920×1080 請求（768×512 生成→裁 16:9）、steps 25、CFG 7、scheduler DPM++ 2M Karras（base 對照組同 scheduler）。人眼判斷皆為**單一使用者主觀驗收**。
+
+| 組別 | checkpoint | 下載核對 | dtype／OOM／fallback | VRAM peak | 耗時 | scene | style（主觀） |
+|---|---|---|---|---|---|---|---|
+| anime × base SD1.5（對照） | — | — | ⏳ | | | | |
+| anime × MeinaMix V12 | meinamix_v12 | ⏳ | | | | | |
+| realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
+| realistic × CyberRealistic | cyberrealistic_final | ⏳ | | | | | |

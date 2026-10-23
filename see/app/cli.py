@@ -360,7 +360,8 @@ STYLE_TEST_SCENE = "小貓咪在院子裡追蝴蝶，陽光很溫暖"  # = STYLE
 STYLE_TEST_SEED = 1234
 
 
-def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, custom_prompt: bool) -> str:
+def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, custom_prompt: bool,
+                     checkpoint_id: str | None = None, scheduler: str | None = None) -> str:
     """基準條件沿用舊檔名（<style>_seed<seed>）；任何診斷變數都加後綴 → 永不覆寫既有失敗證據。"""
     stem = f"{style_id}_seed{seed}"
     if case_id != "kitten_butterfly":
@@ -369,7 +370,35 @@ def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, cu
         stem += f"_{gen_policy}"
     if custom_prompt:
         stem += "_customprompt"
+    if checkpoint_id:
+        stem += f"_ckpt-{checkpoint_id}"
+    if scheduler and scheduler != "default":
+        stem += f"_sched-{scheduler}"
     return stem
+
+
+def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler: str | None):
+    """D-039：指定 checkpoint 或 scheduler 時直接建 DiffusersImageProvider（**不 fallback 到 placeholder**，fail-closed）。
+    回傳 (provider, error)；兩者都沒指定 → (None, None)，沿用 registry 的 image provider。"""
+    if not checkpoint_id and not scheduler:
+        return None, None
+    from see.providers.image.checkpoints import checkpoint_file, get_checkpoint, read_provenance
+    from see.providers.image.diffusers_local import DiffusersImageProvider
+
+    base = s.image_model_path or str(s.models_dir / "sd15")
+    spec = get_checkpoint(checkpoint_id) if checkpoint_id else None
+    path = str(checkpoint_file(s.models_dir, spec)) if spec else None
+    if spec is not None:
+        prov = read_provenance(s.models_dir, spec)
+        if not prov or not prov.get("verified") or prov.get("local_sha256") != spec.sha256:
+            return None, (f"checkpoint {spec.checkpoint_id} 沒有通過驗證的 provenance；"
+                          f"請先 `python -m see.app.cli checkpoint-download {spec.checkpoint_id} --yes`")
+        if Path(path).stat().st_size != spec.bytes:
+            return None, f"checkpoint 檔案大小與 provenance 不符：{path}"
+    prov_obj = DiffusersImageProvider(preset="sd15", model_path=base, checkpoint=spec, checkpoint_path=path, scheduler=scheduler)
+    if not prov_obj.is_available():
+        return None, prov_obj.unavailable_reason()
+    return prov_obj, None
 
 
 def cmd_style_test(args: argparse.Namespace) -> int:
@@ -394,30 +423,40 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     scene = args.scene or case.scene_zh
     seed = case.seed if args.seed is None else args.seed
     _, orch = build(s)
+    image, err = _style_test_image_provider(s, args.checkpoint, args.scheduler)
+    if err:
+        print(f"錯誤：{err}", file=sys.stderr)
+        return 2
+    image = image or orch.p.image
     base_prompt = args.base_prompt or build_image_prompt_en(scene)
     base_negative = default_negative_prompt()
-    prompt, negative, params = apply_style(base_prompt, base_negative, style, orch.p.image.info.name)
+    prompt, negative, params = apply_style(base_prompt, base_negative, style, image.info.name)
     req_params: dict[str, object] = {"style": params} if params else {}
     if args.gen_policy != "fit":
         req_params["gen_policy"] = args.gen_policy
     req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(s.width * IMAGE_SCALE), height=int(s.height * IMAGE_SCALE),
                        seed=seed, caption=f"style-test {style.style_id}", params=req_params)
-    orch._gate(orch.p.image.estimate_cost, _StyleTestBudget(), req)
+    orch._gate(image.estimate_cost, _StyleTestBudget(), req)
     out_dir = s.workspace / "style_tests"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / f"{_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt))}.png"
+    out = out_dir / (_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt),
+                                      args.checkpoint, args.scheduler) + ".png")
     t0 = time.perf_counter()
-    res = orch.p.image.generate_image(req, out)
+    res = image.generate_image(req, out)
     elapsed = round(time.perf_counter() - t0, 2)
     generated_by = res.meta.get("generated_by", res.provider)
     stats = image_stats(Path(res.path)).to_dict()
     tech = technical_validity(generated_by, stats)
     diag = {k: res.meta.get(k) for k in ("gen_policy", "gen_width", "gen_height", "crop_box", "upscale_factor", "steps", "guidance",
                                           "scheduler", "prompt_tokens", "negative_tokens", "token_limit", "prompt_truncated",
-                                          "negative_truncated", "weights_variant", "attempts") if k in res.meta}
+                                          "negative_truncated", "weights_variant", "attempts", "scheduler_name",
+                                          "clip_skip_a1111", "clip_skip_diffusers", "vram_peak_mb", "final_max_side",
+                                          "oom_downgrade", "numeric_downgrade", "initial_plan", "final_plan") if k in res.meta}
     ev = {"style_id": style.style_id, "style_display_name": style.display_name, "case_id": case.case_id,
           "scene": scene, "seed": seed, "width": req.width, "height": req.height,
           "fair_comparison": args.gen_policy == "fit" and not args.base_prompt and not args.scene,
+          # D-039：checkpoint 只用於內部品質驗證；commercial_cleared 一律 false（不得用於正式商用輸出）
+          "checkpoint": res.meta.get("checkpoint"), "commercial_cleared": False if args.checkpoint else None,
           "diagnostic_overrides": {"gen_policy": args.gen_policy, "base_prompt_override": bool(args.base_prompt),
                                    "scene_override": bool(args.scene)},
           "base_prompt": base_prompt, "prompt": prompt, "negative_prompt": negative, "style_params": params,
@@ -439,6 +478,51 @@ def cmd_style_test(args: argparse.Namespace) -> int:
         print(f"警告：本張技術無效（{'; '.join(ev['technical_reasons'])}），不能作為風格驗收證據。", file=sys.stderr)
         return 3
     print("注意：technical_valid=true 只代表技術上有效；scene／style 是否通過須人工 style-review。", file=sys.stderr)
+    return 0
+
+
+def cmd_checkpoint_download(args: argparse.Namespace) -> int:
+    """D-039：只下載型錄內、客戶核准的單檔 safetensors。無 --yes／--check 只印計畫。"""
+    import shutil
+
+    from see.providers.image import checkpoints as ck
+
+    s = Settings()
+    spec = ck.get_checkpoint(args.checkpoint_id)
+    dest = ck.checkpoint_file(s.models_dir, spec)
+    plan = {"checkpoint_id": spec.checkpoint_id, "name": f"{spec.display_name} {spec.version}", "filename": spec.filename,
+            "bytes": spec.bytes, "gb": round(spec.bytes / 1e9, 3), "sha256": spec.sha256, "official_source": spec.official_source,
+            "download_from": f"https://huggingface.co/{spec.download_repo}（revision {spec.download_revision}）",
+            "download_note": spec.download_note, "license_status": spec.license_status,
+            "commercial_cleared": spec.commercial_cleared, "usage": spec.usage, "dest": str(dest)}
+    print(json.dumps(plan, ensure_ascii=False, indent=2))
+    prov = ck.read_provenance(s.models_dir, spec)
+    if prov and prov.get("verified") and dest.exists() and dest.stat().st_size == spec.bytes:
+        print(f"已存在且通過驗證（{prov.get('downloaded_at')}）：{dest}；略過下載。")
+        return 0
+    if args.check:
+        try:
+            remote = ck.fetch_remote_metadata(spec)
+        except Exception as e:  # noqa: BLE001
+            print(f"遠端核對失敗（{type(e).__name__}: {e}）；未下載任何檔案。", file=sys.stderr)
+            return 1
+        errs = ck.validate_remote(spec, remote)
+        free = shutil.disk_usage(dest.parent if dest.parent.exists() else s.models_dir if s.models_dir.exists() else Path(".")).free
+        print(json.dumps({"remote": remote, "match": not errs, "errors": errs, "disk_free_gb": round(free / 1e9, 1),
+                          "enough_disk": free > spec.bytes * 1.1}, ensure_ascii=False, indent=2))
+        print("核對通過，未下載任何檔案。" if not errs else "核對失敗，不可下載。", file=sys.stderr)
+        return 0 if not errs else 3
+    if not args.yes:
+        print("未加 --yes：只顯示計畫，未下載任何檔案。", file=sys.stderr)
+        return 0
+    try:
+        prov = ck.download_checkpoint(s.models_dir, spec)
+    except Exception as e:  # noqa: BLE001
+        print(f"下載失敗或驗證不符（{type(e).__name__}: {e}）", file=sys.stderr)
+        return 3
+    print(json.dumps({k: prov[k] for k in ("checkpoint_id", "local_file", "local_bytes", "local_sha256", "verified",
+                                            "commercial_cleared", "usage", "downloaded_at")}, ensure_ascii=False, indent=2))
+    print("下載完成且 sha256 相符；僅限內部品質驗證，commercial_cleared=false。", file=sys.stderr)
     return 0
 
 
@@ -591,7 +675,13 @@ def main(argv: list[str] | None = None) -> int:
     stt.add_argument("--gen-policy", choices=["fit", "native"], default="fit",
                      help="（診斷）fit＝現行（16:9 長邊壓到 512→512×288）；native＝短邊 512 生成後裁切")
     stt.add_argument("--base-prompt", default=None, help="（診斷）手寫英文 base prompt；結果標 fair_comparison=false")
+    stt.add_argument("--checkpoint", default=None, help="（內部驗證，D-039）SD 1.5 單檔 checkpoint id；不 fallback")
+    stt.add_argument("--scheduler", default=None, choices=["default", "dpmpp_2m_karras", "euler_a"],
+                     help="覆寫 scheduler（預設：checkpoint 建議值；base SD 1.5＝模型自帶）")
     stt.set_defaults(fn=cmd_style_test)
+    ckd = sub.add_parser("checkpoint-download", help="下載已核准的 SD 1.5 checkpoint（單檔 safetensors；核對大小＋sha256；寫 provenance）")
+    ckd.add_argument("checkpoint_id"); ckd.add_argument("--check", action="store_true", help="只核對遠端檔名／大小／sha256，不下載")
+    ckd.add_argument("--yes", action="store_true", help="確認下載"); ckd.set_defaults(fn=cmd_checkpoint_download)
     srv = sub.add_parser("style-review", help="人工審圖：把 scene／style 判定寫回 style-test evidence（主觀）")
     srv.add_argument("stem", help="style_tests 下的檔名（不含副檔名），例如 picture_book_seed1234")
     srv.add_argument("--scene", choices=["pass", "fail"], required=True)
