@@ -20,22 +20,20 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: System packages (ffmpeg, espeak-ng, CJK font)
-        # 曾因 apt 卡住 20 分鐘被 job timeout 取消（D-019）；加上非互動、重試、步驟逾時
-        timeout-minutes: 8
+      - name: ffmpeg (static build via setup-ffmpeg; avoids slow apt mirrors — D-019)
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
+          architecture: x64
+      - name: Optional system packages (espeak-ng, CJK font) — best effort
+        # 缺少時 espeak 測試會 skip、字幕以預設字型燒錄；不得因 apt 鏡像慢而讓 CI 紅
+        continue-on-error: true
+        timeout-minutes: 4
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          set -euxo pipefail
-          for i in 1 2 3; do
-            sudo timeout 240 apt-get update -q -o Acquire::Retries=3 && break
-            echo "apt-get update attempt $i failed; retrying"; sleep 10
-          done
-          for i in 1 2 3; do
-            sudo timeout 300 apt-get install -y -q --no-install-recommends -o Acquire::Retries=3 ffmpeg espeak-ng fonts-wqy-zenhei && break
-            echo "apt-get install attempt $i failed; retrying"; sleep 10
-          done
-          ffmpeg -version | head -1
+          sudo timeout 90 apt-get update -q -o Acquire::Retries=2 || true
+          sudo timeout 120 apt-get install -y -q --no-install-recommends -o Acquire::Retries=2 espeak-ng fonts-wqy-zenhei || true
       - name: Python dependencies
         run: pip install -r requirements.txt
       - name: ffmpeg availability
