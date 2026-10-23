@@ -365,3 +365,70 @@ def test_regen_rebuilds_scene_and_next_run_keeps_it(orchestrator, providers):
     assert all(after[s] == before[s] for s in before if s != target)
     rep2 = orchestrator.run(TINY_STORY, project_id="rg1")  # 下一次 run 沿用 regen 結果，不再重做
     assert all(x.rebuilt == [] for x in rep2.scene_reports)
+
+
+# ---------------------------------------------------------------- D-035: 生成解析度診斷（gen_policy）與 prompt token 證據
+def test_native_policy_crops_to_target_aspect_and_records_generation(monkeypatch, tmp_path: Path):
+    prov = DiffusersImageProvider("sd15")
+    good = np.random.default_rng(2).random((512, 768, 3)).astype(np.float32)
+    _prime(monkeypatch, prov, [good])
+
+    def fake_run(pipe, plan, request):
+        prov._gen_info = {"gen_policy": request.params.get("gen_policy", "fit"), "gen_width": 768, "gen_height": 512}
+        return good
+
+    monkeypatch.setattr(prov, "_run_pipe", fake_run)
+    res = prov.generate_image(ImageRequest(prompt="cat", width=2880, height=1620, seed=1, params={"gen_policy": "native"}),
+                              tmp_path / "n.png")
+    m = res.meta
+    assert m["crop_box"] == [0, 40, 768, 472] and m["upscale_factor"] == 3.75 and m["gen_height"] == 512
+    assert res.width == 2880 and res.height == 1620
+
+
+def test_run_pipe_native_size_and_token_evidence(monkeypatch):
+    class T:
+        def __init__(self, a, dtype="float32"):
+            self.a, self.dtype = np.asarray(a, np.float32), dtype
+
+        def __truediv__(self, k):
+            return T(self.a / k, self.dtype)
+
+        def to(self, dtype):
+            return T(self.a, dtype)
+
+    seen = {}
+
+    class Tok:
+        model_max_length = 77
+
+        def __call__(self, text):
+            return types.SimpleNamespace(input_ids=[0] * (len(text.split()) + 2))
+
+    class Pipe:
+        vae = types.SimpleNamespace(dtype="float32", config=types.SimpleNamespace(scaling_factor=0.18215),
+                                    decode=lambda z, return_dict=True: (z,))
+        image_processor = types.SimpleNamespace(postprocess=lambda image, output_type="np": [image.a])
+        tokenizer = Tok()
+        scheduler = types.SimpleNamespace()
+
+        def __call__(self, **kw):
+            seen.update(kw)
+            return types.SimpleNamespace(images=T(np.full((1, 4, 8, 8), 0.5)))
+
+    fake_torch = types.ModuleType("torch")
+    fake_torch.inference_mode = contextlib.nullcontext
+    fake_torch.Generator = lambda device="cpu": types.SimpleNamespace(manual_seed=lambda s: s)
+    fake_torch.isfinite = lambda t: types.SimpleNamespace(all=lambda: True)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    prov = DiffusersImageProvider("sd15")
+    plan = RuntimePlan("cuda", "float32", True, True, True, True, 512, vae_fp32=True)
+    long_prompt = " ".join(["word"] * 100)
+    prov._run_pipe(Pipe(), plan, ImageRequest(prompt=long_prompt, width=2880, height=1620, params={"gen_policy": "native"}))
+    assert (seen["width"], seen["height"]) == (768, 512)
+    g = prov._gen_info
+    assert g["prompt_tokens"] == 102 and g["prompt_truncated"] is True and g["negative_truncated"] is False
+    assert g["steps"] == 25 and g["guidance"] == 7.0 and g["gen_policy"] == "native"
+    prov._run_pipe(Pipe(), plan, ImageRequest(prompt="cat", width=2880, height=1620))
+    assert (seen["width"], seen["height"]) == (512, 288) and prov._gen_info["gen_policy"] == "fit"
+    with pytest.raises(Exception):
+        prov._run_pipe(Pipe(), plan, ImageRequest(prompt="cat", params={"gen_policy": "bogus"}))

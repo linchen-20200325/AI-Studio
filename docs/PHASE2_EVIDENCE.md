@@ -72,10 +72,12 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 | realistic（P1） | ⏳ | | | | |
 | cinematic（P1） | ⏳ | | | | |
 | 3d（P2，次要） | ⏳ | | | | |
-| picture_book（P3） | diffusers-sd15 | float32（fp16 numeric failure → 升級；無 OOM、無 fallback） | 否／否（`valid_for_style_test=true`） | ≈234.5 s | 「比較像藝術品。」→ 技術 PASS／主觀風格 FAIL（場景語意呈現不足）；不重跑、不調整（D-034） |
+| picture_book（P3） | diffusers-sd15 | float32（fp16 numeric failure → 升級；無 OOM、無 fallback） | 否／否（technical_valid＝true） | ≈234.5 s | 「比較像藝術品。」→ **technical PASS／scene FAIL／style FAIL**：幾乎看不到貓、無追蝴蝶、無庭院構圖，高飽和粗黑線＋抽象／水果／幾何圖形（D-034、D-035）。**保留為 regression／failure evidence** |
 
 - 無效嘗試（不計入）：picture_book 第一次 `generated_by=placeholder-image`、`valid_for_style_test=false`（新 cmd 視窗未設 `SEE_MODELS_DIR`）；工具 exit 3 fail-closed，行為正確。
 - 人眼判斷皆為單一使用者主觀感受，非客觀品質結論。
+- **分層（D-035）**：technical_valid（自動）≠ scene_validated ≠ style_validated（人工）。上表「技術 PASS」不代表場景或風格通過。
+- 實際生成解析度 512×288（fit）→ 放大到 1920×1080；根因分析見 `AI_IMAGE_QUALITY_RCA.md`。E2-4 其餘風格暫停，待 native 解析度 A/B。
 
 ## 狀態
 E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。E2-3（Audio Layer）自動測試 ✅、真機 BGM／ducking ✅（客戶「OK」）、SFX 真機 ⏳；BGM 預設維持 null（D-032）。

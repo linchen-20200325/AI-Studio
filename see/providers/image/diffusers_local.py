@@ -108,6 +108,33 @@ def gen_size(width: int, height: int, max_side: int, multiple: int) -> tuple[int
     return gw, gh
 
 
+GEN_POLICIES = ("fit", "native")
+
+
+def gen_size_native(width: int, height: int, short_side: int, multiple: int, max_ratio: float = 1.5) -> tuple[int, int]:
+    """D-035 診斷策略：短邊維持模型原生解析度（SD 1.5＝512），長邊最多 short×max_ratio；之後再中心裁切回目標比例。
+
+    `fit`（舊行為）把 16:9 的長邊壓到 512 → 512×288，短邊遠低於 SD 1.5 訓練解析度，是 scene adherence 異常的主要嫌疑。
+    """
+    ar = width / height
+    r = min(max(ar, 1 / ar), max_ratio)
+    long_ = max(int(short_side * r) // multiple * multiple, short_side)
+    short = short_side // multiple * multiple
+    return (long_, short) if ar >= 1 else (short, long_)
+
+
+def center_crop_to_aspect(w: int, h: int, target_w: int, target_h: int) -> tuple[int, int, int, int]:
+    """回傳 (left, top, right, bottom)：把 w×h 中心裁成 target 比例（純函式，可測）。"""
+    t = target_w / target_h
+    if w / h > t:
+        nw = int(round(h * t))
+        left = (w - nw) // 2
+        return left, 0, left + nw, h
+    nh = int(round(w / t))
+    top = (h - nh) // 2
+    return 0, top, w, top + nh
+
+
 def download_plan(preset: str) -> dict[str, Any]:
     cfg = MODEL_PRESETS[preset]
     return {"preset": preset, "model_id": cfg["model_id"], "estimated_gb": cfg["download_gb"],
@@ -190,6 +217,20 @@ def _weights_present(model_id: str, model_path: str | None) -> bool:
         return any(r.repo_id == model_id for r in scan_cache_dir().repos)
     except Exception:  # noqa: BLE001
         return False
+
+
+def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
+    """CLIP tokenizer 實際 token 數；超過 model_max_length（SD 1.5＝77，含 BOS/EOS）的部分會被 pipeline 靜默截斷。"""
+    tok = getattr(pipe, "tokenizer", None)
+    if tok is None:
+        return {}
+    try:
+        limit = int(getattr(tok, "model_max_length", 77))
+        n, nn = len(tok(prompt).input_ids), len(tok(negative or "").input_ids)
+        return {"prompt_tokens": n, "negative_tokens": nn, "token_limit": limit,
+                "prompt_truncated": n > limit, "negative_truncated": nn > limit}
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 class DiffusersImageProvider(ImageProvider):
@@ -308,7 +349,16 @@ class DiffusersImageProvider(ImageProvider):
         """
         import torch  # type: ignore
 
-        gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+        policy = str(request.params.get("gen_policy", "fit"))
+        if policy not in GEN_POLICIES:
+            raise ProviderError(f"unknown gen_policy '{policy}'; known: {GEN_POLICIES}")
+        if policy == "native":
+            gw, gh = gen_size_native(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+        else:
+            gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+        self._gen_info = {"gen_policy": policy, "gen_width": gw, "gen_height": gh, "steps": self.steps,
+                          "guidance": self.guidance, "scheduler": type(getattr(pipe, "scheduler", None)).__name__,
+                          **_prompt_token_info(pipe, request.prompt, request.negative_prompt)}
         gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
         with torch.inference_mode():
             latents = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
@@ -337,6 +387,7 @@ class DiffusersImageProvider(ImageProvider):
             plan, plan_origin = self._floor, "carried from previous scene (numeric failure already proven)"
         initial = plan
         self.attempts: list[str] = []
+        self._gen_info: dict[str, Any] = {}
         img = None
         for _attempt in range(4):  # OOM 最多降一次、數值問題最多降兩次
             try:
@@ -352,6 +403,10 @@ class DiffusersImageProvider(ImageProvider):
                     plan = nxt
                     continue
                 img = Image.fromarray((np.clip(arr, 0, 1) * 255).round().astype("uint8"))
+                if self._gen_info.get("gen_policy") == "native":
+                    box = center_crop_to_aspect(img.width, img.height, request.width, request.height)
+                    img = img.crop(box)
+                    self._gen_info["crop_box"] = list(box)
                 self.last_plan = plan
                 break
             except ProviderError:
@@ -367,6 +422,7 @@ class DiffusersImageProvider(ImageProvider):
                 raise ProviderError(f"diffusers generation failed ({type(e).__name__}): {e}") from e
         if img is None:
             raise ProviderError("diffusers generation exhausted retries: " + "; ".join(self.attempts))
+        self._gen_info["upscale_factor"] = round(request.width / img.width, 3)
         if img.size != (request.width, request.height):
             img = img.resize((request.width, request.height), Image.LANCZOS)
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -396,4 +452,5 @@ class DiffusersImageProvider(ImageProvider):
             "weights_variant": self.weights_variant,
             "fp32_source": self.cfg.get("fp32_escalation", "n/a") if final.dtype == "float32" or final.vae_fp32 else None,
             "image_stats": image_stats(out_path).to_dict(),
+            **getattr(self, "_gen_info", {}),
         }

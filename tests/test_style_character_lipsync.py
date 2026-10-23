@@ -214,7 +214,85 @@ def test_style_test_cli_isolated_and_fair(tmp_path, monkeypatch, capsys):
     a, r = evs
     assert a["seed"] == r["seed"] == 1234 and a["base_prompt"] == r["base_prompt"] and (a["width"], a["height"]) == (r["width"], r["height"])
     assert a["prompt"] != r["prompt"] and "anime style" in a["prompt"] and "photorealistic" in r["prompt"]
-    assert not a["valid_for_style_test"] and a["generated_by"] == "placeholder-image"
+    assert not a["technical_valid"] and a["generated_by"] == "placeholder-image"
+    assert a["scene_validated"] is None and a["style_validated"] is None  # 人工判定，不自動推論（D-035）
+    assert a["fair_comparison"] and a["prompt_subject_check"]["passed"]
     assert not (tmp_path / "ws" / "projects").exists()  # 不建立任何專案／manifest
     with pytest.raises(ValueError):
         main(["style-test", "--style", "vaporwave"])
+
+
+# ---------------------------------------------------------------- D-035 分層驗收／診斷參數
+def test_gen_size_native_keeps_sd15_short_side():
+    from see.providers.image.diffusers_local import center_crop_to_aspect, gen_size, gen_size_native
+
+    assert gen_size(2880, 1620, 512, 8) == (512, 288)  # 現行 fit：短邊 288，遠低於 SD 1.5 訓練解析度
+    assert gen_size_native(2880, 1620, 512, 8) == (768, 512)
+    assert gen_size_native(1620, 2880, 512, 8) == (512, 768)
+    assert gen_size_native(1024, 1024, 512, 8) == (512, 512)
+    assert gen_size_native(2880, 1620, 384, 8) == (576, 384)  # OOM 降級後仍可用
+    l, t, r, b = center_crop_to_aspect(768, 512, 2880, 1620)
+    assert (r - l, b - t) == (768, 432) and t == 40
+
+
+def test_technical_validity_does_not_imply_scene_or_style():
+    from see.core.style_tests import get_case, prompt_subject_check, technical_validity, verdict_to_bool
+
+    ok = technical_validity("diffusers-sd15", {"is_black": False, "is_flat": False})
+    assert ok == {"technical_valid": True, "technical_reasons": []}
+    bad = technical_validity("placeholder-image", {"is_black": False, "is_flat": True})
+    assert not bad["technical_valid"] and len(bad["technical_reasons"]) == 2
+    c = get_case("kitten_butterfly")
+    assert prompt_subject_check("a kitten, a courtyard, butterflies", c.expected_subjects_en)["passed"]
+    assert prompt_subject_check("a courtyard", c.expected_subjects_en)["missing"] == ["a kitten", "butterflies"]
+    assert verdict_to_bool(None) is None and verdict_to_bool("fail") is False
+    with pytest.raises(ValueError):
+        get_case("nope")
+
+
+def test_style_test_diagnostics_never_overwrite_baseline(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
+    main(["style-test", "--style", "picture_book"])
+    main(["style-test", "--style", "picture_book", "--gen-policy", "native"])
+    main(["style-test", "--style", "picture_book", "--base-prompt", "a kitten chasing butterflies in a courtyard"])
+    main(["style-test", "--style", "anime", "--case", "girl_city_night"])
+    capsys.readouterr()
+    d = tmp_path / "ws" / "style_tests"
+    names = sorted(p.name for p in d.glob("*.json"))
+    assert names == ["anime_seed1234_girl_city_night.json", "picture_book_seed1234.json",
+                     "picture_book_seed1234_customprompt.json", "picture_book_seed1234_native.json"]
+    nat = _json.loads((d / "picture_book_seed1234_native.json").read_text(encoding="utf-8"))
+    assert not nat["fair_comparison"] and nat["diagnostic_overrides"]["gen_policy"] == "native"
+    girl = _json.loads((d / "anime_seed1234_girl_city_night.json").read_text(encoding="utf-8"))
+    assert "a girl" in girl["prompt"] and girl["fair_comparison"]
+
+
+def test_style_review_only_on_technical_valid(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    d = tmp_path / "ws" / "style_tests"
+    d.mkdir(parents=True)
+    (d / "x.json").write_text(_json.dumps({"style_id": "picture_book", "technical_valid": True}), encoding="utf-8")
+    (d / "bad.json").write_text(_json.dumps({"style_id": "anime", "technical_valid": False}), encoding="utf-8")
+    assert main(["style-review", "x", "--scene", "fail", "--style", "fail", "--note", "像藝術品"]) == 0
+    ev = _json.loads((d / "x.json").read_text(encoding="utf-8"))
+    assert ev["scene_validated"] is False and ev["style_validated"] is False and ev["human_review"]["subjective"]
+    assert main(["style-review", "bad", "--scene", "pass", "--style", "pass"]) == 3
+    assert main(["style-review", "missing", "--scene", "pass", "--style", "pass"]) == 2
+    capsys.readouterr()
+
+
+def test_default_pipeline_request_has_no_gen_policy():
+    """fit 為預設且不進 params → 舊專案 image fingerprint 不變（gen_policy 只在診斷時出現）。"""
+    from see.app.cli import _style_test_stem
+
+    assert _style_test_stem("anime", "kitten_butterfly", 1234, "fit", False) == "anime_seed1234"

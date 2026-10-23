@@ -231,3 +231,13 @@
 - Tests: 131 passed、1 skipped（僅文件變更）
 - Decision: D-034
 - Next: Windows `python -m see.app.cli style-test --style anime`
+
+---
+- Date: 2026-10-23
+- Start SHA: a4f684f
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 23 — picture_book scene adherence 失敗 RCA＋分層驗收
+- Result: D-035；追查 scene→prompt→negative→尺寸→scheduler→seed→dtype：實際生成 512×288 再 ×3.75 放大（主要嫌疑）；新增 `see/core/style_tests.py`（technical_valid／prompt_subject_check／人工 scene/style）、`style-review`、`--case/--gen-policy native/--base-prompt/--scene`、生成證據（gen 尺寸／scheduler／token）；`AI_IMAGE_QUALITY_RCA.md`（假說表＋候選模型初步表）；預設行為與 fingerprint 不變；未下載、NT$0
+- Tests: 138 passed、1 skipped
+- Decision: D-035；DG-21／DG-20 待真機 A/B
+- Next: Windows `git pull` → `style-test --style picture_book --gen-policy native`

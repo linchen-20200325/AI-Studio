@@ -356,18 +356,32 @@ def cmd_style(args: argparse.Namespace) -> int:
     return 0
 
 
-STYLE_TEST_SCENE = "小貓咪在院子裡追蝴蝶，陽光很溫暖"
+STYLE_TEST_SCENE = "小貓咪在院子裡追蝴蝶，陽光很溫暖"  # = STYLE_TEST_CASES["kitten_butterfly"]（相容舊引用）
 STYLE_TEST_SEED = 1234
 
 
+def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, custom_prompt: bool) -> str:
+    """基準條件沿用舊檔名（<style>_seed<seed>）；任何診斷變數都加後綴 → 永不覆寫既有失敗證據。"""
+    stem = f"{style_id}_seed{seed}"
+    if case_id != "kitten_butterfly":
+        stem += f"_{case_id}"
+    if gen_policy != "fit":
+        stem += f"_{gen_policy}"
+    if custom_prompt:
+        stem += "_customprompt"
+    return stem
+
+
 def cmd_style_test(args: argparse.Namespace) -> int:
-    """Style 真機驗收（DG-18 A）：同一場景／seed／尺寸，只換 Style Profile，出一張圖。
-    輸出到 workspace/style_tests/（**不建立專案、不寫任何 manifest、不動快取**）；同時寫 evidence json。"""
+    """Style 真機驗收（DG-18 A；分層判定 D-035）：同一案例／seed／尺寸，只換 Style Profile，出一張圖。
+    輸出到 workspace/style_tests/（**不建立專案、不寫任何 manifest、不動快取**）；同時寫 evidence json。
+    `technical_valid` 自動判定；`scene_validated`／`style_validated` 只能由 `style-review` 人工填入。"""
     import time
 
     from see.core.hashing import file_sha256
     from see.core.image_qa import image_stats
     from see.core.prompting import build_image_prompt_en, default_negative_prompt
+    from see.core.style_tests import get_case, prompt_subject_check, technical_validity
     from see.core.styles import apply_style, get_style
     from see.pipeline.orchestrator import IMAGE_SCALE
     from see.providers.base import ImageRequest
@@ -375,33 +389,81 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     s = Settings()
     if s.image_provider == "placeholder":
         s.image_provider = "auto"  # 風格驗收必須走本機生圖；沒有權重時 auto 會退回 placeholder，下面會標為無效
-    _, orch = build(s)
     style = get_style(args.style)
-    base_prompt, base_negative = build_image_prompt_en(args.scene), default_negative_prompt()
+    case = get_case(args.case)
+    scene = args.scene or case.scene_zh
+    seed = case.seed if args.seed is None else args.seed
+    _, orch = build(s)
+    base_prompt = args.base_prompt or build_image_prompt_en(scene)
+    base_negative = default_negative_prompt()
     prompt, negative, params = apply_style(base_prompt, base_negative, style, orch.p.image.info.name)
+    req_params: dict[str, object] = {"style": params} if params else {}
+    if args.gen_policy != "fit":
+        req_params["gen_policy"] = args.gen_policy
     req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(s.width * IMAGE_SCALE), height=int(s.height * IMAGE_SCALE),
-                       seed=args.seed, caption=f"style-test {style.style_id}", params={"style": params} if params else {})
+                       seed=seed, caption=f"style-test {style.style_id}", params=req_params)
     orch._gate(orch.p.image.estimate_cost, _StyleTestBudget(), req)
     out_dir = s.workspace / "style_tests"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / f"{style.style_id}_seed{args.seed}.png"
+    out = out_dir / f"{_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt))}.png"
     t0 = time.perf_counter()
     res = orch.p.image.generate_image(req, out)
     elapsed = round(time.perf_counter() - t0, 2)
     generated_by = res.meta.get("generated_by", res.provider)
-    ev = {"style_id": style.style_id, "style_display_name": style.display_name, "style_validated": style.validated,
-          "scene": args.scene, "seed": args.seed, "width": req.width, "height": req.height,
+    stats = image_stats(Path(res.path)).to_dict()
+    tech = technical_validity(generated_by, stats)
+    diag = {k: res.meta.get(k) for k in ("gen_policy", "gen_width", "gen_height", "crop_box", "upscale_factor", "steps", "guidance",
+                                          "scheduler", "prompt_tokens", "negative_tokens", "token_limit", "prompt_truncated",
+                                          "negative_truncated", "weights_variant", "attempts") if k in res.meta}
+    ev = {"style_id": style.style_id, "style_display_name": style.display_name, "case_id": case.case_id,
+          "scene": scene, "seed": seed, "width": req.width, "height": req.height,
+          "fair_comparison": args.gen_policy == "fit" and not args.base_prompt and not args.scene,
+          "diagnostic_overrides": {"gen_policy": args.gen_policy, "base_prompt_override": bool(args.base_prompt),
+                                   "scene_override": bool(args.scene)},
           "base_prompt": base_prompt, "prompt": prompt, "negative_prompt": negative, "style_params": params,
           "provider": res.provider, "generated_by": generated_by, "final_dtype": res.meta.get("final_dtype"),
           "fallback": res.meta.get("fallback"), "fallback_from": res.meta.get("fallback_from"),
-          "image_stats": image_stats(Path(res.path)).to_dict(), "image_sha256": file_sha256(Path(res.path)),
-          "elapsed_s": elapsed, "image_path": str(res.path),
-          "valid_for_style_test": generated_by.startswith("diffusers"), "cost": "NT$0"}
+          "generation": diag, "image_stats": stats, "image_sha256": file_sha256(Path(res.path)),
+          "elapsed_s": elapsed, "image_path": str(res.path), "cost": "NT$0",
+          # ---- 分層判定（D-035）：只有 technical_valid 是自動的
+          **tech,
+          "prompt_subject_check": prompt_subject_check(prompt, case.expected_subjects_en),
+          "scene_validated": None, "style_validated": None,
+          "human_review": {"status": "pending", "checklist": list(case.expected_subjects_en),
+                           "how": f"python -m see.app.cli style-review {out.stem} --scene pass|fail --style pass|fail --note \"...\""},
+          # 型錄旗標（該 StyleProfile 是否曾有真機驗收紀錄），不是本張圖的判定
+          "style_profile_catalog_validated": style.validated}
     out.with_suffix(".json").write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(ev, ensure_ascii=False, indent=2))
-    if not ev["valid_for_style_test"]:
-        print(f"警告：本張由 {generated_by} 產生，不是本機 SD 生圖，不能作為風格驗收證據。", file=sys.stderr)
+    if not ev["technical_valid"]:
+        print(f"警告：本張技術無效（{'; '.join(ev['technical_reasons'])}），不能作為風格驗收證據。", file=sys.stderr)
         return 3
+    print("注意：technical_valid=true 只代表技術上有效；scene／style 是否通過須人工 style-review。", file=sys.stderr)
+    return 0
+
+
+def cmd_style_review(args: argparse.Namespace) -> int:
+    """人工審圖結果寫回 evidence json（scene_validated／style_validated 唯一來源；主觀、單一審查者）。"""
+    from datetime import datetime, timezone
+
+    from see.core.style_tests import verdict_to_bool
+
+    path = Settings().workspace / "style_tests" / f"{args.stem}.json"
+    if not path.exists():
+        print(f"找不到 {path}；請先執行 style-test", file=sys.stderr)
+        return 2
+    ev = json.loads(path.read_text(encoding="utf-8"))
+    if not ev.get("technical_valid", ev.get("valid_for_style_test", False)):
+        print("此張 technical_valid=false，不能做 scene／style 審查", file=sys.stderr)
+        return 3
+    ev["scene_validated"] = verdict_to_bool(args.scene)
+    ev["style_validated"] = verdict_to_bool(args.style)
+    ev["human_review"] = {**ev.get("human_review", {}), "status": "reviewed", "scene": args.scene, "style": args.style,
+                          "note": args.note or "", "reviewer": args.by, "subjective": True,
+                          "reviewed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    path.write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({k: ev[k] for k in ("style_id", "technical_valid", "scene_validated", "style_validated", "human_review")},
+                     ensure_ascii=False, indent=2))
     return 0
 
 
@@ -523,8 +585,18 @@ def main(argv: list[str] | None = None) -> int:
     sty = sub.add_parser("style", help="列出 Style Profile，或 `style <project_id> <style_id>` 設定專案風格")
     sty.add_argument("project_id", nargs="?"); sty.add_argument("style_id", nargs="?"); sty.set_defaults(fn=cmd_style)
     stt = sub.add_parser("style-test", help="Style 真機驗收：固定場景／seed 只換風格出一張圖（不建專案、不動快取）")
-    stt.add_argument("--style", required=True); stt.add_argument("--seed", type=int, default=STYLE_TEST_SEED)
-    stt.add_argument("--scene", default=STYLE_TEST_SCENE); stt.set_defaults(fn=cmd_style_test)
+    stt.add_argument("--style", required=True); stt.add_argument("--seed", type=int, default=None)
+    stt.add_argument("--case", default="kitten_butterfly", help="測試案例（see/core/style_tests.py）")
+    stt.add_argument("--scene", default=None, help="（診斷）覆寫案例場景；結果標 fair_comparison=false")
+    stt.add_argument("--gen-policy", choices=["fit", "native"], default="fit",
+                     help="（診斷）fit＝現行（16:9 長邊壓到 512→512×288）；native＝短邊 512 生成後裁切")
+    stt.add_argument("--base-prompt", default=None, help="（診斷）手寫英文 base prompt；結果標 fair_comparison=false")
+    stt.set_defaults(fn=cmd_style_test)
+    srv = sub.add_parser("style-review", help="人工審圖：把 scene／style 判定寫回 style-test evidence（主觀）")
+    srv.add_argument("stem", help="style_tests 下的檔名（不含副檔名），例如 picture_book_seed1234")
+    srv.add_argument("--scene", choices=["pass", "fail"], required=True)
+    srv.add_argument("--style", choices=["pass", "fail"], required=True)
+    srv.add_argument("--note"); srv.add_argument("--by", default="customer"); srv.set_defaults(fn=cmd_style_review)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")

@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-035 | **E2-4 暫停於 RCA**：`technical_valid`≠scene／style 通過（分層驗收）；主要嫌疑＝生成解析度 512×288（pipeline）；診斷參數 opt-in、預設不變；DG-20 延後到真機 A/B 之後 | 有效 | 可逆 |
 | D-034 | **產品視覺方向**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等。picture_book 技術 PASS／主觀 FAIL，不重跑不修正；E2-4 目的改為判斷 SD1.5 是否足以支撐 P1 | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
@@ -253,3 +254,11 @@
 - E2-4 真正目的：判斷**既有 SD1.5 是否足以支撐 P1 方向**。anime／realistic／cinematic 目視比較完成後提 DG-20：A 足夠→角色一致性驗證；B 明顯不足→研究更適合 anime／AI 真人的 LOCAL_FREE 模型；C 依視覺路線採不同模型／provider。
 - 裁示前不下載新模型、不導入 IP-Adapter／LoRA、不新增付費服務、不開始 Lip-sync 模型、不開始 DG-19 UI。
 - 已知待裁事項（記錄，不擅改）：`default` Style 與 Mock LLM `image_prompt_en` 模板仍內含 storybook watercolor；改預設會改變舊專案 fingerprint → 併入 DG-20 之後處理。
+
+## D-035 2026-10-23 picture_book scene adherence 失敗 → 根因分析與分層驗收
+- 真機（客戶回報）：`style-test --style picture_book`，GTX 1650；fp16 NaN → 自動 fp32；`fallback=false`；舊欄位 `valid_for_style_test=true`；≈234 s；NT$0。人工：幾乎看不到貓、沒有追蝴蝶、沒有庭院構圖，畫面是高飽和粗黑線＋抽象／水果／幾何圖形；與前次無實質差異（同輸入同 seed＝確定性同圖，屬預期）。
+- 判定：**技術路徑 PASS（真機生成＋fp32 自動升級）；scene FAIL；style FAIL**。`technical_valid=true` 只代表「產生了技術上有效的圖」，**禁止**推論 scene／prompt／style 通過或風格已驗證。
+- 根因追查（`docs/AI_IMAGE_QUALITY_RCA.md`）：主要嫌疑 H1＝pipeline 把 16:9 長邊壓到 512 → **512×288 生成**（短邊僅 SD 1.5 訓練解析度 56%）再 ×3.75 插值放大；Phase 1 真機圖同樣是 512×288（Phase 1 只驗技術）。次要：H2 picture_book 詞彙（simple shapes/gouache）、H3 Mock LLM 關鍵詞排序無關係結構、H4 SD 1.5 base 能力（H1 排除前無法分離）。fp32 upcast、offload、seed、scheduler（PNDM 25 步 CFG 7）、截斷（估 ≈40/77）判定為低嫌疑。
+- 修正（低風險、預設不變、舊 fingerprint 不變）：分層欄位 `technical_valid`（自動）／`prompt_subject_check`（自動，僅驗 prompt）／`scene_validated`、`style_validated`（僅人工 `style-review`）；舊 `style_validated` 改名 `style_profile_catalog_validated`；`STYLE_TEST_CASES`（kitten_butterfly、girl_city_night）；診斷 `--gen-policy native`、`--base-prompt`、`--scene`（`fair_comparison=false`、檔名加後綴、不覆寫基準證據）；evidence 增 gen 尺寸、crop、upscale、scheduler、steps、guidance、prompt token／截斷。
+- 失敗證據保留：`workspace\style_tests\picture_book_seed1234.png/.json`（不入 repo；sha256 在該 json 的 `image_sha256`）。
+- 下一步：真機 A/B 只換解析度（`--gen-policy native`）；結果決定 DG-21（native 是否成為預設；會使既有 image fingerprint 失效並增加耗時）或 DG-20（模型路線）。候選模型表為初步、未下載，授權須下載前逐一核對。
