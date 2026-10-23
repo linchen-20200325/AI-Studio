@@ -121,3 +121,13 @@
 - Tests: 89 passed（+3）；CI 見 STATE
 - Decision: D-023
 - Next: 使用者 `git pull` 後重跑同一條 run 命令；scene_001 應自動重試並由 diffusers-sd15 生成
+
+---
+- Date: 2026-10-23
+- Start SHA: ec8ff77
+- End SHA: ec8ff77（本輪無程式變更；文件 checkpoint 另列）
+- Batch: Batch 12 — Phase 1 真機收尾、PHASE1_EVIDENCE、BACKLOG 完整盤點、Phase 2 排序
+- Result: Phase 1 COMPLETE（五景真 SD 1.5、fp32 upcast、降級快取自動重試、NT$0）；盤點 25 項能力 ✅13 🟡8 ⬜5 🔴1；Phase 2 第一目標建議＝自然中文 TTS
+- Tests: 89 passed（未動程式）
+- Decision: D-024
+- Next: 使用者裁示 Phase 2 方向（停手條件）；可安全換新對話

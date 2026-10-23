@@ -42,7 +42,11 @@ python -m see.app.cli run examples\story_short.txt --project-id sd15test
 - Scene 002–005：`generated_by=diffusers-sd15`、`final_dtype=float32`、`fallback=false`、圖正常 → **SD 1.5 fp32 upcast 真機成功**。
 - Scene 001：仍是 Batch 9 留下的 placeholder（fallback 產物被當成有效快取；`regen` 後 run 仍 reuse）。已修（D-023）：下一次 `run` 會自動重試 scene_001，不需手動刪任何檔案。`regen <project> <scene>` 語意＝清該景快取並重做全部資產，無需其他參數。
 
-## 4c. 第五次執行要看什麼（D-021/D-022/D-023 之後）
+## 4c-2. 第五次執行結果（Batch 11 程式 `ec8ff77`，2026-10-23）— **Phase 1 驗收通過**
+- Scene 001 自動淘汰降級快取（`cached artifact rejected: degraded artifact…`）→ rebuilt image+clip → `generated_by=diffusers-sd15, final_dtype=float32, numeric_downgrade=true, fallback=false`。
+- Scene 002–005 正確 reuse，皆 `diffusers-sd15`。無 placeholder、無黑圖、未手動刪檔、未 regen、未額外下載、NT$0。詳見 `PHASE1_EVIDENCE.md`。
+
+## 4c. 日後重跑要看什麼（D-021/D-022/D-023 之後）
 `providers.image.name` **不是**生成證據；看 `run` 輸出 JSON 的 `image_evidence[]`（每景一筆）：
 - `regenerated: true`、`reason`（`no valid cache`／`cached artifact rejected: black ...`／`cached artifact rejected: degraded artifact from fallback provider placeholder-image ...`）→ 有重新生成；scene_001 預期是第三種。
 - `degraded: false` → 這次不是 fallback 產物。

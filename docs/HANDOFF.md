@@ -12,5 +12,6 @@
 | 每個工作階段做了什麼 | [`SESSION_LOG.md`](SESSION_LOG.md) |
 | 架構與資料模型 | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Phase 0 證據 | [`PHASE0_EVIDENCE.md`](PHASE0_EVIDENCE.md) |
+| Phase 1 證據（SD 1.5 真機） | [`PHASE1_EVIDENCE.md`](PHASE1_EVIDENCE.md) |
 
 原則：**對話不是正式狀態來源；GitHub 才是。** 任何文件與 GitHub 不一致時以 GitHub 為準。

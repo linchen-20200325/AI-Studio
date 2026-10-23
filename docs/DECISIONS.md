@@ -146,3 +146,7 @@
   - `regen` CLI 於 stderr 印出該景 image evidence（generated_by / final_dtype / numeric_downgrade / fallback）。
 - 不需手動刪 workspace／manifest／PNG：下一次 `run` 會自動重試 scene_001。
 - 回歸測試 +3：fallback 產物在首選修好後被重試（只重做該景 image+clip，其他景 reuse，再跑不 churn）；首選不可用時 placeholder 快取保留；regen 只重做指定景、clip fingerprint 隨圖內容失效、下一次 run 沿用。共 89 passed。
+
+## D-024 2026-10-23 Phase 1 正式 COMPLETE；Phase 2 方向待裁示
+- 完成條件（STATE／BACKLOG 定義：五景 `generated_by=diffusers-sd15`、無黑圖、無 placeholder、NT$0）於 GTX 1650 真機以 `ec8ff77` 程式達成，證據見 `PHASE1_EVIDENCE.md`。本輪無 production 行為變更，只有文件同步。
+- Phase 2 建議排序見 BACKLOG「Phase 2 建議」；第一目標建議為自然中文 TTS（LOCAL_FREE）。涉及新模型下載／方向選擇 → 停手條件，等使用者裁示後開工。

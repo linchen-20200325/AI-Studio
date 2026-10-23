@@ -30,7 +30,7 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 **PAID provider 無 Approval 一律拒絕執行；Local 失敗不得自動切 PAID。**
 
 ## 4. 目前 Phase、已完成、未完成
-以 `STATE.md` 為準。摘要：Phase 0 pipeline（CLI）與最小 Web UI 已完成並有證據（`PHASE0_EVIDENCE.md`）；真正 AI Image/Video、神經 TTS、Ollama、BGM、QA、NAS/GPU、登入皆未做（BACKLOG）。
+以 `STATE.md` 為準。摘要：Phase 0 pipeline（CLI）與最小 Web UI 已完成並有證據（`PHASE0_EVIDENCE.md`）；Phase 1 SD 1.5 本機生圖已於 GTX 1650 真機完成（`PHASE1_EVIDENCE.md`，D-024）；真正 Video、自然 TTS、Ollama、BGM/SFX、lipsync、QA、NAS/GPU、登入皆未做（BACKLOG「Phase 1 收尾盤點」表）。Phase 2 方向待使用者裁示。
 
 ## 5. Current Task 與下一個安全動作
 - Current Task：看 `STATE.md`。
@@ -54,7 +54,7 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 
 ## 8. 必讀文件順序
-1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`、`docs/AI_IMAGE_SD15_WINDOWS.md`（AI Image Phase）
+1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`、`docs/AI_IMAGE_SD15_WINDOWS.md`、`docs/PHASE1_EVIDENCE.md`（AI Image Phase）
 
 ## 9. 快速啟動
 ```bash
