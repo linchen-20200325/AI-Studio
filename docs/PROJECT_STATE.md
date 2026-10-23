@@ -8,13 +8,13 @@
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 已開始**：第一目標＝自然中文 TTS，候選 Kokoro-82M v1.1-zh（D-027，候選驗證階段） |
-| Current Status | 閒置；工作樹乾淨；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 15 程式完成（kokoro provider／CLI／UI／tests）；等待 Windows 真機驗證（一次一步）；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
-| Last Updated | 2026-10-23（DG-9 裁示 D-027；Batch 15 待開） |
+| Last Updated | 2026-10-23（Batch 15 程式完成；等待真機） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
-- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：89 passed、1 skipped（espeak 缺時 skip）。
+- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：98 passed、1 skipped（espeak 缺時 skip）。
 - Open / draft PR：無（流程不開 PR；開發分支驗證後 fast-forward `main`）。
 
 ## Current validated environment（last known validated snapshot，非永久硬體假設）
@@ -31,7 +31,7 @@
 | LLM | `MockLLMProvider`（規則式切 beat、模板 image_prompt_en） | **Mock**（真 LLM 規劃未做；Ollama 暫緩 DG-2） |
 | Image | `diffusers-sd15`（LOCAL_FREE，真機驗證）→ fallback `placeholder-image`；`paid-stub` 永遠被 ApprovalGate 擋 | **Real**（SD 1.5）；placeholder 只是 fallback |
 | Video | `KenBurnsVideoProvider`（ffmpeg zoompan 靜態圖運鏡） | **Partial**（非真正 image-to-video） |
-| TTS | `auto` → espeak-ng（機械聲）→ silent；`edge-tts` adapter 存在但不採用（D-014） | **Partial**（可聽但非產品級自然中文） |
+| TTS | `auto` → **kokoro**（D-027 候選；程式就緒，真機未驗證、權重未下載）→ espeak-ng → silent；`edge-tts` 不採用（D-014） | **Partial**（真機驗證前仍只有 espeak 可聽） |
 | Audio（BGM/SFX） | `null-audio` | **Null** |
 | LipSync | `null-lipsync` | **Null** |
 | Subtitle／Timeline／Render | 確定性 SRT、燒錄、xfade、preview/final.mp4 | **Real** |
@@ -49,7 +49,7 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Batch 15（Medium）：實作 `see/providers/tts/kokoro.py` + registry + fake-backend 測試 + TTS evidence/provenance → CI 綠 → Windows 真機（一次一指令）下載 v1.1-zh 權重並驗證 → `PHASE2_EVIDENCE.md` → 停在 DG-13。期間可自主（不下載模型、不改 production 語意）：`image_prompt_en` UI 欄、evidence 擴充到 TTS/clip、QA 規則、GTX 16xx 直起 fp32。
+Windows 真機（`docs/AI_TTS_KOKORO_WINDOWS.md`，一次一指令）：pip 安裝 → `tts-download --yes`（≈330 MB，已核准）→ `tts-check` → `run` 五景 → 寫 `PHASE2_EVIDENCE.md` → 停在 DG-13。期間可自主（不下載模型、不改 production 語意）：`image_prompt_en` UI 欄、evidence 擴充到 TTS/clip、QA 規則、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。
@@ -59,5 +59,5 @@ Batch 15（Medium）：實作 `see/providers/tts/kokoro.py` + registry + fake-ba
 
 ## Current Windows validation status
 - 仍有效結論：GTX 1650 SD 1.5 fp32 路徑五景成功（2026-10-23，`ec8ff77`）。
-- 下一個需要真機驗證的事項：Phase 2 第一目標（TTS 聽感／時長）——目前**不需要**使用者操作電腦。
+- 下一個需要真機驗證的事項：Kokoro 安裝／下載／聽感（`AI_TTS_KOKORO_WINDOWS.md` §3，一次一步）。
 - Windows 操作規則：一次只給一個指令，等結果再給下一個（PROJECT_RULES §14）。

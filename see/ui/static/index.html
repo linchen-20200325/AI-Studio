@@ -169,7 +169,7 @@ function render(p) {
   }
   // scenes（只在內容變動時重繪，避免打斷使用者輸入）
   $("scenesCard").hidden = !p.scenes.length;
-  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta])) + busy;
+  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta])) + busy;
   if (sk !== lastScenesKey) { lastScenesKey = sk; $("scenes").innerHTML = p.scenes.map(s => sceneHtml(s, busy)).join(""); }
   // approve
   $("approveCard").hidden = !p.preview_url;
@@ -192,10 +192,21 @@ function imageMetaHtml(m) {
   return `<div class="meta" title="${esc(JSON.stringify(m))}">圖：${esc(parts.join(" · "))}</div>`;
 }
 
+function narrationMetaHtml(m) {
+  if (!m || !m.provider) return "";
+  const parts = [m.generated_by || m.provider];
+  if (m.voice) parts.push(m.voice);
+  if (m.device) parts.push(m.device);
+  if (m.duration != null) parts.push(Number(m.duration).toFixed(1) + "s");
+  if (m.degraded) parts.push("降級");
+  if (m.regenerated === false) parts.push("快取");
+  return `<div class="meta" title="${esc(JSON.stringify(m))}">聲：${esc(parts.join(" · "))}</div>`;
+}
+
 function sceneHtml(s, busy) {
   const sel = (name, list, val) => `<select id="${name}-${s.scene_id}" ${busy ? "disabled" : ""}>${list.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`;
   return `<div class="scene" id="scene-${s.scene_id}">
-    <div>${s.image_url ? `<img src="${s.image_url}" alt="">` : ""}<div class="meta">${s.scene_id}<br>${s.duration.toFixed(1)}s</div>${imageMetaHtml(s.image_meta)}</div>
+    <div>${s.image_url ? `<img src="${s.image_url}" alt="">` : ""}<div class="meta">${s.scene_id}<br>${s.duration.toFixed(1)}s</div>${imageMetaHtml(s.image_meta)}${narrationMetaHtml(s.narration_meta)}</div>
     <div>
       <div class="meta"><span class="pill ${s.status}">${s.status}</span> ${esc(s.visual_description)}</div>
       <label>旁白</label><textarea id="nar-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.narration)}</textarea>

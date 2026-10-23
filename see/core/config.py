@@ -53,6 +53,8 @@ class Settings:
     models_dir: Path = field(default_factory=lambda: Path(_env("SEE_MODELS_DIR", "./models")).resolve())
     video_provider: str = field(default_factory=lambda: _env("SEE_VIDEO_PROVIDER", "kenburns"))
     tts_provider: str = field(default_factory=lambda: _env("SEE_TTS_PROVIDER", "auto"))
+    tts_model_path: str = field(default_factory=lambda: _env("SEE_TTS_MODEL_PATH", ""))  # 空 = models_dir/kokoro-v1_1-zh
+    tts_device: str = field(default_factory=lambda: _env("SEE_TTS_DEVICE", "cpu"))  # cpu 預設：不與 SD 1.5 搶 4 GB VRAM
     audio_provider: str = field(default_factory=lambda: _env("SEE_AUDIO_PROVIDER", "null"))
     lipsync_provider: str = field(default_factory=lambda: _env("SEE_LIPSYNC_PROVIDER", "null"))
     subtitle_font: str = field(default_factory=lambda: _env("SEE_SUBTITLE_FONT", "") or detect_cjk_font())

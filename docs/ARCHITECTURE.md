@@ -49,7 +49,7 @@ see/
               provider / worker / cost / approval / timeline
   providers/  base.py（六個 Provider 介面 + ProviderInfo）、registry.py（ProviderRegistry）
               llm/mock.py、image/placeholder.py、video/kenburns.py、
-              tts/espeak.py、tts/silent.py、tts/edge.py（optional FREE_TIER）、
+              tts/kokoro.py（D-027 候選）、tts/espeak.py、tts/silent.py、tts/edge.py（optional FREE_TIER）、
               audio/null.py、lipsync/null.py
   workers/    base.py（Task / Executor / Worker 介面）、local.py（LocalExecutor）
   pipeline/   stages.py（各階段純函式）、orchestrator.py（串接 + per-scene cache + 狀態機）
@@ -104,6 +104,7 @@ class LipSyncProvider: lipsync(req, out_path) -> LipSyncResult
 | Image | `FallbackImageProvider`（`auto`） | LOCAL_FREE | diffusers → placeholder；不跨 PAID |
 | Image | `PaidImageProviderStub` | PAID | 占位，永不連線；證明 ApprovalGate 接線 |
 | Video | `KenBurnsVideoProvider` | LOCAL_FREE | FFmpeg zoompan；camera_motion → 鏡頭運動 |
+| TTS | `KokoroTTSProvider` | LOCAL_FREE | Kokoro-82M v1.1-zh（Apache-2.0，≈330 MB，CPU）；D-027 候選驗證中；權重僅由 `tts-download --yes` 取得 |
 | TTS | `EspeakTTSProvider` | LOCAL_FREE | espeak-ng `cmn`；品質低但離線可用 |
 | TTS | `SilentTTSProvider` | LOCAL_FREE | 靜音 + 以字數估算時長；測試與無 TTS 環境 fallback |
 | TTS | `EdgeTTSProvider` | FREE_TIER | 需網路、不需 key；本環境無法連線，未啟用 |

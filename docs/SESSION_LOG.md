@@ -151,3 +151,13 @@
 - Tests: 88 passed、1 skipped（本容器，無 espeak）
 - Decision: D-026（研究紀錄；DG-9 待裁示）
 - Next: 客戶裁示 DG-9 → Batch 15 kokoro provider；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: cd19ce5
+- End SHA: （本 Batch 功能 commit，見 GitHub）
+- Batch: Batch 15 — Kokoro TTS provider（D-027 候選）＋ CLI tts-setup/download/check ＋ TTS evidence/provenance ＋ Fallback info 穩定化
+- Result: `kokoro` provider（fake backend 可測、fail-closed、voice 對應、CPU 預設）；auto 鏈 kokoro→espeak→silent；narration meta 進 manifest／CLI／UI；降級旁白自動重做；下載器寫 provenance.json；未下載任何權重
+- Tests: 98 passed、1 skipped
+- Decision: D-027（實作）；DG-13 待真機
+- Next: Windows 真機一次一步（AI_TTS_KOKORO_WINDOWS.md §3）→ PHASE2_EVIDENCE → DG-13

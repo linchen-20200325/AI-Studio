@@ -29,6 +29,7 @@ from see.providers.llm.mock import MockLLMProvider
 from see.providers.tts.edge import EdgeTTSProvider
 from see.providers.tts.espeak import EspeakTTSProvider
 from see.providers.tts.fallback import FallbackTTSProvider
+from see.providers.tts.kokoro import KokoroTTSProvider
 from see.providers.tts.silent import SilentTTSProvider
 from see.providers.video.kenburns import KenBurnsVideoProvider
 
@@ -65,11 +66,17 @@ class ProviderRegistry:
         self._video: dict[str, Callable[[], VideoProvider]] = {
             "kenburns": lambda: KenBurnsVideoProvider(self.ffmpeg),
         }
+        def _kokoro() -> KokoroTTSProvider:
+            path = settings.tts_model_path or str(settings.models_dir / KokoroTTSProvider.DEFAULT_DIRNAME)
+            return KokoroTTSProvider(model_dir=path, ffmpeg=self.ffmpeg, device=settings.tts_device)
+
         self._tts: dict[str, Callable[[], TTSProvider]] = {
+            "kokoro": _kokoro,
             "espeak": lambda: EspeakTTSProvider(ffmpeg=self.ffmpeg),
             "silent": SilentTTSProvider,
             "edge": lambda: EdgeTTSProvider(ffmpeg=self.ffmpeg),
-            "auto": lambda: FallbackTTSProvider([EspeakTTSProvider(ffmpeg=self.ffmpeg), SilentTTSProvider()]),
+            # auto：kokoro 有套件＋本機權重就用（D-027 候選），否則 espeak，再否則 silent；永不自動跨到 PAID
+            "auto": lambda: FallbackTTSProvider([_kokoro(), EspeakTTSProvider(ffmpeg=self.ffmpeg), SilentTTSProvider()]),
         }
         self._audio: dict[str, Callable[[], AudioProvider]] = {"null": NullAudioProvider}
         self._lipsync: dict[str, Callable[[], LipSyncProvider]] = {"null": NullLipSyncProvider}

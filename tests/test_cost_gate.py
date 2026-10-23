@@ -75,4 +75,5 @@ def test_fallback_never_crosses_into_paid(tmp_path: Path):
 def test_fallback_uses_next_free_candidate(tmp_path: Path):
     fb = FallbackTTSProvider([BrokenFreeTTS(), SilentTTSProvider()])
     r = fb.synthesize(TTSRequest(text="你好"), tmp_path / "o.wav")
-    assert r.provider == "silent-tts" and fb.info.name == "silent-tts"
+    assert r.provider == "silent-tts" and r.meta["generated_by"] == "silent-tts"
+    assert fb.info.name == "broken-free"  # info 固定為第一個「可用」候選（同 image D-023）；實際生成者看 meta

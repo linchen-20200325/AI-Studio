@@ -32,9 +32,9 @@
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
-- [ ] 自然中文 TTS provider（LOCAL_FREE）— **Batch 15 進行中**：`kokoro` provider + fallback 鏈 + fake-backend 測試 + TTS evidence；真機下載 v1.1-zh（≈330 MB，D-027 已核准）並驗證；停 DG-13。📦🖥️
-- [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色；依 TTS provider 能力。🖥️
-- [ ] Evidence／provenance 擴充到 TTS 與 clip（manifest meta、CLI、UI；目前只有 image）。🤖
+- [ ] 自然中文 TTS provider（LOCAL_FREE）— Batch 15 **程式完成**（`kokoro` provider、auto 鏈、tts-setup/download/check CLI、UI 聲證據、10 tests）；**待真機**下載 v1.1-zh（≈330 MB，D-027 已核准）並驗證；停 DG-13。📦🖥️
+- [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色。kokoro 已可用 voice id（zf_*/zm_*）；UI 尚無 voice 選擇欄；更多 voice 需另下載（小檔，仍需裁示）。🖥️
+- [ ] Evidence／provenance 擴充到 clip（manifest meta、CLI、UI）。TTS 部分已完成（Batch 15：`tts_evidence`、`narration_meta`、provenance.json）。🤖
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
 - [ ] Retry／resume：中斷後續跑（per-scene fingerprint 已可續跑）；明確 retry policy 與失敗景標記。🤖
 - [ ] `OllamaLLMProvider`（LOCAL_FREE）：暫緩（DG-2）。

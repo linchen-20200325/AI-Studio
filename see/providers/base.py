@@ -127,6 +127,7 @@ class TTSResult(BaseModel):
     provider: str
     model: str
     sample_rate: int | None = None
+    meta: dict[str, Any] = Field(default_factory=dict, description="證據：generated_by / voice / device / fallback_from / rtf")
 
 
 class TTSProvider(BaseProvider):

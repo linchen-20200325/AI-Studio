@@ -42,6 +42,7 @@ class SceneBuildReport:
     reused: list[str] = field(default_factory=list)
     reasons: dict[str, str] = field(default_factory=dict)  # 為何重做（例如 image: "cached artifact rejected: black"）
     image_meta: dict[str, object] = field(default_factory=dict)  # 本次 image 的證據（manifest 同步保存）
+    narration_meta: dict[str, object] = field(default_factory=dict)  # 本次 TTS 的證據（generated_by / voice / device / rtf）
 
 
 @dataclass
@@ -163,17 +164,27 @@ class Orchestrator:
         tts_fp = fingerprint("narration", tts_req.model_dump(), self.p.tts.info.fingerprint_key)
         wav_path = sdir / "narration.wav"
         rec = manifest.valid("narration", tts_fp)
+        tts_preferred = self.p.tts.info.name  # Fallback 時 = 目前第一個「可用」候選
+        if rec and rec.provider and rec.provider != tts_preferred:
+            # 同 D-023：fallback 旁白（例如 espeak/silent）是以首選 provider 的 key 快取的；首選現在可用 → 重做
+            report.reasons["narration"] = f"cached artifact rejected: degraded narration from {rec.provider}; preferred {tts_preferred} is available"
+            rec = None
         if rec:
             report.reused.append("narration")
             measured = rec.duration or 0.0
+            report.narration_meta = {**rec.meta, "regenerated": False}
         else:
             self._gate(self.p.tts.estimate_cost, project, tts_req)
             res = self.executor.run(Task(task_id=f"{scene.scene_id}:tts", kind="tts",
                                          fn=self.p.tts.synthesize, kwargs={"request": tts_req, "out_path": wav_path}))
             measured = res.duration
+            meta = {"generated_by": res.meta.get("generated_by", res.provider), **res.meta, "regenerated": True,
+                    "reason": report.reasons.get("narration", "no valid cache"), "degraded": res.provider != tts_preferred,
+                    "sample_rate": res.sample_rate, "duration": round(measured, 3)}
             manifest.entries["narration"] = AssetRecord(fingerprint=tts_fp, path=res.path, duration=measured,
-                                                        provider=res.provider, model=res.model)
+                                                        provider=res.provider, model=res.model, meta=meta)
             report.rebuilt.append("narration")
+            report.narration_meta = meta
         scene.measured_narration_duration = round(measured, 3)
         effective = max(scene.duration, measured + s.narration_pad, s.min_scene_duration)
         scene.duration = round(effective, 3)

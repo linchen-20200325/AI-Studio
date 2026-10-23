@@ -58,6 +58,21 @@ def image_evidence(orch: Orchestrator, project) -> list[dict]:
     return rows
 
 
+def tts_evidence(orch: Orchestrator, project) -> list[dict]:
+    """每景 narration 的生成證據（manifest meta）：真正生成者、voice、device、rtf、是否降級／fallback。"""
+    rows = []
+    for s in project.scenes:
+        rec = orch.store.load_manifest(project.project_id, s.scene_id).entries.get("narration")
+        m = rec.meta if rec else {}
+        rows.append({"scene_id": s.scene_id, "provider": rec.provider if rec else None, "model": rec.model if rec else None,
+                     "generated_by": m.get("generated_by"), "voice": m.get("voice"), "device": m.get("device"),
+                     "duration": rec.duration if rec else None, "sample_rate": m.get("sample_rate"),
+                     "synth_seconds": m.get("synth_seconds"), "rtf": m.get("rtf"), "regenerated": m.get("regenerated"),
+                     "degraded": m.get("degraded"), "fallback_from": m.get("fallback_from"),
+                     "model_sha256": m.get("model_sha256"), "model_revision": m.get("model_revision")})
+    return rows
+
+
 def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
     ff = FFmpeg(orch.settings.ffmpeg, orch.settings.ffprobe)
     out = Path(job.output_path or "")
@@ -70,6 +85,7 @@ def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
                 "estimated_cost": job.estimated_cost, "actual_cost": job.actual_cost, "currency": job.currency},
         "providers": {k: getattr(orch.p, k).info.model_dump() for k in ("llm", "image", "video", "tts", "audio", "lipsync")},
         "image_evidence": image_evidence(orch, project),  # providers.image.name 只是「第一個可用候選」，這裡才是實際生成證據
+        "tts_evidence": tts_evidence(orch, project),
     }, ensure_ascii=False, indent=2))
 
 
@@ -236,6 +252,67 @@ def cmd_image_download(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tts_setup(args: argparse.Namespace) -> int:
+    """印出 Kokoro（D-027 候選）安裝與下載步驟；不執行安裝、不下載。"""
+    from see.core.hardware import detect_hardware
+    from see.providers.tts.kokoro import KokoroTTSProvider, download_plan, local_voices, read_provenance, weights_present
+
+    s = Settings()
+    plan = download_plan()
+    dest = Path(s.tts_model_path) if s.tts_model_path else s.models_dir / KokoroTTSProvider.DEFAULT_DIRNAME
+    hw = detect_hardware(".")
+    win = hw.os == "Windows"
+    print(f"# 機器：{hw.os} · Python {hw.python}")
+    print(f"# 候選：{plan['repo_id']} · {plan['license']} · 預估下載 ≈{plan['estimated_mb']} MB · 存放 {dest} · {plan['approval']}")
+    print(f"# 現況：weights_present={weights_present(dest)} voices={local_voices(dest)} provenance={'yes' if read_provenance(dest) else 'no'}")
+    print("# 依序執行（每行一步；一次只做一步）：")
+    print("pip install " + " ".join(f'"{p}"' for p in plan["pip"]))
+    print("python -m see.app.cli tts-download --yes")
+    print("python -m see.app.cli tts-check")
+    print(("set" if win else "export") + " SEE_TTS_PROVIDER=auto")
+    return 0
+
+
+def cmd_tts_download(args: argparse.Namespace) -> int:
+    """下載 Kokoro v1.1-zh 權重到 SEE_MODELS_DIR/kokoro-v1_1-zh（僅 D-027 已核准的 ≈330 MB）。沒有 --yes 只印計畫。"""
+    from see.providers.tts.kokoro_download import download_kokoro, plan_text
+
+    s = Settings()
+    dest = Path(args.dest).resolve() if args.dest else (Path(s.tts_model_path) if s.tts_model_path else s.models_dir / "kokoro-v1_1-zh")
+    print(plan_text(dest))
+    if not args.yes:
+        print("未加 --yes：只顯示計畫，未下載任何檔案。", file=sys.stderr)
+        return 0
+    try:
+        prov = download_kokoro(dest, voices=args.voices)
+    except ImportError as e:
+        print(f"缺少套件：{e}（pip install huggingface_hub）", file=sys.stderr)
+        return 1
+    print(json.dumps(prov, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_tts_check(args: argparse.Namespace) -> int:
+    """真機驗證：以本機 Kokoro 合成一句，印出 duration / rtf / device / voice（不進 pipeline）。"""
+    from see.providers.base import TTSRequest
+    from see.providers.registry import ProviderRegistry
+    from see.providers.tts.kokoro import KokoroTTSProvider, local_voices, read_provenance
+
+    s = Settings()
+    s.tts_provider = "kokoro"
+    tts = ProviderRegistry(s).build().tts
+    assert isinstance(tts, KokoroTTSProvider)
+    print(json.dumps({"available": tts.is_available(), "model_dir": str(tts.model_dir), "voices": local_voices(tts.model_dir),
+                      "provenance": read_provenance(tts.model_dir)}, ensure_ascii=False, indent=2))
+    if not tts.is_available():
+        print("kokoro 不可用：請先 pip install 套件並執行 tts-download --yes", file=sys.stderr)
+        return 1
+    out = Path(args.out).resolve()
+    res = tts.synthesize(TTSRequest(text=args.text, language="zh-TW", voice=args.voice, speed=args.speed), out)
+    print(json.dumps(res.model_dump(), ensure_ascii=False, indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     from see.core.proc import ensure_utf8_stdio
 
@@ -247,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("source", help="文字檔路徑或 - 讀 stdin")
     r.add_argument("--title")
     r.add_argument("--project-id")
-    r.add_argument("--tts", choices=["auto", "espeak", "silent", "edge"])
+    r.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"])
     r.add_argument("--workspace")
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status"); st.add_argument("project_id"); st.set_defaults(fn=cmd_status)
@@ -268,6 +345,15 @@ def main(argv: list[str] | None = None) -> int:
     idl = sub.add_parser("image-download", help="下載 open-weight 模型（需 --yes 才真的下載）")
     idl.add_argument("--preset", default=None); idl.add_argument("--dest", default=None); idl.add_argument("--yes", action="store_true")
     idl.set_defaults(fn=cmd_image_download)
+    tse = sub.add_parser("tts-setup", help="印出 Kokoro TTS（D-027 候選）安裝步驤（不執行安裝）"); tse.set_defaults(fn=cmd_tts_setup)
+    tdl = sub.add_parser("tts-download", help="下載 Kokoro-82M v1.1-zh 權重（需 --yes 才真的下載；寫 provenance.json）")
+    tdl.add_argument("--dest", default=None); tdl.add_argument("--yes", action="store_true")
+    tdl.add_argument("--voices", nargs="*", default=None, help="要下載的 voice id（預設 2 女 2 男）")
+    tdl.set_defaults(fn=cmd_tts_download)
+    tck = sub.add_parser("tts-check", help="以本機 Kokoro 合成一句並印出 duration/rtf/device（真機驗證用）")
+    tck.add_argument("--text", default="你好，這是 AI-Studio 的中文旁白測試。"); tck.add_argument("--voice", default="default")
+    tck.add_argument("--speed", type=float, default=1.0); tck.add_argument("--out", default="tts_check.wav")
+    tck.set_defaults(fn=cmd_tts_check)
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

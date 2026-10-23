@@ -102,6 +102,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "image_url": f"/api/projects/{project.project_id}/scenes/{s.scene_id}/image.png"
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
                 "image_meta": _image_meta(project.project_id, s.scene_id),
+                "narration_meta": _narration_meta(project.project_id, s.scene_id),
             } for s in project.scenes],
             "render_jobs": [j.model_dump(mode="json") for j in project.render_jobs[-5:]],
             "approvals": [a.model_dump(mode="json") for a in project.approvals],
@@ -118,6 +119,16 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "final_dtype": m.get("final_dtype"), "final_vae_fp32": m.get("final_vae_fp32"),
                 "numeric_downgrade": m.get("numeric_downgrade"), "oom_downgrade": m.get("oom_downgrade"),
                 "fallback": m.get("fallback"), "fallback_from": m.get("fallback_from"), "image_stats": m.get("image_stats")}
+
+    def _narration_meta(pid: str, sid: str) -> dict[str, Any]:
+        """Scene 卡顯示用的旁白證據：真正生成者、voice、device、rtf、是否降級／fallback。"""
+        rec = store.load_manifest(pid, sid).entries.get("narration")
+        if rec is None:
+            return {}
+        m = rec.meta
+        return {"provider": rec.provider, "model": rec.model, "generated_by": m.get("generated_by"), "voice": m.get("voice"),
+                "device": m.get("device"), "duration": rec.duration, "rtf": m.get("rtf"), "regenerated": m.get("regenerated"),
+                "degraded": m.get("degraded"), "fallback_from": m.get("fallback_from")}
 
     # ------------------------------------------------------------ pages
     @app.get("/", response_class=HTMLResponse)

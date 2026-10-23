@@ -58,7 +58,9 @@ class FallbackTTSProvider(TTSProvider):
                 continue
             try:
                 result = c.synthesize(request, out_path)
-                self._active = c
+                # 不改 self._active：info/fingerprint 固定為「第一個可用候選」（同 image D-023），實際生成者看 meta
+                # 證據：實際生成者與之前失敗的候選（BACKLOG：TTS provenance）
+                result.meta = {**result.meta, "generated_by": result.provider, "fallback_from": list(errors)}
                 return result
             except ProviderError as e:
                 errors.append(f"{c.info.name}: {e}")

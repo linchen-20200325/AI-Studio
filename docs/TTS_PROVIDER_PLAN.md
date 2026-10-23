@@ -1,6 +1,6 @@
 # TTS_PROVIDER_PLAN.md — DG-9 自然中文 TTS（LOCAL_FREE）候選研究
 
-> 狀態：**研究完成，等待客戶裁示（DG-9）**。本輪**未下載任何模型、未安裝任何大型 dependency、未修改 production 行為**（PROJECT_RULES §10）。
+> 狀態：DG-9 **已裁示（D-027）**：Kokoro 候選驗證核准（非最終）。程式已實作（Batch 15），真機驗證見 `AI_TTS_KOKORO_WINDOWS.md`；聽感裁示＝DG-13。原研究內容保留如下。本輪**未下載任何模型、未安裝任何大型 dependency、未修改 production 行為**（PROJECT_RULES §10）。
 > 研究日期：2026-10-23（Batch 14）。本容器無法連線 huggingface.co／k2-fsa.github.io，體積與速度為公開資料整理值，標 ≈ 者需真機下載後以實測更新本檔。
 
 ## 1. 現況（GitHub 實況）
