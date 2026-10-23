@@ -1,5 +1,26 @@
 # BACKLOG.md
 
+## 封存總覽（2026-10-23；狀態標記：DONE／NEXT／BLOCKED／RESEARCH／NEEDS HUMAN DECISION）
+| 項目 | 狀態 |
+|---|---|
+| Base SD1.5 vs MeinaMix 人物近景對照入庫（D-043） | DONE |
+| DG-23：model_preset_level 比較是否接受；Windows `style-compare` 實機 JSON 確認 | NEEDS HUMAN DECISION／NEXT |
+| CyberRealistic 下載＋真人品質驗證（含 base 對照） | BLOCKED（等客戶指示） |
+| CyberRealistic upstream lineage 釐清 | RESEARCH |
+| cinematic 驗證（共用 realistic 模型） | BLOCKED（CyberRealistic 之後） |
+| DG-21 native 是否成為預設 | NEEDS HUMAN DECISION（比較完成後） |
+| 3D（P2） | BLOCKED（P1 之後） |
+| Preference Layer 產品化（ARCHITECTURE §13） | NEXT（非 UI 部分可自主） |
+| Style／character／voice／BGM UI（DG-19） | NEEDS HUMAN DECISION |
+| SFX 人工聽感 | NEXT（需真機人耳） |
+| Character consistency：IP-Adapter／LoRA | RESEARCH（目前僅 prompt foundation） |
+| Lip-sync 實際模型 | BLOCKED（未核准） |
+| commercial-safe anime 路徑（DG-22） | RESEARCH／NEEDS HUMAN DECISION |
+| 自有／乾淨授權 Anime LoRA（DG-22 c） | RESEARCH（不下載資料、不訓練） |
+| MeinaMix 商用 | BLOCKED：commercial_cleared=false，不得商用 |
+| DG-14 永久預設 voice（zm_010 僅候選） | NEEDS HUMAN DECISION |
+| DG-7 repo Private／預設分支 | NEEDS HUMAN DECISION（使用者手動） |
+
 優先順序：P0（下一步）> P1 > P2。每項都受 PROJECT_RULES 約束（Free First、需核准才可接 PAID）。本檔是**所有未完成工作的唯一正式主清單**（PROJECT_RULES §12）。
 標籤：🖥️＝需 Windows 真機驗證｜📦＝可能需下載模型（開工前需裁示）｜💰＝可能產生成本（需核准）｜🚦＝需客戶裁示（Decision Gate）｜🤖＝Project AI 可自行完成。
 關閉條件：需 GitHub／code／test／真機證據；Null／Silent／Mock／Placeholder／skeleton 不算完成（§12.4）。

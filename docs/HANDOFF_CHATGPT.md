@@ -1,9 +1,27 @@
 # HANDOFF_CHATGPT.md — 給治理／協作 AI（ChatGPT 等）的恢復手冊
 
+## ⛳ 最終交接 checkpoint（2026-10-23 封存；以 GitHub main HEAD 為準）
+- 最後驗證 main：`c716b5d`（CI success；159 passed、1 skipped）＋本封存文件 commit。開發分支 `ccr-297bf146-zrrlk1`。
+- 已完成：Phase 0／0.5／1；Phase 2 進行中：Kokoro TTS（D-027／D-029，真機 validated）、Voice Selection／Character Voice（`zm_010`＝目前使用者偏好候選，非永久鎖定，DG-14）、BGM/SFX＋ducking（SFX 人工聽感未驗）、Style Profile、Character Consistency foundation（僅 prompt 錨點，無 IP-Adapter/LoRA）、Lip-sync 介面（無實際模型）、checkpoint 型錄／下載驗證／single-file 載入／clip-skip 相容（D-039／D-040；**不是** Model Router，Router 未實作）。
+- E2-5：MeinaMix V12 已下載驗證、真機成功；人物近景主觀 OK；Base SD1.5 對照：base「眼睛很怪異」vs MeinaMix「比較像日本漫畫的角色」（single-user subjective）→ MeinaMix 對目前使用者 P1 日系動畫人物品質有明顯主觀改善。**未正式採用、未鎖畫風、commercial_cleared=false（所有 checkpoint）**。
+- `fair_comparison=false`：A（metadata 定義：native 一律 false）＋B（實際另有 clip skip 2 vs 1 差異）→ 已更名 `baseline_condition`、新增 `style-compare`；比較層級＝model_preset_level，DG-23 待裁示（D-043）。
+- CyberRealistic：**尚未下載、尚未真機驗證**；upstream lineage 未釐清。
+- production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
+- 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
+- **下一唯一安全接手點**：Verification Gate → 請客戶裁示 DG-23 →（Windows 一次一條）`git pull` → `python -m see.app.cli style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12`。CyberRealistic 等客戶明確指示。
+- 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
+
+
 > 入口是 `docs/HANDOFF.md`；本文件是治理 AI 專用補充（治理方式、審核清單）。GitHub 是唯一長期記憶（PROJECT_RULES §12）。本文件不描述「現在在哪」——現況看 `PROJECT_STATE.md` 並與 GitHub 比對。
 
+## 0. ChatGPT 協作規則（不依賴 ChatGPT Memory）
+- 角色：治理／審核／協助使用者下指令給 Project AI；任何專案判斷前先查 GitHub（main、PR、CI、PROJECT_STATE）。HANDOFF／聊天記憶不是事實來源。
+- 回覆繁中、極簡，第一行 🟢/🟡/🔴；使用者不是工程師 → 一步一步、Windows 一次一條命令。
+- 給 Project AI 的提示語須附 Model／Effort 建議；使用者偏好靜默自主巡航。
+- 對話變長或額度將盡 → 提醒換對話並要求先把狀態寫回 GitHub；重要實機結果一律要求寫回 GitHub（PHASE2_EVIDENCE／DECISIONS）。
+
 ## 1. 專案目的
-`see`：使用者貼入中文文章／故事 → 自動產生影片（劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效 → 字幕 → 剪輯 → QA → Preview → 人工核准 → Final）。採階段性 MVP，目前完成 Phase 0（pipeline）與 Phase 0.5（最小 Web UI）。Repo：`linchen-20200325/AI-Studio`（GitHub 上為 public；`main` 為已驗證版本，開發分支 `ccr-2968bce1-ym4kkc`）。
+`see`：使用者貼入中文文章／故事 → 自動產生影片（劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效 → 字幕 → 剪輯 → QA → Preview → 人工核准 → Final）。採階段性 MVP，目前完成 Phase 0（pipeline）與 Phase 0.5（最小 Web UI）。Repo：`linchen-20200325/AI-Studio`（GitHub 上為 public；`main` 為已驗證版本，開發分支 `ccr-297bf146-zrrlk1`）。
 
 ## 2. 使用者核心偏好
 - 全程繁體中文（台灣）。
@@ -27,7 +45,7 @@
 - Phase 0：中文文字 → 劇本 → 分鏡 → placeholder 圖 + Ken Burns + espeak 旁白 + 字幕 → FFmpeg → `preview.mp4`（證據：`docs/PHASE0_EVIDENCE.md`）。
 - Phase 0.5：FastAPI 手機友善 Web UI（貼故事 → Preview → 播放 → 單景修改／重做 → 核准 → Final）。
 - 治理：Conversation Handoff & Crash Recovery 制度（PROJECT_RULES §11）；最小 CI。
-- Phase 1（AI Image）：SD 1.5 於 Windows GTX 1650 真機五景成功（D-018～D-024，`PHASE1_EVIDENCE.md`）。Phase 2 未開始，待 DG-9。
+- Phase 1（AI Image）：SD 1.5 於 Windows GTX 1650 真機五景成功（D-018～D-024，`PHASE1_EVIDENCE.md`）。Phase 2 進行中（現況看 PROJECT_STATE 最終交接 checkpoint）。
 
 ## 5. Current Phase
 看 `docs/PROJECT_STATE.md`。
