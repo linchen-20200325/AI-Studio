@@ -8,7 +8,7 @@
 - CyberRealistic：已下載；東亞女性 technical PASS＋客戶確認東方女性；東亞男性外觀確認但 JSON 未入庫（single-user subjective，D-047）；commercial_cleared=false；upstream lineage 未釐清；未鎖定為預設。
 - production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
 - 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
-- **下一唯一安全接手點**：（自主、非 UI）結構化 Character 設定（ARCHITECTURE §14，角色 A／B，舊欄位相容）；同時待客戶回傳 CyberRealistic 東亞男性 style-test JSON（可選）。研究項（Identity／Image-to-Video 4 GB 可行性）不下載。長期目標見 D-047／ARCHITECTURE §15。
+- **下一唯一安全接手點**：（自主）Multi-character controlled test 設計——雙人 style-test 案例（角色 A／B 屬性互不交換的人工檢查清單），之後才需 Windows 真機。研究項（Identity provider／Image-to-Video 4 GB 可行性）不下載。
 - 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
 
 

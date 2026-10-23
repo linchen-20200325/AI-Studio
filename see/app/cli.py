@@ -598,12 +598,17 @@ class _StyleTestBudget:
 
 def cmd_appearance(args: argparse.Namespace) -> int:
     """設定角色外觀錨點（Character Consistency；D-032）。--clear 移除。"""
-    from see.models.project import CharacterAppearance
+    from see.models.project import CharacterAppearance, CharacterTraits
 
     _, orch = build()
     project = orch.store.load(args.project_id)
+    traits_kw = {k: v for k, v in {"gender_presentation": args.gender, "age": args.age, "age_range": args.age_range,
+                                   "appearance_region": args.region, "hair_style": args.hair_style, "hair_color": args.hair_color,
+                                   "facial_features": args.facial_feature, "body_type": args.body_type,
+                                   "distinctive_marks": args.mark}.items() if v}
     app = None if args.clear else CharacterAppearance(description_en=args.description or "", outfit_en=args.outfit or "",
-                                                       features_en=args.feature or [], reference_images=args.ref or [], seed=args.seed)
+                                                       features_en=args.feature or [], reference_images=args.ref or [], seed=args.seed,
+                                                       traits=CharacterTraits(**traits_kw) if traits_kw else None)
     ch = orch.set_character_appearance(project, args.character_id, app)
     print(json.dumps(ch.model_dump(mode="json"), ensure_ascii=False, indent=2))
     return 0
@@ -733,6 +738,11 @@ def main(argv: list[str] | None = None) -> int:
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")
     app_.add_argument("--ref", action="append"); app_.add_argument("--seed", type=int); app_.add_argument("--clear", action="store_true")
+    # D-047 結構化人物設定（全部可選、無預設；英文描述）
+    app_.add_argument("--gender", help="性別呈現，例 woman／man"); app_.add_argument("--age", type=int)
+    app_.add_argument("--age-range"); app_.add_argument("--region", help="地區外貌描述，例 'East Asian'")
+    app_.add_argument("--hair-style"); app_.add_argument("--hair-color"); app_.add_argument("--facial-feature", action="append")
+    app_.add_argument("--body-type"); app_.add_argument("--mark", action="append", help="辨識特徵（可重複）")
     app_.set_defaults(fn=cmd_appearance)
     vpp = sub.add_parser("voice-preview", help="試聽一句（不影響專案）")
     vpp.add_argument("--text", default="你好，這是角色試聽。"); vpp.add_argument("--voice", default="default")

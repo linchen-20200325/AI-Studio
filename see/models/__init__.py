@@ -12,7 +12,7 @@ from see.models.enums import (
     Status,
     Transition,
 )
-from see.models.project import CharacterAppearance, CharacterProfile, CharacterVoice, OutputSpec, Project
+from see.models.project import CharacterAppearance, CharacterTraits, CharacterProfile, CharacterVoice, OutputSpec, Project
 from see.models.provider import ProviderInfo
 from see.models.style import StyleProfile
 from see.models.render_job import RenderJob
@@ -23,6 +23,7 @@ from see.models.worker import TaskSpec, WorkerInfo
 
 __all__ = [
     "CharacterAppearance",
+    "CharacterTraits",
     "CharacterProfile",
     "CharacterVoice",
     "StyleProfile",

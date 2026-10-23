@@ -372,3 +372,11 @@
 - Result: D-047；ARCHITECTURE §15；BACKLOG 短劇 Roadmap；CyberRealistic 東亞女性／男性主觀入庫（男性 JSON 未入庫）；DECISIONS 索引補 D-043～D-047
 - Tests: 僅文件
 - Next: 結構化 Character 設定（非 UI）
+
+---
+- Date: 2026-10-23
+- Start SHA: f918b17
+- Batch: Batch 38 — 角色 A／B 結構化 Character 設定（非 UI）
+- Result: D-048；CharacterTraits、traits 欄位、anchor 組裝、reference_images 本機路徑檢查、CLI／API；舊 fingerprint 不變
+- Tests: 164 passed、1 skipped
+- Next: Multi-character controlled test 設計

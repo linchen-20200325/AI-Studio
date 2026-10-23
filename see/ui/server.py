@@ -66,6 +66,7 @@ class AppearanceIn(BaseModel):
     outfit_en: str = Field(default="", max_length=200)
     features_en: list[str] = Field(default_factory=list, max_length=10)
     seed: int | None = None
+    traits: dict[str, Any] | None = None  # D-047 結構化人物設定（CharacterTraits 驗證）
 
 
 class VoicePreviewIn(BaseModel):
@@ -326,7 +327,13 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         _guard_idle(pid)
         _check_id(cid)
         project = _load(pid)
-        orch.set_character_appearance(project, cid, CharacterAppearance(**body.model_dump()))
+        from pydantic import ValidationError
+
+        try:
+            appearance = CharacterAppearance(**body.model_dump())
+        except ValidationError as e:
+            raise HTTPException(422, str(e))
+        orch.set_character_appearance(project, cid, appearance)
         return _project_view(project)
 
     @app.post("/api/projects/{pid}/characters/{cid}/confirm")

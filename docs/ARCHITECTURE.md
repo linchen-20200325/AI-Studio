@@ -237,3 +237,11 @@ workspace/projects/<project_id>/
 | Image-to-Video | Ken Burns（靜態圖推拉）；`VideoProvider` 介面 | 真動態（人物動作、表情、鏡頭）；LOCAL_FREE＋GTX 1650 4 GB 可行性**未知／可能不足**（RESEARCH，須明說） |
 | Dialogue Performance | Kokoro TTS、角色 voice、字幕 | 真 Lip-sync provider（目前僅介面）；多角色台詞→角色→聲音對應；字幕／timeline 對齊驗證 |
 | Audio／Editing | BGM＋ducking（E2-3）、SFX（聽感未驗）、FFmpeg timeline | ambience、shot transition、自動剪輯節奏 |
+
+### 14.1 已實作（D-048）：結構化 Character 設定（非 UI）
+- `CharacterTraits`（`see/models/project.py`）：gender_presentation、age／age_range、appearance_region、hair_style、hair_color、facial_features、body_type、distinctive_marks——全部可選、自由文字、**無任何預設值或 enum**。
+- `CharacterAppearance.traits`（可選）；`anchor_text`＝traits 確定性組裝（主體→年齡區間→體型→髮→五官→辨識特徵）＋舊欄位（description／outfit／features）。`traits=None` → anchor 與舊版逐字相同 → 既有 image fingerprint 不變；舊 project.json 可直接載入。
+- 角色 A／B：同景多角色各自錨點、順序依 `scene.character_ids`，`params.characters` 帶 character_id（未來 Identity provider 用）；改某角色只讓其出現的景回 DRAFT。
+- `reference_images` 只收本機路徑（拒絕 URL，§16）；仍無 provider 使用。
+- 入口：CLI `appearance <pid> <cid> --gender --age --age-range --region --hair-style --hair-color --facial-feature --body-type --mark`；API `POST /api/projects/{pid}/characters/{cid}/appearance`（`traits` 物件，驗證失敗 422）。
+- 限制（誠實）：SD 1.5 prompt 型 provider 對同框多角色屬性綁定能力弱（可能互換臉／衣服），文字錨點**不保證** Identity → 需 Multi-character controlled test 與 Identity provider 研究。

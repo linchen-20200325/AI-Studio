@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-048 | 結構化 Character 設定 `CharacterTraits`（角色 A／B；舊欄位／fingerprint 相容；reference_images 只收本機路徑） | 有效 | 可逆 |
 | D-047 | **長期產品目標：連續劇情 AI 短劇**（三條視覺路線：真人／電影感、日系動畫、半寫實 3D 動畫短劇）；Roadmap P1＝Character Identity、Multi-character、Image-to-Video、Dialogue Performance、Audio／Editing；CyberRealistic 東亞女性主觀確認、男性 JSON 未入庫 | 有效（規格） | 可逆 |
 | D-046 | 角色多樣性＋Reference Image 規格（PROJECT_RULES §16、ARCHITECTURE §14）；東亞女性／男性受控案例 | 有效 | 可逆 |
 | D-045 | MeinaMix native vs Base＝model_preset_level；客戶 OK；**DG-23 裁示接受**；commercial_cleared=false | 有效 | 可逆 |
@@ -364,3 +365,7 @@
 - Roadmap P1（並列，詳 BACKLOG「短劇 Roadmap」）：Character Identity／Reference Image；Multi-character Scene；Image-to-Video／Video Generation（先研究 LOCAL_FREE＋GTX 1650 4 GB 可行性，硬體不足必須明說）；Dialogue Performance（角色聲音、真 Lip-sync、多角色台詞、字幕對齊）；Audio／Editing integration（BGM、SFX、ambience、ducking、轉場、自動剪輯）。
 - 人工驗證（single-user subjective）：CyberRealistic × `east_asian_female_portrait` technical PASS，客戶確認「是東方女性沒錯」；× `east_asian_male_portrait` 客戶提供圖、外觀確為東亞成年男性，**technical JSON 未入庫（不補造數值）**。五官等外觀保持可調，不因測試角色固定。
 - 本輪僅規格入庫：未下載模型、未開始 IP-Adapter／FaceID／Video model、未改 production default、未用付費 API。
+
+## D-048 2026-10-23 角色 A／B 結構化 Character 設定（非 UI，已實作）
+- 依 D-046／D-047 自主實作：`CharacterTraits`＋`CharacterAppearance.traits`；舊欄位與 fingerprint 相容；無性別／族群／年齡預設；`reference_images` 只收本機路徑；CLI／API 入口（ARCHITECTURE §14.1）。
+- 未做：Reference Image provider、IP-Adapter／FaceID、Image-to-Video、Lip-sync、UI；未下載、production default 不變。

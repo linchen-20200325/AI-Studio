@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from see.models.approval import Approval
 from see.models.asset import Asset
@@ -16,6 +16,46 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_TXT = {"default": "", "max_length": 80}
+
+
+def _clean(xs: list[str]) -> list[str]:
+    return [x.strip() for x in xs if x and x.strip()]
+
+
+class CharacterTraits(BaseModel):
+    """結構化人物設定（D-046／D-047；PROJECT_RULES §16）。全部可選、自由文字（英文，供 prompt 型 provider）：
+    **不提供任何性別／族群／年齡預設值，也不做 enum**——由使用者描述，空欄位就不輸出。
+    `appearance_region` 只是可描述外觀（例 'East Asian'），不對應任何固定臉型；五官由 `facial_features` 另外描述、隨時可改。
+    model-agnostic：換 image model 時原樣沿用；model-specific 參數放 `CharacterAppearance.adapter`／模型 preset。"""
+
+    gender_presentation: str = Field(**_TXT, description="例 'woman'、'man'、'person'")
+    age: int | None = Field(default=None, ge=1, le=120)
+    age_range: str = Field(**_TXT, description="例 'in her 20s'、'middle-aged'；與 age 擇一即可")
+    appearance_region: str = Field(**_TXT, description="地區外貌描述，例 'East Asian'、'Western European'")
+    hair_style: str = Field(**_TXT, description="例 'short bob'、'long ponytail'")
+    hair_color: str = Field(**_TXT, description="例 'black'、'chestnut brown'")
+    facial_features: list[str] = Field(default_factory=list, max_length=8, description="例 ['almond-shaped eyes', 'thin eyebrows']")
+    body_type: str = Field(**_TXT, description="例 'slim'、'athletic build'")
+    distinctive_marks: list[str] = Field(default_factory=list, max_length=8, description="辨識特徵，例 ['mole under left eye', 'round glasses']")
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.anchor_parts
+
+    @property
+    def anchor_parts(self) -> list[str]:
+        """確定性組裝順序：主體（年齡＋地區＋性別呈現）→ 年齡區間 → 體型 → 髮 → 五官 → 辨識特徵。"""
+        subject = " ".join(x for x in (f"{self.age}-year-old" if self.age else "", self.appearance_region.strip(),
+                                        self.gender_presentation.strip()) if x)
+        hair = " ".join(x for x in (self.hair_style.strip(), f"{self.hair_color.strip()} hair" if self.hair_color.strip() else "") if x)
+        if self.hair_style.strip() and not self.hair_color.strip() and "hair" not in self.hair_style.lower():
+            hair += " hair"
+        body = self.body_type.strip()
+        return [x for x in (subject, self.age_range.strip() if not self.age else "", body, hair) if x] + \
+            _clean(self.facial_features) + _clean(self.distinctive_marks)
+
+
 class CharacterAppearance(BaseModel):
     """角色外觀錨點（Character Consistency，D-032）。provider-agnostic：
     prompt 型 provider（SD 1.5）用 description／outfit／features 文字錨點；未來 IP-Adapter／LoRA 類 provider 可用 reference_images／lora。"""
@@ -26,10 +66,21 @@ class CharacterAppearance(BaseModel):
     reference_images: list[str] = Field(default_factory=list, max_length=8, description="參考圖路徑（使用者提供；目前 provider 不使用）")
     seed: int | None = Field(default=None, description="角色固定 seed 提示（provider 自行決定是否採用）")
     adapter: dict[str, str] = Field(default_factory=dict, description="未來 LoRA／embedding 名稱等（provider 專屬，未核准前不下載）")
+    traits: CharacterTraits | None = Field(default=None, description="結構化人物設定（D-047）；None＝只用舊欄位（fingerprint 不變）")
+
+    @field_validator("reference_images")
+    @classmethod
+    def _local_only(cls, v: list[str]) -> list[str]:
+        # PROJECT_RULES §16：真人參考照是敏感素材 → 只接受本機路徑（Local First；不收 URL，避免暗中交給第三方）
+        bad = [x for x in v if "://" in x]
+        if bad:
+            raise ValueError(f"reference_images must be local file paths (Local First, PROJECT_RULES §16): {bad}")
+        return v
 
     @property
     def anchor_text(self) -> str:
-        parts = [self.description_en.strip()]
+        parts = list(self.traits.anchor_parts) if self.traits is not None else []
+        parts.append(self.description_en.strip())
         if self.outfit_en.strip():
             parts.append(f"wearing {self.outfit_en.strip()}")
         parts += [f.strip() for f in self.features_en if f.strip()]

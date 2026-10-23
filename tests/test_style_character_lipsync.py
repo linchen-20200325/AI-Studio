@@ -417,3 +417,61 @@ def test_diversity_portrait_cases_only_change_subject():
         c = get_case(cid)
         head, tail = c.base_prompt_en.split(", ", 1)
         assert head == subj and tail == ref and c.seed == 1234 and subj in c.expected_subjects_en
+
+
+# ---------------------------------------------------------------- D-047 結構化 Character 設定（角色 A／B）
+def test_character_traits_anchor_and_legacy_compat():
+    from see.models.project import CharacterTraits
+
+    legacy = CharacterAppearance(description_en="a young monk boy", outfit_en="orange robe", features_en=["round face"])
+    assert legacy.traits is None and legacy.anchor_text == "a young monk boy, wearing orange robe, round face"  # 舊 fingerprint 不變
+    # 舊 project.json（沒有 traits 鍵）仍可載入
+    assert CharacterAppearance.model_validate({"description_en": "x"}).traits is None
+    t = CharacterTraits(gender_presentation="woman", age=28, appearance_region="East Asian", hair_style="short bob",
+                        hair_color="black", facial_features=["almond-shaped eyes"], body_type="slim", distinctive_marks=["round glasses"])
+    a = CharacterAppearance(outfit_en="navy blazer", traits=t)
+    assert a.anchor_text == ("28-year-old East Asian woman, slim, short bob black hair, almond-shaped eyes, round glasses, "
+                             "wearing navy blazer")
+    assert CharacterTraits().is_empty and CharacterTraits().anchor_parts == []  # 無任何性別／族群／年齡預設
+    assert CharacterTraits(age_range="in his 40s", gender_presentation="man").anchor_parts == ["man", "in his 40s"]
+    assert CharacterTraits(hair_style="ponytail").anchor_parts == ["ponytail hair"]
+    with pytest.raises(ValueError):
+        CharacterTraits(age=0)
+
+
+def test_reference_images_local_only():
+    assert CharacterAppearance(reference_images=["D:/refs/a.png"]).reference_images == ["D:/refs/a.png"]
+    with pytest.raises(ValueError):
+        CharacterAppearance(reference_images=["https://example.com/face.jpg"])
+
+
+def test_character_a_b_each_keep_own_anchor_in_same_scene(orchestrator):
+    from see.models.enums import Status
+    from see.models.project import CharacterTraits
+
+    p = _planned(orchestrator, "ab1")
+    a = CharacterAppearance(outfit_en="red coat", traits=CharacterTraits(gender_presentation="woman", appearance_region="East Asian"))
+    b = CharacterAppearance(outfit_en="grey suit", traits=CharacterTraits(gender_presentation="man", appearance_region="East Asian", age=40))
+    orchestrator.set_character_appearance(p, "char_a", a)
+    orchestrator.set_character_appearance(p, "char_b", b)
+    orchestrator.update_scene(p, p.scenes[0].scene_id, character_ids=["char_a", "char_b"])
+    req, ctx = orchestrator.image_request(p, p.scenes[0])
+    refs = req.params["characters"]
+    assert [r["character_id"] for r in refs] == ["char_a", "char_b"] == ctx["character_anchors"]
+    assert refs[0]["anchor"] == "East Asian woman, wearing red coat" and refs[1]["anchor"] == "40-year-old East Asian man, wearing grey suit"
+    assert req.prompt.startswith("East Asian woman, wearing red coat, 40-year-old East Asian man, wearing grey suit, ")
+    # 只改 B 的設定 → 只有 B 出現的景回 DRAFT（A 獨有的景不受影響）
+    orchestrator.update_scene(p, p.scenes[1].scene_id, character_ids=["char_a"])
+    for sc in p.scenes:
+        sc.status = Status.APPROVED if sc.scene_id == p.scenes[1].scene_id else sc.status
+    orchestrator.set_character_appearance(p, "char_b", CharacterAppearance(traits=CharacterTraits(gender_presentation="man", hair_color="grey")))
+    assert p.scenes[1].status == "APPROVED" and p.scenes[0].status == "DRAFT"
+
+
+def test_appearance_api_traits(settings):
+    c = TestClient(create_app(settings, sync_jobs=True))
+    pid = c.post("/api/projects", json={"text": TINY_STORY}).json()["project_id"]
+    v = c.post(f"/api/projects/{pid}/characters/hero/appearance",
+               json={"traits": {"gender_presentation": "man", "appearance_region": "East Asian", "age": 30}}).json()
+    assert v["characters"]["hero"]["appearance"]["traits"]["appearance_region"] == "East Asian"
+    assert c.post(f"/api/projects/{pid}/characters/hero/appearance", json={"traits": {"age": 999}}).status_code == 422
