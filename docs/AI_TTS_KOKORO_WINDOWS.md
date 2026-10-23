@@ -31,3 +31,6 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest
 - 2026-10-23 E2-1（安裝／下載／`tts-check` 四 voice）：成功；細節與聽感見 `PHASE2_EVIDENCE.md`。
 - 2026-10-23 E2-2（五景 `run … --voice zm_010`）：成功，Kokoro CPU 與 SD 1.5 GTX 1650 共存、無 fallback、穩態 RTF ≈0.30；見 `PHASE2_EVIDENCE.md`。目前無待做 Windows 步驟，等待 DG-13。
 - `python -m see.app.cli tts-voices` 列出本機 voice 的 id／可讀名稱／性別／已知限制。
+
+## 6. 角色 voice（D-030；選用，非必要步驟）
+`python -m see.app.cli character <project_id> narrator --voice zm_010 --speed 1.0` → `python -m see.app.cli voice-preview --voice zm_010` 試聽 → `python -m see.app.cli set-scene <project_id> <scene_id> --narrator narrator` → `python -m see.app.cli character <project_id> narrator --confirm`。使用角色的專案在 Final render 前必須確認。

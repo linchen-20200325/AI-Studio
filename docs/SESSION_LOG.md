@@ -191,3 +191,13 @@
 - Tests: 100 passed、1 skipped（未動程式）
 - Decision: D-029
 - Next: Batch 19 Voice Selection 非 UI（可自主）；DG-16 待裁示；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: c4df10c
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 19 — Voice Selection 非 UI（角色 voice／語速、試聽、確認閘門、CLI＋Web API）
+- Result: D-030；舊專案 fingerprint 不變；espeak fallback 改用語言預設聲；HTML UI 未改（DG-15）、預設 voice 未鎖（DG-14）
+- Tests: 106 passed、1 skipped
+- Decision: D-030
+- Next: 客戶裁示 DG-16；可安全換新對話

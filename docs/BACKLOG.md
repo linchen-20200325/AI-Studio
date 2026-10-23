@@ -36,7 +36,7 @@
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
 - [x] 自然中文 TTS provider（LOCAL_FREE）— Kokoro（D-029；證據 `PHASE2_EVIDENCE.md`）。更適合台灣中文的 provider 可另開 DG 新增。
-- [ ] **Voice Selection（規格，D-028）**：使用者流程「角色 → 選擇 voice → 試聽 → 調整語速 → 確認 → 才進正式影片生成」。已有：`VoiceInfo`／`TTSProvider.list_voices()`（provider-agnostic）、kokoro 型錄（可讀名稱／性別／accent_note）、CLI `tts-voices`、`--voice`／`SEE_TTS_DEFAULT_VOICE`。待做：角色（character）模型與 voice 依角色保存；試聽 API（單句合成、不進 manifest）；語速 per-scene／per-character；UI（DG-15）；其他 provider 的 `list_voices`。不得綁死 kokoro；保留 fallback／fail-closed／evidence；不動 SD 1.5 路徑。🤖（UI 需 DG-15）
+- [ ] **Voice Selection（規格，D-028）**：使用者流程「角色 → 選擇 voice → 試聽 → 調整語速 → 確認 → 才進正式影片生成」。已有：`VoiceInfo`／`TTSProvider.list_voices()`（provider-agnostic）、kokoro 型錄（可讀名稱／性別／accent_note）、CLI `tts-voices`、`--voice`／`SEE_TTS_DEFAULT_VOICE`。**非 UI 部分已完成（D-030，Batch 19）**：角色 voice／語速依角色保存、試聽 API、per-scene／per-character 語速、確認閘門（CLI＋Web API）。待做：UI（DG-15）；其他 provider 的 `list_voices`；清除景的 narrator（目前 API 無法設回 None）。不得綁死 kokoro；保留 fallback／fail-closed／evidence；不動 SD 1.5 路徑。🤖（UI 需 DG-15）
 - [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色。kokoro 已可用 voice id（zf_*/zm_*）；更多 voice 需另下載（小檔，仍需裁示）。🖥️
 - [ ] Evidence／provenance 擴充到 clip（manifest meta、CLI、UI）。TTS 部分已完成（Batch 15：`tts_evidence`、`narration_meta`、provenance.json）。🤖
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖

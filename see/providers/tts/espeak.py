@@ -42,9 +42,12 @@ class EspeakTTSProvider(TTSProvider):
         voice = request.voice if request.voice not in ("", "default") else _LANG_TO_VOICE.get(request.language, "cmn")
         wpm = max(80, min(400, int(self.base_wpm * request.speed)))
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [self.binary, "-v", voice, "-s", str(wpm), "-w", str(out_path), "--", request.text]
+        lang_voice = _LANG_TO_VOICE.get(request.language, "cmn")
         try:
-            proc = run_text(cmd, timeout=120)
+            proc = run_text([self.binary, "-v", voice, "-s", str(wpm), "-w", str(out_path), "--", request.text], timeout=120)
+            if proc.returncode != 0 and voice != lang_voice:
+                # voice id 屬其他 provider（例如 kokoro 的 zm_010）→ espeak 作 fallback 時改用語言預設聲，不直接掉到靜音
+                proc = run_text([self.binary, "-v", lang_voice, "-s", str(wpm), "-w", str(out_path), "--", request.text], timeout=120)
         except (subprocess.SubprocessError, OSError) as e:
             raise ProviderError(f"espeak-ng failed: {e}") from e
         if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 100:

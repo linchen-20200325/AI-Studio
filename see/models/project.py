@@ -16,6 +16,21 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class CharacterVoice(BaseModel):
+    """角色 → voice／語速設定（Voice Selection 規格，D-028）。provider-agnostic：voice_id 由當時的 TTS provider 解讀。
+
+    流程：設定 voice／語速 → 試聽 → `confirmed=True` → 才可 Final render（D-030）。任何修改都會清掉 confirmed。
+    """
+
+    character_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    display_name: str = Field(default="", max_length=64)
+    voice_id: str = Field(default="default", min_length=1, description="送進 TTSRequest.voice；default = provider 預設")
+    provider: str = Field(default="", description="設定時的 TTS provider 名稱（資訊用，不綁死）")
+    speed: float | None = Field(default=None, gt=0.5, lt=2.0, description="None = 沿用 project.speech_speed")
+    confirmed: bool = False
+    confirmed_at: datetime | None = None
+
+
 class OutputSpec(BaseModel):
     """每個 Project 的輸出規格（UI 可選比例）。"""
 
@@ -49,6 +64,7 @@ class Project(BaseModel):
     currency: str = "TWD"
     output: OutputSpec = Field(default_factory=OutputSpec)
     speech_speed: float = Field(default=1.0, gt=0.5, lt=2.0, description="TTS 語速倍率")
+    characters: dict[str, CharacterVoice] = Field(default_factory=dict, description="角色 voice 設定（依角色保存）")
     script: Script | None = None
     scenes: list[Scene] = Field(default_factory=list)
     assets: list[Asset] = Field(default_factory=list)

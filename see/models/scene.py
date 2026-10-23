@@ -52,7 +52,9 @@ class Scene(SceneDraft):
     scene_id: str = Field(min_length=1)
     status: Status = Status.DRAFT
     subtitle_override: str | None = Field(default=None, description="人工覆寫字幕；None 則用 narration")
-    voice: str = Field(default="default", description="TTS voice id（provider 自行解讀）")
+    voice: str = Field(default="default", description="TTS voice id（provider 自行解讀）；非 default 時優先於角色設定")
+    narrator_id: str | None = Field(default=None, description="旁白角色（Project.characters 的 key）；None = 不用角色設定")
+    speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0, description="本景語速覆寫；None = 角色或專案語速")
     measured_narration_duration: float | None = Field(default=None, ge=0)
 
     @property

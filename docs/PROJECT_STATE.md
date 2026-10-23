@@ -8,13 +8,13 @@
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
-| Current Status | Batch 18（D-029 入庫）完成；工作樹乾淨；無待做 Windows 步驟；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 19 完成（Voice Selection 非 UI，D-030）；工作樹乾淨；無待做 Windows 步驟；**等待 DG-16**；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
-| Last Updated | 2026-10-23（Batch 18：DG-13=A，D-029） |
+| Last Updated | 2026-10-23（Batch 19：Voice Selection 非 UI，D-030） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
-- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：100 passed、1 skipped（espeak 缺時 skip）。
+- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：106 passed、1 skipped（espeak 缺時 skip）。
 - Open / draft PR：無（流程不開 PR；開發分支驗證後 fast-forward `main`）。
 
 ## Current validated environment（last known validated snapshot，非永久硬體假設）
@@ -51,7 +51,7 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Batch 19（可自主，Medium）：Voice Selection 非 UI 部分——角色（character）→ voice／語速保存、試聽 API（單句合成、不進 manifest）、per-scene 語速；不動 SD 1.5、不鎖預設 voice、不做 UI（DG-15）。之後需裁示 DG-16。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
+客戶裁示 DG-16（Phase 2 第二目標方向）。Voice Selection 非 UI 已完成（D-030；CLI `character`／`voice-preview`、Web API）。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

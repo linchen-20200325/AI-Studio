@@ -42,6 +42,22 @@ class SceneEditIn(BaseModel):
     image_prompt_en: str | None = None
     camera_motion: str | None = None
     transition: str | None = None
+    voice: str | None = None
+    narrator_id: str | None = None
+    speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0)
+
+
+class CharacterIn(BaseModel):
+    display_name: str | None = Field(default=None, max_length=64)
+    voice_id: str | None = Field(default=None, min_length=1, max_length=64)
+    speed: float | None = Field(default=None, gt=0.5, lt=2.0)
+    clear_speed: bool = False
+
+
+class VoicePreviewIn(BaseModel):
+    text: str = Field(default="你好，這是角色試聽。", min_length=1, max_length=200)
+    voice: str = Field(default="default", min_length=1, max_length=64)
+    speed: float = Field(default=1.0, gt=0.5, lt=2.0)
 
 
 class ApproveIn(BaseModel):
@@ -107,6 +123,8 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             "render_jobs": [j.model_dump(mode="json") for j in project.render_jobs[-5:]],
             "approvals": [a.model_dump(mode="json") for a in project.approvals],
             "cost": _cost(project),
+            "characters": {k: v.model_dump(mode="json") for k, v in project.characters.items()},
+            "unconfirmed_characters": orch.unconfirmed_characters(project),
         }
 
     def _image_meta(pid: str, sid: str) -> dict[str, Any]:
@@ -228,6 +246,51 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         runner.submit(pid, "regen", _work)
         return {"project_id": pid, "job": runner.status(pid).to_dict()}
 
+    # ------------------------------------------------------------ voice selection API（UI 形式待 DG-15；此處只提供資料／動作）
+    @app.get("/api/voices")
+    def voices() -> dict[str, Any]:
+        return {"provider": providers.tts.info.name, "default_voice": settings.tts_default_voice or None,
+                "voices": [v.model_dump() for v in providers.tts.list_voices()]}
+
+    @app.post("/api/voices/preview")
+    def voice_preview(body: VoicePreviewIn) -> dict[str, Any]:
+        try:
+            res = orch.preview_voice(body.text, voice=body.voice, speed=body.speed)
+        except SeeError as e:
+            raise HTTPException(422, str(e))
+        return {**res.model_dump(exclude={"path"}), "url": f"/api/voice-previews/{Path(res.path).stem}.wav"}
+
+    @app.get("/api/voice-previews/{name}.wav")
+    def voice_preview_file(name: str) -> FileResponse:
+        _check_id(name)
+        f = store.workspace / "voice_previews" / f"{name}.wav"
+        if not f.exists():
+            raise HTTPException(404)
+        return FileResponse(f, media_type="audio/wav")
+
+    @app.post("/api/projects/{pid}/characters/{cid}")
+    def set_character(pid: str, cid: str, body: CharacterIn) -> dict[str, Any]:
+        _guard_idle(pid)
+        _check_id(cid)
+        project = _load(pid)
+        try:
+            orch.set_character(project, cid, display_name=body.display_name, voice_id=body.voice_id,
+                               speed=body.speed, clear_speed=body.clear_speed)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        return _project_view(project)
+
+    @app.post("/api/projects/{pid}/characters/{cid}/confirm")
+    def confirm_character(pid: str, cid: str) -> dict[str, Any]:
+        _guard_idle(pid)
+        _check_id(cid)
+        project = _load(pid)
+        try:
+            orch.confirm_character(project, cid)
+        except KeyError:
+            raise HTTPException(404, f"character not found: {cid}")
+        return _project_view(project)
+
     @app.post("/api/projects/{pid}/approve")
     def approve(pid: str, body: ApproveIn) -> dict[str, Any]:
         _guard_idle(pid)
@@ -244,6 +307,8 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         project = _load(pid)
         if project.status != "APPROVED":
             raise HTTPException(409, f"final render requires APPROVED, project is {project.status}")
+        if pending := orch.unconfirmed_characters(project):
+            raise HTTPException(409, f"final render requires confirmed character voices; unconfirmed: {pending}")
 
         def _work() -> None:
             runner.set_stage(pid, "render", "組裝 final.mp4")

@@ -123,7 +123,8 @@ def cmd_set_scene(args: argparse.Namespace) -> int:
     project = orch.store.load(args.project_id)
     orch.update_scene(project, args.scene_id, narration=args.narration, subtitle_override=args.subtitle,
                       image_prompt=args.image_prompt, image_prompt_en=args.image_prompt_en,
-                      camera_motion=args.camera, transition=args.transition)
+                      camera_motion=args.camera, transition=args.transition,
+                      voice=args.voice, narrator_id=args.narrator, speech_speed=args.speed)
     report = orch.rebuild(project)
     for r in report.scene_reports:
         print(f"{r.scene_id}: rebuilt={r.rebuilt} reused={r.reused}")
@@ -294,6 +295,36 @@ def cmd_tts_download(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_character(args: argparse.Namespace) -> int:
+    """設定／確認／列出角色 voice（Voice Selection 非 UI 版；D-030）。"""
+    _, orch = build()
+    project = orch.store.load(args.project_id)
+    if args.character_id and not args.list:
+        if args.confirm:
+            ch = orch.confirm_character(project, args.character_id)
+        else:
+            ch = orch.set_character(project, args.character_id, display_name=args.name, voice_id=args.voice,
+                                    speed=args.speed, clear_speed=args.clear_speed)
+        print(json.dumps(ch.model_dump(mode="json"), ensure_ascii=False, indent=2))
+        return 0
+    print(json.dumps({"characters": {k: v.model_dump(mode="json") for k, v in project.characters.items()},
+                      "scenes": [{"scene_id": s.scene_id, "narrator_id": s.narrator_id, "voice": s.voice, "speech_speed": s.speech_speed,
+                                  "resolved": dict(zip(("voice", "speed", "source"), orch.resolve_voice(project, s)))} for s in project.scenes],
+                      "unconfirmed": orch.unconfirmed_characters(project)}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_voice_preview(args: argparse.Namespace) -> int:
+    """試聽一句（不寫任何專案 manifest）；輸出 wav 路徑與 duration／rtf。"""
+    settings = Settings()
+    if args.tts:
+        settings.tts_provider = args.tts
+    _, orch = build(settings)
+    res = orch.preview_voice(args.text, voice=args.voice, speed=args.speed)
+    print(json.dumps(res.model_dump(), ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_tts_voices(args: argparse.Namespace) -> int:
     """列出目前 TTS provider 本機可用的 voice（Voice Selector 規格的 CLI 版）。"""
     from see.providers.registry import ProviderRegistry
@@ -348,6 +379,8 @@ def main(argv: list[str] | None = None) -> int:
     ss.add_argument("project_id"); ss.add_argument("scene_id")
     ss.add_argument("--narration"); ss.add_argument("--subtitle"); ss.add_argument("--image-prompt"); ss.add_argument("--image-prompt-en")
     ss.add_argument("--camera"); ss.add_argument("--transition")
+    ss.add_argument("--voice", help="本景 voice id（覆寫角色）"); ss.add_argument("--narrator", help="本景旁白角色 id")
+    ss.add_argument("--speed", type=float, help="本景語速覆寫（0.5–2.0）")
     ss.set_defaults(fn=cmd_set_scene)
     rg = sub.add_parser("regen", help="強制重做單一 scene"); rg.add_argument("project_id"); rg.add_argument("scene_id"); rg.set_defaults(fn=cmd_regen)
     apv = sub.add_parser("approve", help="人工核准（PREVIEW → APPROVED）"); apv.add_argument("project_id")
@@ -366,6 +399,15 @@ def main(argv: list[str] | None = None) -> int:
     tdl.add_argument("--dest", default=None); tdl.add_argument("--yes", action="store_true")
     tdl.add_argument("--voices", nargs="*", default=None, help="要下載的 voice id（預設 2 女 2 男）")
     tdl.set_defaults(fn=cmd_tts_download)
+    chp = sub.add_parser("character", help="角色 voice：設定（--voice/--speed/--name）、--confirm 確認、或列出")
+    chp.add_argument("project_id"); chp.add_argument("character_id", nargs="?")
+    chp.add_argument("--name"); chp.add_argument("--voice"); chp.add_argument("--speed", type=float)
+    chp.add_argument("--clear-speed", action="store_true"); chp.add_argument("--confirm", action="store_true")
+    chp.add_argument("--list", action="store_true"); chp.set_defaults(fn=cmd_character)
+    vpp = sub.add_parser("voice-preview", help="試聽一句（不影響專案）")
+    vpp.add_argument("--text", default="你好，這是角色試聽。"); vpp.add_argument("--voice", default="default")
+    vpp.add_argument("--speed", type=float, default=1.0)
+    vpp.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"], default=None); vpp.set_defaults(fn=cmd_voice_preview)
     tvs = sub.add_parser("tts-voices", help="列出目前 TTS provider 本機可用 voice（id／可讀名稱／性別／已知限制）")
     tvs.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"], default=None); tvs.set_defaults(fn=cmd_tts_voices)
     tck = sub.add_parser("tts-check", help="以本機 Kokoro 合成一句並印出 duration/rtf/device（真機驗證用）")

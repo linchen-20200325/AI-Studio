@@ -22,6 +22,7 @@
 | D-027 | DG-9 裁示：Kokoro-82M v1.1-zh **Candidate Validation Approval**（非 Final Provider Approval）；授權下載 ≈330 MB 權重做 Windows 真機驗證 | 有效 | 可逆 |
 | D-028 | Kokoro E2-1 真機技術驗證成功（候選仍非最終）；zm_010 為 Kokoro 內部首選候選（不鎖死）；zf_001 口音＝已知限制；Voice Selection 產品需求入規格；DG-14 預設 voice 裁示 | 有效 | 可逆 |
 | D-029 | DG-13 裁示 A：正式採用 Kokoro 為「目前 Phase 2 LOCAL_FREE 中文 TTS provider」；Provider Agnostic 保留；zm_010 非永久預設；DG-14／DG-15 獨立 | 有效 | 可逆（換 provider 需新 DG） |
+| D-030 | Voice Selection 非 UI 實作：角色 voice／語速、優先序、試聽、確認閘門（使用角色時 Final 需確認） | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -207,3 +208,10 @@
 - 依據：`PHASE2_EVIDENCE.md` E2-1／E2-2（五景 kokoro-tts、CPU、無 fallback、與 SD 1.5 GTX 1650 共存、NT$0）。D-027 的 Candidate Validation 至此升級為 **Provider Approval（目前）**。
 - 嚴格保留：(1) Provider Agnostic，核心不得綁死 Kokoro（仍經 `TTSProvider`／`ProviderRegistry`，`auto` 鏈 kokoro→espeak→silent）；(2) 未來可新增／替換更適合台灣中文的 TTS provider（需新 DG）；(3) `zm_010` 僅為目前人耳偏好 voice candidate，**不**因本裁示成為永久產品預設；(4) DG-14 永久預設 voice 獨立裁示；(5) DG-15 Voice Selector UI 獨立裁示。
 - 效果：BACKLOG「自然中文 TTS provider（LOCAL_FREE）」關閉；Phase 2 第一目標達成；下一目標依 BACKLOG Phase 2 排序（BGM/SFX、Voice Selection 非 UI 部分、LLM 規劃）由後續 Batch 評估，涉及模型下載／素材授權者需新 DG。
+
+## D-030 2026-10-23 Voice Selection 非 UI 部分（Batch 19；依 D-028 規格，Project AI 自主實作）
+- 資料：`Project.characters: dict[id, CharacterVoice{display_name, voice_id, provider(資訊), speed, confirmed, confirmed_at}]`；`Scene.narrator_id`、`Scene.speech_speed`。舊專案無新欄位 → 行為與 fingerprint 不變（測試保證）。
+- 優先序：voice＝`scene.voice`（非 default）> 角色 voice > provider 預設；語速＝scene > 角色 > project。未知 narrator fail-closed。
+- 流程：設定角色 → 試聽（`preview_voice`：單句合成到 `workspace/voice_previews/`，不寫 manifest；PAID 一律拒絕）→ 人工確認 → **使用角色的專案 Final render 需全部角色已確認**（未使用角色者不受影響）。任何角色變更清掉 confirmed、相關景回 DRAFT。
+- 介面：CLI `character`、`voice-preview`、`set-scene --voice/--narrator/--speed`；Web API `GET /api/voices`、`POST /api/voices/preview`、`GET /api/voice-previews/{id}.wav`、`POST /api/projects/{pid}/characters/{cid}`、`…/confirm`。**HTML UI 未改（DG-15）**；預設 voice 未鎖（DG-14）。
+- espeak 作 fallback 時遇到其他 provider 的 voice id（如 zm_010）改用語言預設聲，不直接掉到 silent。
