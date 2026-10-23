@@ -71,3 +71,13 @@
 - Tests: 66 passed；CI success
 - Decision: D-018、D-019
 - Next: 使用者在 Windows 依 AI_IMAGE_SD15_WINDOWS.md §4 操作並貼回 hardware / run 輸出
+
+---
+- Date: 2026-10-23
+- Start SHA: e220890
+- End SHA: 5979892
+- Batch: Batch 8 — Windows 真機第一次 SD 1.5 執行失敗之 root cause 修復
+- Result: root cause = cp950 subprocess 解碼（非 warning）；修 UTF-8 subprocess、fp16 NaN 偵測與 fp32 升級、feature_extractor=None；模型未重下載
+- Tests: 73 passed（+7 Windows 回歸）
+- Decision: D-020
+- Next: 使用者 git pull 重跑並貼回結果
