@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-041 | MeinaMix 真機修復後成功（D-040 驗證）；新增模型／風格中性的人物近景案例 `girl_portrait_closeup`；永久規則 PROJECT_RULES §15（使用者偏好 ≠ 模型實作） | 有效 | 可逆 |
 | D-040 | E2-5 真機失敗 RCA：diffusers 0.41 `clip_skip=` 存取 `text_encoder.text_model.final_layer_norm`，transformers 5.x 已攤平 CLIPTextModel → AttributeError；修法＝自行編碼 prompt（A1111 clip skip N＝hidden_states[-N]＋final LN，執行期驗證順序）傳 prompt_embeds；不取消 clip skip、不改條件 | 有效 | 可逆 |
 | D-039 | DG-20 裁示：核准下載 MeinaMix V12 Final＋CyberRealistic Final FP16，**僅限內部品質驗證**、commercial_cleared=false；DG-22＝(a) 動畫商用延後＋僅研究 (c) 自訓 LoRA（不得下載資料／訓練）；下載機制 `checkpoint-download`（只 safetensors、固定 revision、bytes＋sha256 前後核對、provenance） | 有效 | 可逆 |
 | D-038 | DG-20 原始證據補完：三份 Civitai license 原文＋HF revision／sha256 入庫；MeinaMix 上游含 basil_mix（現行條款衍生物禁商用）＋NAI 無法排除 → commercial_cleared=false（已證實）；ACertainModel 排除（Anything-3.0 合成資料蒸餾）；CyberRealistic 作者層全開放但 merge 來源未公開 → false | 有效 | 可逆 |
@@ -306,3 +307,11 @@
 - 公平比較條件不變（case／seed／native／steps 25／CFG 7／DPM++ 2M Karras）；base SD 1.5 呼叫路徑逐位元不變（有測試）。
 - 回歸測試：`tests/test_checkpoints.py`（4.x／5.x 版面語意、順序驗證失敗必 raise、模擬 diffusers 0.41 clip_skip 路徑不得被觸發）。容器無 torch／GPU，真機整合以 E2-5 證據覆蓋。
 - 未新增模型、未重新下載、NT$0；客戶不需重跑相同命令，只需 `git pull` 後跑新一條。
+
+## D-041 2026-10-23 MeinaMix 真機成功＋人物近景品質案例
+- 真機（客戶回報）：D-040 修復成功，clip-skip AttributeError 消失；MeinaMix 成功生成；fp16 numeric failure → 自動 float32 成功；無 OOM、無 fallback、technical_valid=true、NT$0；仍 `internal_quality_validation_only`、`commercial_cleared=false`。
+- 單一使用者主觀驗收（single-user subjective）：日系動畫感 PASS；城市夜景／人物存在 PASS；臉部品質**無法判定**（人物為背面遠景、臉不可見）；畫面黑色比例偏重 → 列為品質觀察，不判模型失敗。
+- 該次 JSON（gen 尺寸、耗時、VRAM peak、sha256）未回傳，僅有客戶口頭摘要。客戶回報命令為 `--scene girl_city_night`：此用法會把案例 id 當中文場景（關鍵詞落空）→ 本 Batch 加防呆（`--scene` 收到案例 id 直接 exit 2 並提示改 `--case`）；該次實際 prompt 以本機 JSON 為準。
+- 新增案例 `girl_portrait_closeup`：正面、半身／胸像、臉部清楚佔足夠比例、眼睛／五官／頭髮、手部（若入鏡）、模糊背景不搶人物。因 Mock LLM 關鍵詞表無法表達構圖／鏡頭，案例自帶**模型／風格中性**的英文 base prompt（`base_prompt_en`，evidence 記 `prompt_source=case_base_prompt_en`）；風格詞仍由 Style Profile 附加。附人工審圖清單 `review_checklist`。
+- 公平條件固定：seed 1234、native（768×512→16:9）、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2（A1111，D-040 編碼）、同一 MeinaMix；只改測試場景／構圖。不換模型、不重下載、不用 PAID、不開始 CyberRealistic。
+- 永久規則：PROJECT_RULES §15（使用者偏好與模型實作分離；不得寫死模型／人物／prompt／畫風／參數為唯一預設）。本輪不設計 UI。

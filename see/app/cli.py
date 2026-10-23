@@ -420,6 +420,12 @@ def cmd_style_test(args: argparse.Namespace) -> int:
         s.image_provider = "auto"  # 風格驗收必須走本機生圖；沒有權重時 auto 會退回 placeholder，下面會標為無效
     style = get_style(args.style)
     case = get_case(args.case)
+    from see.core.style_tests import STYLE_TEST_CASES, case_base_prompt
+
+    if args.scene and args.scene in STYLE_TEST_CASES:
+        # 防呆（D-041）：`--scene girl_city_night` 會把案例 id 當成中文場景字串 → 關鍵詞全落空、prompt 變成泛用描述
+        print(f"錯誤：'{args.scene}' 是測試案例 id，請改用 `--case {args.scene}`（--scene 只接受中文場景描述）", file=sys.stderr)
+        return 2
     scene = args.scene or case.scene_zh
     seed = case.seed if args.seed is None else args.seed
     _, orch = build(s)
@@ -428,7 +434,10 @@ def cmd_style_test(args: argparse.Namespace) -> int:
         print(f"錯誤：{err}", file=sys.stderr)
         return 2
     image = image or orch.p.image
-    base_prompt = args.base_prompt or build_image_prompt_en(scene)
+    if args.base_prompt:
+        base_prompt, prompt_source = args.base_prompt, "base_prompt_override"
+    else:
+        base_prompt, prompt_source = case_base_prompt(case, args.scene, build_image_prompt_en)
     base_negative = default_negative_prompt()
     prompt, negative, params = apply_style(base_prompt, base_negative, style, image.info.name)
     req_params: dict[str, object] = {"style": params} if params else {}
@@ -468,7 +477,9 @@ def cmd_style_test(args: argparse.Namespace) -> int:
           **tech,
           "prompt_subject_check": prompt_subject_check(prompt, case.expected_subjects_en),
           "scene_validated": None, "style_validated": None,
-          "human_review": {"status": "pending", "checklist": list(case.expected_subjects_en),
+          "prompt_source": prompt_source,
+          "human_review": {"status": "pending", "checklist": list(case.review_checklist or case.expected_subjects_en),
+                           "subjective": "single-user subjective",
                            "how": f"python -m see.app.cli style-review {out.stem} --scene pass|fail --style pass|fail --note \"...\""},
           # 型錄旗標（該 StyleProfile 是否曾有真機驗收紀錄），不是本張圖的判定
           "style_profile_catalog_validated": style.validated}

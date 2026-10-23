@@ -211,3 +211,9 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 ## 14. Windows Customer Interaction（D-025）
 
 客戶不是工程師。Windows 操作**一次只能給一個 action／command**，必須等客戶回傳結果後才給下一個；不得一次給一串指令。回報精簡：Decision Gate 才需要客戶處理；安全、免費、可逆、規格明確的工作靜默自主完成，整批完成後一次回報；每個 Batch 標示 Model／Mode／Effort；全程繁體中文（台灣）。對話切換前必須完成 §11.4 與 §12.1（GitHub 化）。
+
+## 15. User Preference ≠ Model Implementation（D-041，永久）
+- 任何模型（例：MeinaMix、CyberRealistic、base SD 1.5）、人物設定、Prompt、畫風、生成參數**不得寫死成產品唯一預設**。模型只是可替換的底層引擎。
+- 使用者偏好層（Style Profile、Character Profile、構圖／鏡頭、Generation Settings、模型偏好）與模型實作層分離；偏好以資料表達，經 Provider Agnostic 介面交給引擎。
+- 驗證用的測試案例（`see/core/style_tests.py`）必須是模型／風格中性的構圖描述，可套用於任何 Style Profile 與 checkpoint。
+- 授權狀態（`commercial_cleared` 等）隨模型走，不因偏好設定而改變。

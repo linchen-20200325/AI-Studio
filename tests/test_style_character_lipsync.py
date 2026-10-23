@@ -296,3 +296,38 @@ def test_default_pipeline_request_has_no_gen_policy():
     from see.app.cli import _style_test_stem
 
     assert _style_test_stem("anime", "kitten_butterfly", 1234, "fit", False) == "anime_seed1234"
+
+
+# ---------------------------------------------------------------- D-041 人物近景品質案例
+def test_portrait_closeup_case_is_model_and_style_agnostic(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+    from see.core.style_tests import get_case
+
+    c = get_case("girl_portrait_closeup")
+    assert c.base_prompt_en and "front view" in c.base_prompt_en and "looking at viewer" in c.base_prompt_en
+    assert "meinamix" not in c.base_prompt_en.lower() and "anime" not in c.base_prompt_en.lower()  # 構圖中性，不綁模型／風格
+    assert any("眼睛" in x for x in c.review_checklist) and any("手部" in x for x in c.review_checklist)
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
+    evs = {}
+    for sid in ("anime", "realistic"):
+        main(["style-test", "--style", sid, "--case", "girl_portrait_closeup", "--gen-policy", "native"])
+        evs[sid] = _json.loads((tmp_path / "ws" / "style_tests" / f"{sid}_seed1234_girl_portrait_closeup_native.json").read_text(encoding="utf-8"))
+    capsys.readouterr()
+    a, r = evs["anime"], evs["realistic"]
+    assert a["base_prompt"] == r["base_prompt"] == c.base_prompt_en and a["prompt_source"] == "case_base_prompt_en"
+    assert a["prompt"].startswith(c.base_prompt_en) and "anime style" in a["prompt"] and "photorealistic" in r["prompt"]
+    assert a["prompt_subject_check"]["passed"] and a["human_review"]["subjective"] == "single-user subjective"
+    assert a["human_review"]["checklist"] == list(c.review_checklist)
+
+
+def test_scene_flag_rejects_case_id(tmp_path, monkeypatch, capsys):
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    assert main(["style-test", "--style", "anime", "--scene", "girl_city_night"]) == 2
+    assert "--case girl_city_night" in capsys.readouterr().err

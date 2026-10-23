@@ -92,6 +92,7 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 |---|---|---|---|---|---|---|---|
 | anime × base SD1.5（對照） | — | — | ⏳ | | | | |
 | anime × MeinaMix V12（第 1 次） | meinamix_v12 | ✅ sha256 `a5e5a941…` verified | 載入 OK；推理 **FAIL**：`'CLIPTextModel' object has no attribute 'text_model'`（diffusers 0.41 clip_skip × transformers 5.x，D-040） | — | — | — | — |
-| anime × MeinaMix V12（修復後） | meinamix_v12 | ✅ | ⏳ | | | | |
+| anime × MeinaMix V12（修復後，girl_city_night） | meinamix_v12 | ✅ | fp16 NaN → float32 ✅；無 OOM；無 fallback；technical_valid=true（D-040 修復驗證） | （未回報） | （未回報） | 城市夜景／人物存在 PASS（主觀） | 日系動畫感 PASS；臉部**無法判定**（背面遠景）；黑色比例偏重＝觀察項（single-user subjective） |
+| anime × MeinaMix V12（girl_portrait_closeup，D-041） | meinamix_v12 | ✅ | ⏳ | | | | |
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic | cyberrealistic_final | ⏳ | | | | | |

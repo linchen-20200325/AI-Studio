@@ -301,3 +301,13 @@
 - Tests: 153 passed、1 skipped
 - Decision: D-040
 - Next: Windows `git pull` → 重跑 MeinaMix style-test（新一條）
+
+---
+- Date: 2026-10-23
+- Start SHA: 04eccb3
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 30 — MeinaMix 真機成功入庫＋人物近景案例
+- Result: D-041；D-040 真機驗證成功（主觀：動畫感 PASS、人物／夜景 PASS、臉部無法判定、黑色偏重觀察）；`girl_portrait_closeup`（中性 base_prompt_en＋review_checklist、prompt_source）；`--scene <case_id>` 防呆；PROJECT_RULES §15
+- Tests: 155 passed、1 skipped
+- Decision: D-041
+- Next: Windows `git pull` → MeinaMix × girl_portrait_closeup
