@@ -291,3 +291,13 @@
 - Tests: 149 passed、1 skipped
 - Decision: D-039
 - Next: Windows `git pull`
+
+---
+- Date: 2026-10-23
+- Start SHA: 3341965
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 29 — E2-5 真機失敗 RCA（clip skip × transformers 5.x）與修復
+- Result: D-040；MeinaMix 下載 verified；真機 AttributeError 根因＝diffusers 0.41 `text_encoder.text_model.final_layer_norm` vs transformers 5.20 攤平 CLIPTextModel（原始碼逐行核對）；修復＝`encode_prompt_clip_skip`（A1111 語意、4.x／5.x 版面、執行期順序驗證、evidence）；回歸測試 4 個；條件不變
+- Tests: 153 passed、1 skipped
+- Decision: D-040
+- Next: Windows `git pull` → 重跑 MeinaMix style-test（新一條）

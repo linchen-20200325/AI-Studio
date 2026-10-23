@@ -9,13 +9,13 @@
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
 | Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
-| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039）**：核准下載 MeinaMix V12＋CyberRealistic FP16（內部品質驗證、commercial_cleared=false）；`checkpoint-download` 已就緒；Windows 逐條進行；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039／D-040）**：MeinaMix 已下載驗證；第 1 次推理因 diffusers 0.41 clip_skip × transformers 5.x 失敗，已修（自編 prompt embeds、A1111 語意、執行期驗證）；等 Windows 重測；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
-- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：149 passed、1 skipped（espeak 缺時 skip）。
+- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：153 passed、1 skipped（espeak 缺時 skip）。
 - Open / draft PR：無（流程不開 PR；開發分支驗證後 fast-forward `main`）。
 
 ## Current validated environment（last known validated snapshot，非永久硬體假設）
@@ -58,7 +58,7 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Windows（一次一條）：① `git pull` ② `checkpoint-download meinamix_v12 --check` ③ `checkpoint-download meinamix_v12 --yes` ④ `style-test --style anime --case girl_city_night --gen-policy native --checkpoint meinamix_v12` ⑤ base 對照 `style-test --style anime --case girl_city_night --gen-policy native --scheduler dpmpp_2m_karras` → 路線正常後 CyberRealistic 同流程（realistic）。完成後提 DG-21＋導入裁示。研究 (c) Anime LoRA（不下載、不訓練）。不改 default、不實作 Router、不做 UI／lip-sync。
+Windows（一次一條）：① `git pull` ② `style-test --style anime --case girl_city_night --gen-policy native --checkpoint meinamix_v12` ③ base 對照 `style-test --style anime --case girl_city_night --gen-policy native --scheduler dpmpp_2m_karras` → 路線正常後 CyberRealistic 同流程（realistic）。完成後提 DG-21＋導入裁示。研究 (c) Anime LoRA（不下載、不訓練）。不改 default、不實作 Router、不做 UI／lip-sync。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

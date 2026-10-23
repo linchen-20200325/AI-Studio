@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-040 | E2-5 真機失敗 RCA：diffusers 0.41 `clip_skip=` 存取 `text_encoder.text_model.final_layer_norm`，transformers 5.x 已攤平 CLIPTextModel → AttributeError；修法＝自行編碼 prompt（A1111 clip skip N＝hidden_states[-N]＋final LN，執行期驗證順序）傳 prompt_embeds；不取消 clip skip、不改條件 | 有效 | 可逆 |
 | D-039 | DG-20 裁示：核准下載 MeinaMix V12 Final＋CyberRealistic Final FP16，**僅限內部品質驗證**、commercial_cleared=false；DG-22＝(a) 動畫商用延後＋僅研究 (c) 自訓 LoRA（不得下載資料／訓練）；下載機制 `checkpoint-download`（只 safetensors、固定 revision、bytes＋sha256 前後核對、provenance） | 有效 | 可逆 |
 | D-038 | DG-20 原始證據補完：三份 Civitai license 原文＋HF revision／sha256 入庫；MeinaMix 上游含 basil_mix（現行條款衍生物禁商用）＋NAI 無法排除 → commercial_cleared=false（已證實）；ACertainModel 排除（Anything-3.0 合成資料蒸餾）；CyberRealistic 作者層全開放但 merge 來源未公開 → false | 有效 | 可逆 |
 | D-037 | DG-20 第一輪裁示：**不核准下載**；先補授權／來源／血統證據；MeinaMix 第一候選但 NAI lineage 未排除不得 commercial_cleared；CyberRealistic 暫列第一；cinematic 共用寫實；DG-21 延後與專用 checkpoint 一起裁示 | 有效 | 可逆 |
@@ -296,3 +297,12 @@
 - **來源變更（需知會）**：Civitai 官方下載端點需登入 API key（實測 HTTP 401，API key＝停手條件）→ MeinaMix 改由 HF 鏡像 `xuanha31/meinamix_v12`（revision `034320de…`）下載，**強制 sha256＝Civitai 官方公告值 `a5e5a941…`**（逐位元同一檔案）；授權仍以 Civitai 官方 license 頁為準（鏡像無授權卡片）。CyberRealistic 由作者官方 HF repo 下載（sha256 與 Civitai 一致）。
 - 載入：`DiffusersImageProvider(checkpoint=…)` → `StableDiffusionPipeline.from_single_file(config=<本機 base sd15>, local_files_only=True)`；沿用 fp16→fp32 階梯、OOM 階梯、native policy；模型必要參數（clip skip、scheduler）寫入 evidence；provider 名 `diffusers-sd15-ckpt`、model 含 sha 前綴 → 不與 base 快取混用。**production default 不變**（checkpoint 只能由 `style-test --checkpoint` 明確指定；無 fallback 到 placeholder，fail-closed）。
 - 公平比較：同 case／seed／尺寸／native／steps 25／CFG 7；scheduler 以 `--scheduler dpmpp_2m_karras` 讓 base SD 1.5 對照組同 scheduler；evidence 新增 vram_peak_mb、clip_skip、scheduler_name、dtype 階梯。
+
+## D-040 2026-10-23 E2-5 第一次真機失敗（clip skip × transformers 5.x）RCA 與修復
+- 真機：MeinaMix V12 下載成功（local sha256 `a5e5a941…`、verified=true、commercial_cleared=false）；`style-test --style anime --checkpoint meinamix_v12 --scene girl_city_night --gen-policy native` 載入成功、推理階段 `ProviderError: diffusers generation failed (AttributeError): 'CLIPTextModel' object has no attribute 'text_model'`。
+- 根因（原始碼核對，非推測）：diffusers v0.41.0 `pipeline_stable_diffusion.py` L422–437：`clip_skip` 非 None 時取 `hidden_states[-(clip_skip+1)]` 後呼叫 **`self.text_encoder.text_model.final_layer_norm`**；transformers v5.20.2 `modeling_clip.py` L485–495：`CLIPTextModel` 已**攤平**（embeddings／encoder／final_layer_norm 直接掛在模型上，不再有 `text_model=CLIPTextTransformer`；4.46 仍有 L1010）。diffusers main 同一行仍未修。base SD 1.5 不帶 clip_skip 走 L422 路徑 → 從未觸發，故 Phase 1 正常。
+- 修復（`encode_prompt_clip_skip`）：不再把 `clip_skip=` 交給 diffusers；自行 tokenizer（max_length 77、truncation，與 diffusers 相同）→ text_encoder(output_hidden_states=True) → **A1111 語意 `hidden_states[-N]` 再套 final_layer_norm**（A1111 `sd_hijack_clip` 與 diffusers 皆在 skip 後套 final LN；N=2 ⇔ diffusers clip_skip=1）→ 以 `prompt_embeds`／`negative_prompt_embeds` 呼叫 pipeline。`final_layer_norm_of` 同時支援 4.x（`text_model.final_layer_norm`）與 5.x（`final_layer_norm`）版面。
+- 執行期驗證（寫入 evidence `clip_skip_encoding`）：`len(hidden_states)==num_hidden_layers+1` 且 `final_layer_norm(hidden_states[-1]) == last_hidden_state`（allclose）→ 證明順序為 embeddings、layer1…layerL，`[-2]` 確為倒數第二層；不成立即 raise（fail-closed，不出語意錯誤的圖）。
+- 公平比較條件不變（case／seed／native／steps 25／CFG 7／DPM++ 2M Karras）；base SD 1.5 呼叫路徑逐位元不變（有測試）。
+- 回歸測試：`tests/test_checkpoints.py`（4.x／5.x 版面語意、順序驗證失敗必 raise、模擬 diffusers 0.41 clip_skip 路徑不得被觸發）。容器無 torch／GPU，真機整合以 E2-5 證據覆蓋。
+- 未新增模型、未重新下載、NT$0；客戶不需重跑相同命令，只需 `git pull` 後跑新一條。

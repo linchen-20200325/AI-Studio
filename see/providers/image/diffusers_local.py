@@ -247,6 +247,56 @@ def _cuda_peak_mb(torch: Any, reset: bool = False) -> float | None:
         return None
 
 
+def final_layer_norm_of(text_encoder: Any) -> Any:
+    """transformers 4.x：`CLIPTextModel.text_model.final_layer_norm`；5.x 把 CLIPTextTransformer 攤平，
+    `final_layer_norm` 直接掛在 `CLIPTextModel` 上（diffusers ≤0.41 的 clip_skip 路徑只認 4.x 形狀 → AttributeError，D-040）。"""
+    inner = getattr(text_encoder, "text_model", None)
+    ln = getattr(inner, "final_layer_norm", None) if inner is not None else None
+    if ln is None:
+        ln = getattr(text_encoder, "final_layer_norm", None)
+    if ln is None:
+        raise ProviderError("text encoder has no final_layer_norm (neither 4.x nor 5.x CLIPTextModel layout)")
+    return ln
+
+
+def encode_prompt_clip_skip(pipe: Any, prompt: str, negative: str, clip_skip_a1111: int) -> tuple[Any, Any, dict[str, Any]]:
+    """A1111「Clip skip = N」語意：取 `hidden_states[-N]`（N=1＝最後一層）再套 final_layer_norm（A1111 與 diffusers 皆如此）。
+    不呼叫 diffusers 的 `clip_skip=` 參數（0.41 與 transformers 5.x 不相容），改自行編碼並傳 prompt_embeds。
+
+    執行期驗證（寫進 evidence）：`len(hidden_states) == num_hidden_layers + 1`，且 `final_layer_norm(hidden_states[-1])`
+    必須與 `last_hidden_state` 逐元素相等 → 證明 hidden_states 順序為「embeddings, layer1 … layerL」，
+    `hidden_states[-N]` 才是倒數第 N 層；不成立則 raise，不產生語意錯誤的圖。
+    """
+    import torch  # type: ignore
+
+    if clip_skip_a1111 < 1:
+        raise ValueError("clip_skip_a1111 must be >= 1")
+    tok, te = pipe.tokenizer, pipe.text_encoder
+    device = getattr(pipe, "_execution_device", None) or next(te.parameters()).device
+    ln = final_layer_norm_of(te)
+    num_layers = int(te.config.num_hidden_layers)
+    if clip_skip_a1111 > num_layers:
+        raise ValueError(f"clip skip {clip_skip_a1111} exceeds num_hidden_layers {num_layers}")
+
+    def _one(text: str) -> tuple[Any, dict[str, Any]]:
+        ids = tok(text, padding="max_length", max_length=tok.model_max_length, truncation=True, return_tensors="pt").input_ids
+        out = te(ids.to(device), output_hidden_states=True)
+        hs = out.hidden_states
+        last = out.last_hidden_state
+        if hs is None or len(hs) != num_layers + 1:
+            raise ProviderError(f"unexpected hidden_states length {None if hs is None else len(hs)} (expected {num_layers + 1})")
+        if not torch.allclose(ln(hs[-1]).float(), last.float(), atol=1e-4, rtol=1e-4):
+            raise ProviderError("hidden_states ordering check failed: final_layer_norm(hidden_states[-1]) != last_hidden_state")
+        emb = ln(hs[-clip_skip_a1111])
+        return emb, {"hidden_states_len": len(hs), "layer_index_used": len(hs) - clip_skip_a1111, "ordering_verified": True}
+
+    pe, info = _one(prompt)
+    npe, _ = _one(negative or "")
+    info.update({"clip_skip_a1111": clip_skip_a1111, "num_hidden_layers": num_layers,
+                 "method": "manual hidden_states[-N] + final_layer_norm (A1111 semantics); bypasses diffusers clip_skip="})
+    return pe, npe, info
+
+
 def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
     """CLIP tokenizer 實際 token 數；超過 model_max_length（SD 1.5＝77，含 BOS/EOS）的部分會被 pipeline 靜默截斷。"""
     tok = getattr(pipe, "tokenizer", None)
@@ -428,12 +478,18 @@ class DiffusersImageProvider(ImageProvider):
                              if self.checkpoint is not None else {}),
                           **_prompt_token_info(pipe, request.prompt, request.negative_prompt)}
         gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
-        call_kw: dict[str, Any] = {"clip_skip": clip_skip} if clip_skip else {}
         _cuda_peak_mb(torch, reset=True)
         with torch.inference_mode():
-            latents = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
-                           num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen,
-                           output_type="latent", **call_kw).images
+            if clip_skip:
+                # D-040：自行編碼（A1111 語意、含執行期順序驗證），不用 diffusers `clip_skip=`（transformers 5.x 不相容）
+                pe, npe, cs_info = encode_prompt_clip_skip(pipe, request.prompt, request.negative_prompt or "",
+                                                           self.checkpoint.clip_skip_a1111)
+                self._gen_info["clip_skip_encoding"] = cs_info
+                call_kw: dict[str, Any] = {"prompt_embeds": pe, "negative_prompt_embeds": npe}
+            else:
+                call_kw = {"prompt": request.prompt, "negative_prompt": request.negative_prompt or None}
+            latents = pipe(width=gw, height=gh, num_inference_steps=self.steps, guidance_scale=self.guidance,
+                           generator=gen, output_type="latent", **call_kw).images
             if not torch.isfinite(latents).all():
                 return None  # UNet 階段 NaN/Inf
             vae = pipe.vae

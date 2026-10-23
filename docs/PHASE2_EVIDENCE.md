@@ -91,6 +91,7 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 | 組別 | checkpoint | 下載核對 | dtype／OOM／fallback | VRAM peak | 耗時 | scene | style（主觀） |
 |---|---|---|---|---|---|---|---|
 | anime × base SD1.5（對照） | — | — | ⏳ | | | | |
-| anime × MeinaMix V12 | meinamix_v12 | ⏳ | | | | | |
+| anime × MeinaMix V12（第 1 次） | meinamix_v12 | ✅ sha256 `a5e5a941…` verified | 載入 OK；推理 **FAIL**：`'CLIPTextModel' object has no attribute 'text_model'`（diffusers 0.41 clip_skip × transformers 5.x，D-040） | — | — | — | — |
+| anime × MeinaMix V12（修復後） | meinamix_v12 | ✅ | ⏳ | | | | |
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic | cyberrealistic_final | ⏳ | | | | | |

@@ -213,8 +213,141 @@ def test_run_pipe_passes_clip_skip_for_checkpoint(monkeypatch):
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
     plan = RuntimePlan("cuda", "float32", True, True, True, True, 512, vae_fp32=True)
     p = DiffusersImageProvider("sd15", checkpoint=ck.get_checkpoint("meinamix_v12"), checkpoint_path="x")
+    import see.providers.image.diffusers_local as dl
+
+    monkeypatch.setattr(dl, "encode_prompt_clip_skip", lambda pipe, pr, ne, n: ("PE", "NPE", {"clip_skip_a1111": n, "ordering_verified": True}))
     p._run_pipe(Pipe(), plan, ImageRequest(prompt="a girl", width=1920, height=1080, params={"gen_policy": "native"}))
-    assert seen["clip_skip"] == 1 and p._gen_info["clip_skip_a1111"] == 2 and p._gen_info["vram_peak_mb"] is None
+    # D-040：不得把 clip_skip= 交給 diffusers（0.41 + transformers 5.x → AttributeError），改傳自編 embeds
+    assert "clip_skip" not in seen and "prompt" not in seen
+    assert seen["prompt_embeds"] == "PE" and seen["negative_prompt_embeds"] == "NPE"
+    assert p._gen_info["clip_skip_a1111"] == 2 and p._gen_info["clip_skip_encoding"]["ordering_verified"]
     seen.clear()
     DiffusersImageProvider("sd15")._run_pipe(Pipe(), plan, ImageRequest(prompt="a girl", width=1920, height=1080))
-    assert "clip_skip" not in seen  # base SD 1.5 呼叫參數不變
+    assert "clip_skip" not in seen and seen["prompt"] == "a girl" and "prompt_embeds" not in seen  # base SD 1.5 呼叫不變
+
+
+# ---------------------------------------------------------------- D-040：clip skip 與 transformers 4.x／5.x CLIPTextModel 版面
+# 容器無 torch：以 numpy 替身＋假 torch 模組（只需 allclose）驗證語意；真機整合由 E2-5 證據覆蓋。
+class _Arr:
+    def __init__(self, a):
+        self.a = np.asarray(a, np.float32)
+
+    def float(self):
+        return self
+
+    def __mul__(self, k):
+        return _Arr(self.a * k)
+
+    def to(self, device):
+        return self
+
+
+def _fake_torch_min(monkeypatch):
+    import contextlib
+
+    ft = types.ModuleType("torch")
+    ft.allclose = lambda x, y, atol=0, rtol=0: bool(np.allclose(x.a, y.a, atol=atol, rtol=rtol))
+    ft.inference_mode = contextlib.nullcontext
+    ft.Generator = lambda device="cpu": types.SimpleNamespace(manual_seed=lambda s: s)
+    ft.isfinite = lambda t: types.SimpleNamespace(all=lambda: True)
+    monkeypatch.setitem(sys.modules, "torch", ft)
+
+
+class _LN:
+    """可辨識的 final_layer_norm 替身：x * 10。"""
+
+    def __call__(self, x):
+        return x * 10
+
+
+class _TE:
+    """假 CLIPTextModel：hidden_states = [emb, l1, l2, l3]（值 1..4），last_hidden_state = ln(l3)。"""
+
+    def __init__(self, layout: str, ordering_ok: bool = True):
+        self.config = types.SimpleNamespace(num_hidden_layers=3)
+        self._ln = _LN()
+        if layout == "v4":
+            self.text_model = types.SimpleNamespace(final_layer_norm=self._ln)
+        elif layout == "v5":
+            self.final_layer_norm = self._ln
+        self.ordering_ok = ordering_ok
+
+    def __call__(self, ids, output_hidden_states=False):
+        hs = tuple(_Arr(np.full((1, 4, 2), float(i + 1))) for i in range(4))
+        last = self._ln(hs[-1]) if self.ordering_ok else hs[-1]
+        return types.SimpleNamespace(hidden_states=hs, last_hidden_state=last)
+
+
+class _Tok:
+    model_max_length = 77
+
+    def __call__(self, text, **kw):
+        assert kw.get("max_length") == 77 and kw.get("truncation") and kw.get("padding") == "max_length"
+        return types.SimpleNamespace(input_ids=_Arr(np.zeros((1, 77))))
+
+
+def _pipe(te):
+    return types.SimpleNamespace(tokenizer=_Tok(), text_encoder=te, _execution_device="cpu")
+
+
+@pytest.mark.parametrize("layout", ["v4", "v5"])
+def test_clip_skip_a1111_semantics_on_both_transformers_layouts(monkeypatch, layout):
+    """A1111 clip skip 2 = hidden_states[-2]（倒數第二層）再套 final_layer_norm；4.x 與 5.x 版面都必須成立。"""
+    _fake_torch_min(monkeypatch)
+    from see.providers.image.diffusers_local import encode_prompt_clip_skip
+
+    pe, npe, info = encode_prompt_clip_skip(_pipe(_TE(layout)), "a girl", "", 2)
+    assert np.array_equal(pe.a, np.full((1, 4, 2), 30.0))  # l2=3 → ×10
+    assert np.array_equal(npe.a, pe.a)
+    assert info["layer_index_used"] == 2 and info["hidden_states_len"] == 4 and info["ordering_verified"]
+    pe1, _, _ = encode_prompt_clip_skip(_pipe(_TE(layout)), "a girl", "", 1)
+    assert np.array_equal(pe1.a, np.full((1, 4, 2), 40.0))  # clip skip 1 = 最後一層 = 等同不 skip
+
+
+def test_clip_skip_refuses_unverifiable_ordering_or_missing_layer_norm(monkeypatch):
+    _fake_torch_min(monkeypatch)
+    from see.core.errors import ProviderError
+    from see.providers.image.diffusers_local import encode_prompt_clip_skip, final_layer_norm_of
+
+    with pytest.raises(ProviderError, match="ordering"):
+        encode_prompt_clip_skip(_pipe(_TE("v5", ordering_ok=False)), "x", "", 2)
+    with pytest.raises(ProviderError, match="final_layer_norm"):
+        final_layer_norm_of(types.SimpleNamespace())
+    with pytest.raises(ValueError):
+        encode_prompt_clip_skip(_pipe(_TE("v5")), "x", "", 4)  # 超過層數
+
+
+def test_regression_diffusers_clip_skip_kwarg_never_used_with_transformers5_layout(monkeypatch):
+    """回歸：真機錯誤 `'CLIPTextModel' object has no attribute 'text_model'`（diffusers 0.41 clip_skip 路徑）。
+    模擬 diffusers 0.41：收到 clip_skip= 就存取 text_encoder.text_model → 5.x 版面必炸；我們的路徑不得觸發。"""
+    _fake_torch_min(monkeypatch)
+
+    class _T:
+        def __init__(self, a, dtype="float32"):
+            self.a, self.dtype = np.asarray(a, np.float32), dtype
+
+        def __truediv__(self, k):
+            return _T(self.a / k, self.dtype)
+
+        def to(self, dtype):
+            return _T(self.a, dtype)
+
+    class Pipe041:
+        tokenizer, text_encoder = _Tok(), _TE("v5")
+        _execution_device = "cpu"
+        vae = types.SimpleNamespace(dtype="float32", config=types.SimpleNamespace(scaling_factor=0.18215),
+                                    decode=lambda z, return_dict=True: (z,))
+        image_processor = types.SimpleNamespace(postprocess=lambda image, output_type="np": [image.a])
+        scheduler = types.SimpleNamespace()
+
+        def __call__(self, **kw):
+            if kw.get("clip_skip"):
+                self.text_encoder.text_model.final_layer_norm  # noqa: B018  AttributeError（真機症狀）
+            assert "prompt_embeds" in kw and "negative_prompt_embeds" in kw and "prompt" not in kw
+            return types.SimpleNamespace(images=_T(np.full((1, 4, 8, 8), 0.5)))
+
+    p = DiffusersImageProvider("sd15", checkpoint=ck.get_checkpoint("meinamix_v12"), checkpoint_path="x")
+    plan = RuntimePlan("cuda", "float32", True, True, True, True, 512, vae_fp32=True)
+    arr = p._run_pipe(Pipe041(), plan, ImageRequest(prompt="a girl", width=1920, height=1080, params={"gen_policy": "native"}))
+    assert arr is not None and p._gen_info["clip_skip_encoding"]["ordering_verified"]
+    assert p._gen_info["clip_skip_encoding"]["layer_index_used"] == 2
