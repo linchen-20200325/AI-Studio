@@ -37,7 +37,7 @@
 ## 3. 本批修正（低風險，預設行為不變）
 1. **分層驗收**（`see/core/style_tests.py`）：`technical_valid`（自動）｜`prompt_subject_check`（自動，只驗 prompt 有沒有帶到主體）｜`scene_validated`／`style_validated`（**只能人工** `style-review`，預設 `null`）。舊欄位 `valid_for_style_test` 移除；舊 `style_validated`（其實是型錄旗標）改名 `style_profile_catalog_validated`，避免混淆。不做不可靠的自動美感評分。
 2. **案例與風格分離**：`STYLE_TEST_CASES`（`kitten_butterfly` 基準、`girl_city_night` 人物案例，供 P1 動畫／真人／電影感）；新增風格只加 StyleProfile，新增案例只加 StyleTestCase。
-3. **診斷參數（opt-in）**：`style-test --gen-policy native`（短邊 512、長邊 ≤768 → 768×512 生成 → 中心裁成 768×432 → 放大 ×2.5）、`--base-prompt`（手寫結構化 prompt）、`--scene`。診斷結果標 `fair_comparison=false`，檔名加後綴，**永不覆寫基準失敗證據**。
+3. **診斷參數（opt-in）**：`style-test --gen-policy native`（短邊 512、長邊 ≤768 → 768×512 生成 → 中心裁成 768×432 → 放大 ×2.5）、`--base-prompt`（手寫結構化 prompt）、`--scene`。診斷結果標 `fair_comparison=false`（D-043 已更名 `baseline_condition`：只表示「是否為 fit 基準條件」，不代表跨次比較公平；跨次比較用 `style-compare`），檔名加後綴，**永不覆寫基準失敗證據**。
 4. **生成證據補齊**：`gen_width/gen_height`、`gen_policy`、`crop_box`、`upscale_factor`、`scheduler`、`steps`、`guidance`、`prompt_tokens`、`prompt_truncated`。
 5. 預設 `gen_policy=fit` 不進 `ImageRequest.params` → 既有專案 image fingerprint 不變、不需 PROVIDER_VERSION bump。
 

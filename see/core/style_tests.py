@@ -25,7 +25,7 @@ class StyleTestCase:
     notes: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
     # D-041：構圖／鏡頭需求（例如正面胸像）是 Mock LLM 關鍵詞表無法表達的；案例可自帶英文 base prompt。
-    # 屬於「案例定義」而非臨時覆寫 → 仍算 fair_comparison；風格詞仍由 Style Profile 附加，模型由 --checkpoint 決定。
+    # 屬於「案例定義」而非臨時覆寫 → 仍算 baseline_condition；風格詞仍由 Style Profile 附加，模型由 --checkpoint 決定。
     base_prompt_en: str | None = None
     review_checklist: tuple[str, ...] = field(default_factory=tuple)  # 人工審圖項目（主觀驗收清單）
 
@@ -92,3 +92,56 @@ def verdict_to_bool(v: str | None) -> bool | None:
     if v not in VERDICTS:
         raise ValueError(f"verdict must be one of {VERDICTS}")
     return v == "pass"
+
+
+# ---------------------------------------------------------------- D-043 跨次比較條件（取代舊 fair_comparison 旗標）
+# 舊 `fair_comparison` 只表示「這張是否為 fit 基準條件、無診斷覆寫」，native 一律 false、且完全不看 checkpoint／clip skip，
+# 不能回答「兩張圖的比較是否只差一個變數」。改由兩份 evidence 逐項比對（相容舊 JSON）。
+COMPARISON_FIELDS = ("case_id", "seed", "style_id", "base_prompt", "prompt", "negative_prompt", "request_size",
+                     "gen_policy", "gen_size", "crop_box", "steps", "guidance", "scheduler", "final_dtype",
+                     "model", "clip_skip_a1111")
+# 模型預設（D-042：模型專屬參數歸模型設定）——換 checkpoint 時隨模型改變屬「模型預設差異」，不是意外變數
+MODEL_PRESET_FIELDS = ("clip_skip_a1111",)
+BASE_MODEL = "sd15-base"
+# 這些欄位缺值（兩邊都 None）就無法確認條件一致 → not_comparable；crop_box 在 fit 本來就是 None，不列入
+REQUIRED_FIELDS = ("case_id", "seed", "prompt", "negative_prompt", "gen_size", "steps", "guidance", "scheduler", "model")
+
+
+def comparison_conditions(ev: dict[str, Any]) -> dict[str, Any]:
+    """從 style-test evidence 取出所有會影響輸出的條件。舊 JSON 沒有 clip skip 欄位時：無 checkpoint → 1（diffusers 預設＝不跳層）。"""
+    g = ev.get("generation") or {}
+    ck = ev.get("checkpoint") or None
+    model = f"{ck.get('checkpoint_id')}@{str(ck.get('sha256', ''))[:12]}" if isinstance(ck, dict) else BASE_MODEL
+    clip = g.get("clip_skip_a1111")
+    if clip is None and model == BASE_MODEL:
+        clip = 1
+    gw, gh = g.get("gen_width"), g.get("gen_height")
+    return {"case_id": ev.get("case_id"), "seed": ev.get("seed"), "style_id": ev.get("style_id"),
+            "base_prompt": ev.get("base_prompt"), "prompt": ev.get("prompt"), "negative_prompt": ev.get("negative_prompt"),
+            "request_size": f"{ev.get('width')}x{ev.get('height')}", "gen_policy": g.get("gen_policy"),
+            "gen_size": f"{gw}x{gh}" if gw and gh else None,
+            "crop_box": list(g["crop_box"]) if g.get("crop_box") is not None else None,
+            "steps": g.get("steps"), "guidance": g.get("guidance"),
+            "scheduler": g.get("scheduler_name") or g.get("scheduler"), "final_dtype": ev.get("final_dtype"),
+            "model": model, "clip_skip_a1111": clip}
+
+
+def compare_conditions(a: dict[str, Any], b: dict[str, Any], intended: tuple[str, ...] = ("model",)) -> dict[str, Any]:
+    """比對兩份 evidence。verdict：
+    - `single_variable`：只有 intended 變數不同（嚴格公平比較）
+    - `model_preset_level`：intended 之外只差模型預設參數（如 clip skip），且模型本身不同 → 比較的是「模型＋其建議設定」整包
+    - `not_comparable`：還有其他條件不同（或缺欄位無法確認）→ 不得宣稱公平比較"""
+    ca, cb = comparison_conditions(a), comparison_conditions(b)
+    diffs = {k: [ca[k], cb[k]] for k in COMPARISON_FIELDS if ca[k] != cb[k]}
+    unknown = [k for k in REQUIRED_FIELDS if ca[k] is None and cb[k] is None]
+    preset = [k for k in diffs if k in MODEL_PRESET_FIELDS and "model" in diffs]
+    other = [k for k in diffs if k not in intended and k not in preset]
+    if other or unknown:
+        verdict = "not_comparable"
+    elif preset:
+        verdict = "model_preset_level"
+    else:
+        verdict = "single_variable"
+    return {"verdict": verdict, "differences": diffs, "intended": [k for k in diffs if k in intended],
+            "model_preset_differences": preset, "unexpected_differences": other, "unknown_fields": unknown,
+            "identical": [k for k in COMPARISON_FIELDS if k not in diffs and k not in unknown]}

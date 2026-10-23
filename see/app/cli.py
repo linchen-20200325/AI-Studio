@@ -463,7 +463,9 @@ def cmd_style_test(args: argparse.Namespace) -> int:
                                           "oom_downgrade", "numeric_downgrade", "initial_plan", "final_plan") if k in res.meta}
     ev = {"style_id": style.style_id, "style_display_name": style.display_name, "case_id": case.case_id,
           "scene": scene, "seed": seed, "width": req.width, "height": req.height,
-          "fair_comparison": args.gen_policy == "fit" and not args.base_prompt and not args.scene,
+          # D-043：舊 `fair_comparison` 更名——它只表示「fit 基準條件、無診斷覆寫」，不代表跨次比較公平；
+          # 兩張圖是否只差一個變數請用 `style-compare <stem_a> <stem_b>`（逐項比對 comparison_conditions）
+          "baseline_condition": args.gen_policy == "fit" and not args.base_prompt and not args.scene,
           # D-039：checkpoint 只用於內部品質驗證；commercial_cleared 一律 false（不得用於正式商用輸出）
           "checkpoint": res.meta.get("checkpoint"), "commercial_cleared": False if args.checkpoint else None,
           "diagnostic_overrides": {"gen_policy": args.gen_policy, "base_prompt_override": bool(args.base_prompt),
@@ -483,6 +485,9 @@ def cmd_style_test(args: argparse.Namespace) -> int:
                            "how": f"python -m see.app.cli style-review {out.stem} --scene pass|fail --style pass|fail --note \"...\""},
           # 型錄旗標（該 StyleProfile 是否曾有真機驗收紀錄），不是本張圖的判定
           "style_profile_catalog_validated": style.validated}
+    from see.core.style_tests import comparison_conditions
+
+    ev["comparison_conditions"] = comparison_conditions(ev)
     out.with_suffix(".json").write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(ev, ensure_ascii=False, indent=2))
     if not ev["technical_valid"]:
@@ -560,6 +565,28 @@ def cmd_style_review(args: argparse.Namespace) -> int:
     print(json.dumps({k: ev[k] for k in ("style_id", "technical_valid", "scene_validated", "style_validated", "human_review")},
                      ensure_ascii=False, indent=2))
     return 0
+
+
+def cmd_style_compare(args: argparse.Namespace) -> int:
+    """D-043：兩份 style-test evidence 逐項比對生成條件，判定是否為單一變數比較（相容舊 JSON；唯讀）。"""
+    from see.core.style_tests import compare_conditions
+
+    d = Settings().workspace / "style_tests"
+    evs = []
+    for stem in (args.stem_a, args.stem_b):
+        path = d / f"{stem}.json"
+        if not path.exists():
+            have = sorted(p.stem for p in d.glob("*.json")) if d.exists() else []
+            print(f"找不到 {path}；現有：{have}", file=sys.stderr)
+            return 2
+        evs.append(json.loads(path.read_text(encoding="utf-8")))
+    intended = tuple(x.strip() for x in args.intended.split(",") if x.strip())
+    res = compare_conditions(evs[0], evs[1], intended)
+    res = {"a": args.stem_a, "b": args.stem_b, **res,
+           "technical_valid": [evs[0].get("technical_valid"), evs[1].get("technical_valid")],
+           "image_sha256": [evs[0].get("image_sha256"), evs[1].get("image_sha256")]}
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    return 0 if res["verdict"] != "not_comparable" else 4
 
 
 class _StyleTestBudget:
@@ -682,10 +709,10 @@ def main(argv: list[str] | None = None) -> int:
     stt = sub.add_parser("style-test", help="Style 真機驗收：固定場景／seed 只換風格出一張圖（不建專案、不動快取）")
     stt.add_argument("--style", required=True); stt.add_argument("--seed", type=int, default=None)
     stt.add_argument("--case", default="kitten_butterfly", help="測試案例（see/core/style_tests.py）")
-    stt.add_argument("--scene", default=None, help="（診斷）覆寫案例場景；結果標 fair_comparison=false")
+    stt.add_argument("--scene", default=None, help="（診斷）覆寫案例場景；結果標 baseline_condition=false")
     stt.add_argument("--gen-policy", choices=["fit", "native"], default="fit",
                      help="（診斷）fit＝現行（16:9 長邊壓到 512→512×288）；native＝短邊 512 生成後裁切")
-    stt.add_argument("--base-prompt", default=None, help="（診斷）手寫英文 base prompt；結果標 fair_comparison=false")
+    stt.add_argument("--base-prompt", default=None, help="（診斷）手寫英文 base prompt；結果標 baseline_condition=false")
     stt.add_argument("--checkpoint", default=None, help="（內部驗證，D-039）SD 1.5 單檔 checkpoint id；不 fallback")
     stt.add_argument("--scheduler", default=None, choices=["default", "dpmpp_2m_karras", "euler_a"],
                      help="覆寫 scheduler（預設：checkpoint 建議值；base SD 1.5＝模型自帶）")
@@ -698,6 +725,10 @@ def main(argv: list[str] | None = None) -> int:
     srv.add_argument("--scene", choices=["pass", "fail"], required=True)
     srv.add_argument("--style", choices=["pass", "fail"], required=True)
     srv.add_argument("--note"); srv.add_argument("--by", default="customer"); srv.set_defaults(fn=cmd_style_review)
+    scp = sub.add_parser("style-compare", help="比對兩份 style-test evidence 的生成條件（是否只差一個變數；唯讀）")
+    scp.add_argument("stem_a"); scp.add_argument("stem_b")
+    scp.add_argument("--intended", default="model", help="預期要不同的條件（逗號分隔，預設 model）")
+    scp.set_defaults(fn=cmd_style_compare)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")

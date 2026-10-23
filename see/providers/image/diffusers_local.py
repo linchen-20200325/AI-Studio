@@ -474,8 +474,9 @@ class DiffusersImageProvider(ImageProvider):
         self._gen_info = {"gen_policy": policy, "gen_width": gw, "gen_height": gh, "steps": self.steps,
                           "guidance": self.guidance, "scheduler": type(getattr(pipe, "scheduler", None)).__name__,
                           "scheduler_name": self.scheduler_name,
-                          **({"clip_skip_a1111": self.checkpoint.clip_skip_a1111, "clip_skip_diffusers": clip_skip}
-                             if self.checkpoint is not None else {}),
+                          # D-043：base 也明確記錄（1＝不跳層），跨次比較才看得出 clip skip 是否一致
+                          "clip_skip_a1111": self.checkpoint.clip_skip_a1111 if self.checkpoint is not None else 1,
+                          "clip_skip_diffusers": clip_skip,
                           **_prompt_token_info(pipe, request.prompt, request.negative_prompt)}
         gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
         _cuda_peak_mb(torch, reset=True)

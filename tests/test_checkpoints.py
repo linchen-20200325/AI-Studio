@@ -222,8 +222,11 @@ def test_run_pipe_passes_clip_skip_for_checkpoint(monkeypatch):
     assert seen["prompt_embeds"] == "PE" and seen["negative_prompt_embeds"] == "NPE"
     assert p._gen_info["clip_skip_a1111"] == 2 and p._gen_info["clip_skip_encoding"]["ordering_verified"]
     seen.clear()
-    DiffusersImageProvider("sd15")._run_pipe(Pipe(), plan, ImageRequest(prompt="a girl", width=1920, height=1080))
+    base = DiffusersImageProvider("sd15")
+    base._run_pipe(Pipe(), plan, ImageRequest(prompt="a girl", width=1920, height=1080))
     assert "clip_skip" not in seen and seen["prompt"] == "a girl" and "prompt_embeds" not in seen  # base SD 1.5 呼叫不變
+    # D-043：base 也明確記錄 clip skip（1＝不跳層），跨次比較才能看出差異
+    assert base._gen_info["clip_skip_a1111"] == 1 and base._gen_info["clip_skip_diffusers"] is None
 
 
 # ---------------------------------------------------------------- D-040：clip skip 與 transformers 4.x／5.x CLIPTextModel 版面

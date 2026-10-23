@@ -6,10 +6,10 @@
 ## Project
 | 欄位 | 值 |
 |---|---|
-| Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
+| Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-297bf146-zrrlk1`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
 | Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
-| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-042）**：MeinaMix 人物近景主觀 OK（不鎖定、非商用許可）；正式需求「事後可調整風格」入 PROJECT_RULES §15；下一步 base SD1.5 同條件對照；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-043）**：MeinaMix 人物近景主觀 OK（不鎖定、非商用許可）；正式需求「事後可調整風格」入 PROJECT_RULES §15；base SD1.5 人物近景對照完成（主觀：base 眼睛怪異、MeinaMix 較像日本漫畫角色）——比較層級＝model_preset_level（clip skip 2 vs 1），非嚴格單一變數，待裁示；CyberRealistic 等客戶下一步；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
@@ -53,12 +53,13 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-16 **已裁示 A（D-031）**：Audio Layer。
 - DG-17：真機聽感 OK（D-032）；**BGM 預設開啟延後**到完整產品流程／UI（維持 null）。
 - DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4；順序 D-034）。
+- **DG-23（新，D-043，待裁示）**：E2-5 人物近景 base vs MeinaMix 為 model_preset_level 比較（clip skip 2 vs 1），是否接受為「專用 checkpoint 改善值得導入」依據。總管推薦：接受（導入時本來就是整包 preset）；替代：補一張 base＋clip skip 2 隔離對照（需加診斷參數、≈11 分鐘真機）。
 - DG-21（待 native A/B）：`gen_policy=native` 是否成為預設（既有 image fingerprint 全失效重生、每張耗時增加）。
 - **DG-20（已提出，等待裁示）**：見 `DG20_IMAGE_MODEL_RESEARCH.md`。舊選項描述：：A SD1.5 足夠→角色一致性驗證｜B 明顯不足→研究更適合 anime／AI 真人的 LOCAL_FREE 模型｜C 依視覺路線分模型／provider。裁示前不下載、不導 IP-Adapter／LoRA、不付費、不做 Lip-sync 模型、不做 DG-19 UI。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Windows（一次一條）：① base SD1.5 對照 `style-test --style anime --case girl_portrait_closeup --gen-policy native --scheduler dpmpp_2m_karras`（回答 E：專用 checkpoint 改善是否值得）② CyberRealistic `checkpoint-download cyberrealistic_final --check` → `--yes` → realistic × girl_portrait_closeup（含 base 對照）→ 提 DG-21＋導入裁示。並行可自主：Preference Layer 非 UI 部分（ARCHITECTURE §13）、研究 (c) Anime LoRA。
+待客戶：D-043 比較層級裁示（接受 model_preset_level｜補 clip skip 隔離對照）。Windows（一次一條）：① `git pull` → `style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12`（唯讀，用實機 JSON 確認條件；檔名以本機為準）② 客戶下一步指示後才做 CyberRealistic `checkpoint-download cyberrealistic_final --check` → `--yes` → realistic × girl_portrait_closeup（含 base 對照）→ 提 DG-21＋導入裁示。並行可自主：Preference Layer 非 UI 部分（ARCHITECTURE §13）、研究 (c) Anime LoRA。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

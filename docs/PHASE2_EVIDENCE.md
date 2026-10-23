@@ -94,6 +94,12 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 | anime × MeinaMix V12（第 1 次） | meinamix_v12 | ✅ sha256 `a5e5a941…` verified | 載入 OK；推理 **FAIL**：`'CLIPTextModel' object has no attribute 'text_model'`（diffusers 0.41 clip_skip × transformers 5.x，D-040） | — | — | — | — |
 | anime × MeinaMix V12（修復後，girl_city_night） | meinamix_v12 | ✅ | fp16 NaN → float32 ✅；無 OOM；無 fallback；technical_valid=true（D-040 修復驗證） | （未回報） | （未回報） | 城市夜景／人物存在 PASS（主觀） | 日系動畫感 PASS；臉部**無法判定**（背面遠景）；黑色比例偏重＝觀察項（single-user subjective） |
 | anime × MeinaMix V12（girl_portrait_closeup，D-041） | meinamix_v12 | ✅ | （客戶未回報 JSON） | （未回報） | （未回報） | 正面近景 PASS（主觀） | 「這樣算 OK」：臉部／眼睛／五官／頭髮／日系動畫呈現＝目前可接受（single-user subjective；不鎖模型／畫風、非商用許可，D-042） |
-| anime × base SD1.5（girl_portrait_closeup，同 scheduler 對照） | — | — | ⏳ | | | | |
+| anime × base SD1.5（girl_portrait_closeup，同 scheduler 對照，D-043） | —（sd15-base） | — | fp16 NaN/black → float32 ✅；oom_downgrade=false；fallback=null；technical_valid=true；768×512→裁切→1920×1080 | （未回報） | ≈646.6 s；NT$0 | 正面近景（主觀，未逐項審） | 「第一張眼睛很怪異」：眼睛／五官品質較差（single-user subjective） |
+
+**E2-5 人物近景比較（D-043；single-user subjective）**：同 case／seed 1234／native 768×512／steps 25／CFG 7／DPM++ 2M Karras／同 prompt 與 negative（同 style、同 base_prompt_en）／fp16→float32 同路徑。客戶判斷：Base SD1.5「眼睛很怪異」；MeinaMix「比較像日本漫畫的角色」（先前已判「這樣算 OK」）→ 對 P1 日系動畫人物呈現有**明顯主觀改善**。
+- **比較層級＝model_preset_level，不是嚴格單一變數**：除權重（含 checkpoint 內嵌 VAE）外，clip skip 也不同——MeinaMix 依作者建議 A1111 clip skip 2（型錄 preset，D-039／D-040），base 為 1（不跳層）。程式路徑確定（`DiffusersImageProvider._run_pipe`），非推測。
+- 證據 `fair_comparison=false` 的原因：舊旗標只表示「fit 基準條件、無診斷覆寫」，native 一律 false（MeinaMix 那張同樣是 false），**不是**跨次比較的判定 → 已更名 `baseline_condition`，跨次比較改用 `style-compare`（D-043）。
+- 待確認：兩份實機 JSON 尚未逐欄比對（MeinaMix portrait JSON 未回傳；dtype、gen size 由客戶摘要）→ Windows `style-compare` 一條命令即可確認。
+- 限定：不鎖定 MeinaMix、不鎖定人物畫風、`commercial_cleared=false`、僅內部品質驗證。
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic | cyberrealistic_final | ⏳ | | | | | |

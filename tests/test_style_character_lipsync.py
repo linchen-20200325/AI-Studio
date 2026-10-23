@@ -216,7 +216,7 @@ def test_style_test_cli_isolated_and_fair(tmp_path, monkeypatch, capsys):
     assert a["prompt"] != r["prompt"] and "anime style" in a["prompt"] and "photorealistic" in r["prompt"]
     assert not a["technical_valid"] and a["generated_by"] == "placeholder-image"
     assert a["scene_validated"] is None and a["style_validated"] is None  # 人工判定，不自動推論（D-035）
-    assert a["fair_comparison"] and a["prompt_subject_check"]["passed"]
+    assert a["baseline_condition"] and a["prompt_subject_check"]["passed"]
     assert not (tmp_path / "ws" / "projects").exists()  # 不建立任何專案／manifest
     with pytest.raises(ValueError):
         main(["style-test", "--style", "vaporwave"])
@@ -268,9 +268,9 @@ def test_style_test_diagnostics_never_overwrite_baseline(tmp_path, monkeypatch, 
     assert names == ["anime_seed1234_girl_city_night.json", "picture_book_seed1234.json",
                      "picture_book_seed1234_customprompt.json", "picture_book_seed1234_native.json"]
     nat = _json.loads((d / "picture_book_seed1234_native.json").read_text(encoding="utf-8"))
-    assert not nat["fair_comparison"] and nat["diagnostic_overrides"]["gen_policy"] == "native"
+    assert not nat["baseline_condition"] and nat["diagnostic_overrides"]["gen_policy"] == "native"
     girl = _json.loads((d / "anime_seed1234_girl_city_night.json").read_text(encoding="utf-8"))
-    assert "a girl" in girl["prompt"] and girl["fair_comparison"]
+    assert "a girl" in girl["prompt"] and girl["baseline_condition"]
 
 
 def test_style_review_only_on_technical_valid(tmp_path, monkeypatch, capsys):
@@ -331,3 +331,78 @@ def test_scene_flag_rejects_case_id(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
     assert main(["style-test", "--style", "anime", "--scene", "girl_city_night"]) == 2
     assert "--case girl_city_night" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------- D-043 跨次比較條件
+def _ev(checkpoint=None, clip=None, **over):
+    g = {"gen_policy": "native", "gen_width": 768, "gen_height": 512, "crop_box": [0, 40, 768, 472], "steps": 25,
+         "guidance": 7.0, "scheduler": "DPMSolverMultistepScheduler", "scheduler_name": "dpmpp_2m_karras"}
+    if clip is not None:
+        g["clip_skip_a1111"] = clip
+    ev = {"case_id": "girl_portrait_closeup", "seed": 1234, "style_id": "anime", "base_prompt": "a girl", "prompt": "a girl, anime",
+          "negative_prompt": "lowres", "width": 1920, "height": 1080, "final_dtype": "float32", "generation": g,
+          "checkpoint": checkpoint, "technical_valid": True}
+    ev.update(over)
+    return ev
+
+
+MEINA = {"checkpoint_id": "meinamix_v12", "sha256": "a5e5a941a3217247dbceceee5b67f8d6b1ef2514260e08a5757436bec7035f93"}
+
+
+def test_compare_base_vs_meinamix_is_model_preset_level_not_single_variable():
+    """E2-5 實況：base（舊 JSON 無 clip skip 欄位＝1）vs MeinaMix（clip skip 2）→ 不是嚴格單一變數。"""
+    from see.core.style_tests import compare_conditions
+
+    r = compare_conditions(_ev(), _ev(checkpoint=MEINA, clip=2))
+    assert r["verdict"] == "model_preset_level"
+    assert r["differences"]["model"] == ["sd15-base", "meinamix_v12@a5e5a941a321"]
+    assert r["differences"]["clip_skip_a1111"] == [1, 2] and r["unexpected_differences"] == []
+    assert {"seed", "prompt", "negative_prompt", "gen_size", "steps", "guidance", "scheduler", "final_dtype"} <= set(r["identical"])
+
+
+def test_compare_single_variable_and_not_comparable():
+    from see.core.style_tests import compare_conditions
+
+    assert compare_conditions(_ev(clip=1), _ev(checkpoint=MEINA, clip=1))["verdict"] == "single_variable"
+    bad = compare_conditions(_ev(), _ev(checkpoint=MEINA, clip=2, seed=99))
+    assert bad["verdict"] == "not_comparable" and bad["unexpected_differences"] == ["seed"]
+    # 同模型下 clip skip 不同 → 不能算模型預設差異
+    same = compare_conditions(_ev(clip=1), _ev(clip=2))
+    assert same["verdict"] == "not_comparable" and same["unexpected_differences"] == ["clip_skip_a1111"]
+    # 缺必要欄位 → 無法確認 → not_comparable
+    assert compare_conditions(_ev(generation={}), _ev(generation={}))["verdict"] == "not_comparable"
+
+
+def test_style_compare_cli(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    d = tmp_path / "ws" / "style_tests"
+    d.mkdir(parents=True)
+    (d / "base.json").write_text(_json.dumps(_ev()), encoding="utf-8")
+    (d / "meina.json").write_text(_json.dumps(_ev(checkpoint=MEINA, clip=2)), encoding="utf-8")
+    (d / "other.json").write_text(_json.dumps(_ev(steps=30, checkpoint=MEINA, clip=2)), encoding="utf-8")
+    assert main(["style-compare", "base", "meina"]) == 0
+    out = _json.loads(capsys.readouterr().out)
+    assert out["verdict"] == "model_preset_level"
+    assert main(["style-compare", "base", "missing"]) == 2
+    capsys.readouterr()
+    (d / "other.json").write_text(_json.dumps(_ev(checkpoint=MEINA, clip=2, seed=1)), encoding="utf-8")
+    assert main(["style-compare", "base", "other"]) == 4
+
+
+def test_style_test_evidence_records_comparison_conditions(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
+    main(["style-test", "--style", "anime", "--case", "girl_portrait_closeup"])
+    capsys.readouterr()
+    ev = _json.loads((tmp_path / "ws" / "style_tests" / "anime_seed1234_girl_portrait_closeup.json").read_text(encoding="utf-8"))
+    assert "fair_comparison" not in ev and ev["baseline_condition"] is True
+    assert ev["comparison_conditions"]["model"] == "sd15-base" and ev["comparison_conditions"]["seed"] == 1234

@@ -321,3 +321,13 @@
 - Tests: 155 passed、1 skipped（僅文件）
 - Decision: D-042
 - Next: Windows base SD1.5 對照（girl_portrait_closeup）
+
+---
+- Date: 2026-10-23
+- Start SHA: 4ce2159
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 32 — E2-5 base SD1.5 人物近景對照入庫＋fair_comparison 釐清
+- Result: D-043；base「眼睛很怪異」vs MeinaMix「比較像日本漫畫的角色」（single-user subjective）；fair_comparison=false＝metadata 定義（native 一律 false），但實際另有 clip skip 2 vs 1 差異 → model_preset_level，不宣稱嚴格公平；`baseline_condition`、`comparison_conditions`、base 記 clip_skip=1、`style-compare`；DG-23 待裁示
+- Tests: 159 passed、1 skipped
+- Decision: D-043
+- Next: 客戶裁示 DG-23；Windows `git pull` → `style-compare`；CyberRealistic 等客戶下一步

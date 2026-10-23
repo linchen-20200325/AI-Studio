@@ -322,3 +322,11 @@
 - 限定：只代表「目前品質 OK」；**不鎖定 MeinaMix、不鎖定此人物畫風、不是 commercial clearance**；MeinaMix 仍 `commercial_cleared=false`／internal quality validation only。
 - 正式產品需求（客戶明確）：「事後可以自己調整風格，不要現在寫死」→ PROJECT_RULES §15 擴充（不另立重複規則）：生成前選偏好、生成後改偏好再生成；偏好為結構化可修改設定；選項式＋自然語言兩種表達收斂到同一份結構；換模型不需重建偏好；模型特有參數屬模型 preset。
 - 架構入口：ARCHITECTURE §13（現有能力對照＋缺口）；BACKLOG「Preference Layer」項。本輪不做 UI、不下載、不付費。
+
+## D-043 2026-10-23 E2-5 Base SD1.5 人物近景對照＋fair_comparison 釐清
+- 真機（客戶回報）：anime × `girl_portrait_closeup`、seed 1234、native（768×512→裁切→1920×1080）、steps 25、CFG 7、DPM++ 2M Karras、provider `diffusers-sd15`；fp16 NaN/black → 自動 float32 成功；oom_downgrade=false；fallback=null；technical_valid=true；≈646.6 s；NT$0。
+- 人工對照（**single-user subjective**）：Base SD1.5「第一張眼睛很怪異」（眼睛／五官較差）；MeinaMix V12「第二張比較像日本漫畫的角色」（先前已判「這樣算 OK」）→ 對 P1 日系動畫人物呈現有明顯主觀改善。不鎖定 MeinaMix、不鎖定人物畫風、`commercial_cleared=false`、僅內部品質驗證。
+- `fair_comparison=false` 追查（程式逐段核對）：該旗標定義為 `gen_policy == "fit" and not base_prompt and not scene`——只表示「是否為 fit 基準條件」，native 一律 false（MeinaMix 那張同樣 false），且完全不看 checkpoint／clip skip／scheduler → **是 metadata 定義問題，不能用來判定兩張圖比較是否公平**。
+- 但實際比較**另有一項條件不同**（非推測，程式路徑確定）：MeinaMix 走型錄 preset 的 A1111 clip skip 2（D-040 自編 embeds），base 為 1（不跳層）；checkpoint 內嵌 VAE 隨權重一起換。其餘（case、seed、prompt、negative、請求尺寸、native、gen size、crop、steps、CFG、scheduler、dtype 路徑）一致。→ 本次是 **model_preset_level 比較（「模型＋其建議設定」整包 vs base 現行用法）**，**不得宣稱為嚴格單一變數公平比較**。
+- 修正（預設行為不變、image fingerprint 不變）：evidence `fair_comparison` 更名 `baseline_condition`；新增 `comparison_conditions`（16 項會影響輸出的條件）；base 也明確記錄 `clip_skip_a1111=1`；新增唯讀 `style-compare <stem_a> <stem_b>`（相容舊 JSON；verdict＝single_variable／model_preset_level／not_comparable，後者 exit 4）。
+- 待客戶裁示：是否接受 model_preset_level 作為「專用 checkpoint 改善值得導入」的依據（總管推薦接受），或要求補一張隔離 clip skip 的對照。
