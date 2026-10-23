@@ -340,3 +340,11 @@
 - Result: PROJECT_STATE／HANDOFF／HANDOFF_CHATGPT／HANDOFF_PROJECT_AI 加最終交接 checkpoint；BACKLOG 狀態總覽；過期分支名修正
 - 最後已驗證：見 PROJECT_STATE 最終交接 checkpoint
 - Next: 見 PROJECT_STATE「下一唯一安全接手點」
+
+---
+- Date: 2026-10-23
+- Start SHA: 8f3fd0c
+- Batch: Batch 34 — style-compare 實機 not_comparable 入庫
+- Result: D-044；舊 MeinaMix 近景為 fit 512×288 → 與 Base native 不可比；D-042 誤記更正；D-043 推論撤回；免改程式（現有 CLI 支援 native＋checkpoint＋scheduler）
+- Tests: 未改程式
+- Next: Windows MeinaMix native 重跑 → style-compare → DG-23

@@ -318,7 +318,7 @@
 - 永久規則：PROJECT_RULES §15（使用者偏好與模型實作分離；不得寫死模型／人物／prompt／畫風／參數為唯一預設）。本輪不設計 UI。
 
 ## D-042 2026-10-23 人物近景主觀 OK＋「事後可調整風格」正式需求
-- 真機：MeinaMix × `girl_portrait_closeup`（native、seed 1234、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2）。客戶看圖：「這樣算 OK」→ **single-user subjective**：正面近景、臉部、眼睛、五官、頭髮、整體日系動畫呈現＝目前品質可接受。
+- 真機：MeinaMix × `girl_portrait_closeup`（**實為 fit 512×288，D-044 更正**；原記 native 有誤；seed 1234、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2）。客戶看圖：「這樣算 OK」→ **single-user subjective**：正面近景、臉部、眼睛、五官、頭髮、整體日系動畫呈現＝目前品質可接受。
 - 限定：只代表「目前品質 OK」；**不鎖定 MeinaMix、不鎖定此人物畫風、不是 commercial clearance**；MeinaMix 仍 `commercial_cleared=false`／internal quality validation only。
 - 正式產品需求（客戶明確）：「事後可以自己調整風格，不要現在寫死」→ PROJECT_RULES §15 擴充（不另立重複規則）：生成前選偏好、生成後改偏好再生成；偏好為結構化可修改設定；選項式＋自然語言兩種表達收斂到同一份結構；換模型不需重建偏好；模型特有參數屬模型 preset。
 - 架構入口：ARCHITECTURE §13（現有能力對照＋缺口）；BACKLOG「Preference Layer」項。本輪不做 UI、不下載、不付費。
@@ -330,3 +330,10 @@
 - 但實際比較**另有一項條件不同**（非推測，程式路徑確定）：MeinaMix 走型錄 preset 的 A1111 clip skip 2（D-040 自編 embeds），base 為 1（不跳層）；checkpoint 內嵌 VAE 隨權重一起換。其餘（case、seed、prompt、negative、請求尺寸、native、gen size、crop、steps、CFG、scheduler、dtype 路徑）一致。→ 本次是 **model_preset_level 比較（「模型＋其建議設定」整包 vs base 現行用法）**，**不得宣稱為嚴格單一變數公平比較**。
 - 修正（預設行為不變、image fingerprint 不變）：evidence `fair_comparison` 更名 `baseline_condition`；新增 `comparison_conditions`（16 項會影響輸出的條件）；base 也明確記錄 `clip_skip_a1111=1`；新增唯讀 `style-compare <stem_a> <stem_b>`（相容舊 JSON；verdict＝single_variable／model_preset_level／not_comparable，後者 exit 4）。
 - 待客戶裁示：是否接受 model_preset_level 作為「專用 checkpoint 改善值得導入」的依據（總管推薦接受），或要求補一張隔離 clip skip 的對照。
+
+## D-044 2026-10-23 style-compare 實機：舊 Base vs MeinaMix 近景＝not_comparable
+- 客戶 Windows 實跑 `style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_ckpt-meinamix_v12` → **verdict=not_comparable**。
+- 差異：gen_policy native vs **fit**；gen_size 768×512 vs **512×288**；crop_box [0,40,768,472] vs null；model sd15-base vs meinamix_v12；clip_skip_a1111 1 vs 2。相同：case、seed、style、base_prompt、prompt、negative、request_size、steps、guidance、scheduler、final_dtype。
+- 根因：MeinaMix 近景那次未帶 `--gen-policy native`（D-042 誤記為 native，已更正）；D-043「model_preset_level」判定係依程式推論、未經實機 JSON 驗證 → 撤回。
+- 處置：舊人工評語（base「眼睛很怪異」、MeinaMix「比較像日本漫畫的角色」「這樣算 OK」）僅保留為 **single-user subjective observation**，不得作為受控比較結論。DG-23 暫停；先重跑 MeinaMix native（現有 CLI 已支援，免改程式），再 style-compare。
+- 不變：MeinaMix 未正式採用、未鎖畫風、commercial_cleared=false；CyberRealistic 暫停（不下載、不驗證）直到此比較完成。

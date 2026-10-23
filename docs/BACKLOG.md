@@ -3,8 +3,9 @@
 ## 封存總覽（2026-10-23；狀態標記：DONE／NEXT／BLOCKED／RESEARCH／NEEDS HUMAN DECISION）
 | 項目 | 狀態 |
 |---|---|
-| Base SD1.5 vs MeinaMix 人物近景對照入庫（D-043） | DONE |
-| DG-23：model_preset_level 比較是否接受；Windows `style-compare` 實機 JSON 確認 | NEEDS HUMAN DECISION／NEXT |
+| Base SD1.5 native 人物近景入庫（D-043） | DONE |
+| MeinaMix native 重跑（girl_portrait_closeup）＋style-compare（D-044；舊比較 not_comparable） | NEXT（Windows 真機） |
+| DG-23：比較為 model_preset_level 後是否接受 | NEEDS HUMAN DECISION（重跑後） |
 | CyberRealistic 下載＋真人品質驗證（含 base 對照） | BLOCKED（等客戶指示） |
 | CyberRealistic upstream lineage 釐清 | RESEARCH |
 | cinematic 驗證（共用 realistic 模型） | BLOCKED（CyberRealistic 之後） |
@@ -44,7 +45,7 @@
 - [x] **DG-20 原始證據（D-038）**：`docs/evidence/dg20/`。
 - [ ] **DG-22 動畫商用路線**：SD 1.5 級無「品質＋血統乾淨」候選 → 選項：內部用 MeinaMix、商用延後｜評估 WD 1.4（pickle、品質未證實）｜自訓動畫 LoRA（授權資料）｜換算力走 SDXL 級乾淨模型。🚦
 - [ ] ~~DG-20 證據補完（D-037）~~（已由 D-038 完成）：需客戶開放 `huggingface.co`、`civitai.com`（只讀）→ 取 HF YAML／README／commit SHA／sha256、Civitai Addendum／權限開關／版本 hash；MeinaMix 血統、ACertainModel（乾淨軌）、CyberRealistic 授權不一致。🚦
-- [ ] **E2-5（D-039）**：MeinaMix → 驗證 → 真機 ✅ → base 同 scheduler 人物近景對照 ✅（D-043：model_preset_level，DG-23 待裁示；`style-compare` 實機確認待做）→ CyberRealistic（等客戶下一步） → 真機；結果填 PHASE2_EVIDENCE E2-5 → 提 DG-21＋專用 checkpoint 導入裁示。🖥️📦
+- [ ] **E2-5（D-039）**：MeinaMix → 驗證 → 真機 ✅ → base native 近景 ✅；style-compare 實機＝not_comparable（舊 MeinaMix 為 fit，D-044）→ MeinaMix native 重跑待做→ CyberRealistic（等客戶下一步） → 真機；結果填 PHASE2_EVIDENCE E2-5 → 提 DG-21＋專用 checkpoint 導入裁示。🖥️📦
 - [ ] **Preference Layer（D-042，PROJECT_RULES §15）**：生成前選＋生成後改（風格／人物／色彩／構圖／鏡頭）→ 只重生受影響景；結構化可修改設定（自訂 Style Profile、CompositionPrefs、GenerationSettings、偏好快照）；選項式＋自然語言（需 DG-10）；換模型不重建偏好。入口 ARCHITECTURE §13。非 UI 部分可自主；UI 併 DG-19。
 - [ ] **DG-22 (c) 研究**：base SD1.5 Anime LoRA 自訓可行性（資料授權來源、GTX 1650 訓練可行性／雲端替代、流程、時間）；**不下載資料、不訓練**。🚦
 - [x] DG-20 下載裁示（D-039）。後續（導入時）：授權原文核對（需開放 huggingface.co／civitai.com 或 Windows 端核對）→ 下載器＋provenance → ModelRouter＋preset（license_status／commercial_cleared）→ 真機 anime／realistic／cinematic 驗收。🚦📦🖥️
