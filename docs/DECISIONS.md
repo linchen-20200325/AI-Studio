@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-037 | DG-20 第一輪裁示：**不核准下載**；先補授權／來源／血統證據；MeinaMix 第一候選但 NAI lineage 未排除不得 commercial_cleared；CyberRealistic 暫列第一；cinematic 共用寫實；DG-21 延後與專用 checkpoint 一起裁示 | 有效 | 可逆 |
 | D-036 | native A/B：picture_book scene／style PASS（H1 證實）；anime＋girl_city_night scene PASS／style FAIL；**停止以 Base SD1.5 調 Anime**；啟動 DG-20 現成專用模型研究（只研究、不下載） | 有效 | 可逆 |
 | D-035 | **E2-4 暫停於 RCA**：`technical_valid`≠scene／style 通過（分層驗收）；主要嫌疑＝生成解析度 512×288（pipeline）；診斷參數 opt-in、預設不變；DG-20 延後到真機 A/B 之後 | 有效 | 可逆 |
 | D-034 | **產品視覺方向**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等。picture_book 技術 PASS／主觀 FAIL，不重跑不修正；E2-4 目的改為判斷 SD1.5 是否足以支撐 P1 | 有效 | 可逆 |
@@ -270,3 +271,11 @@
 - 裁示：**停止繼續用 Base SD1.5 以 prompt 調整 Anime（及 P1 真人）Style Profile**。DG-20 改為「現成、成熟、可直接接入 pipeline 的專用模型」研究（P1-A 日系動畫、P1-B AI 真人／寫實、P1-C 電影感，可由真人 checkpoint＋prompt 達成者不另加模型）；研究需含授權／商用逐項核對，未核對者標 `LICENSE_UNVERIFIED`；架構評估 Style/Content intent → Model Router → 各 checkpoint → 既有 ImageProvider。
 - 本 Batch 禁止：下載模型、安裝套件、改預設模型、LoRA、IP-Adapter、Lip-sync、UI、PAID、刪除 SD1.5。
 - DG-21（native 是否成為產品預設；既有 image fingerprint 失效重生）**仍待裁示**，不因本次結果自動切換。
+
+## D-037 2026-10-23 DG-20 第一輪裁示：證據先於下載
+- 不核准任何模型下載。先完成授權／來源／血統證據補完。
+- Anime：MeinaMix 維持第一候選；需確認原作者／正式來源、授權原文、Civitai 模型／輸出／商用／再散布限制、自身與 merge components 的 NAI 洩漏血統；**NAI lineage 無法合理排除 → 不得 `commercial_cleared=true`**；可提出來源更乾淨的替代候選。
+- Realistic：CyberRealistic 暫列第一；須保存原始授權證據、版本、revision、下載檔、attribution 要求（HF license tag 與卡片 RAIL++-M 描述不一致已確認）。
+- Cinematic：共用 Realistic checkpoint＋cinematic style／後製，不加第三套模型。
+- DG-21：native 已證明改善，但**不直接改全產品預設**；待專用 checkpoint 真機測試後與最終生成 policy 一起裁示。
+- 結果（Batch 26）：公開可達來源無法取得原文／revision／sha256 → 需開放 `huggingface.co`、`civitai.com`（只讀）；新增乾淨軌候選 ACertainModel。詳 `DG20_IMAGE_MODEL_RESEARCH.md` §8。

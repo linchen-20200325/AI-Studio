@@ -261,3 +261,13 @@
 - Tests: 138 passed、1 skipped（僅文件）
 - Decision: DG-20 待裁示
 - Next: 客戶裁示 DG-20；研究完成可降回 Medium／Low（DOWNSHIFT RECOMMENDED）
+
+---
+- Date: 2026-10-23
+- Start SHA: 62aae00
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 26 — DG-20 授權／來源／血統證據補完（不下載）
+- Result: D-037；可達性實測：huggingface.co、civitai.com、各 archive 皆不可達，僅 Web 搜尋摘錄 → 無法取得授權全文／revision／sha256／Civitai 開關；CyberRealistic YAML（openrail-m）vs 內文（RAIL++-M）不一致確認；MeinaMix merge 無官方 recipe、NAI lineage 無法排除 → commercial_cleared=false；新增乾淨軌 ACertainModel；Mitsua 評估後排除（品質）
+- Tests: 138 passed、1 skipped（僅文件）
+- Decision: D-037
+- Next: 客戶開放 huggingface.co、civitai.com（只讀）後補證據

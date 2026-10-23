@@ -92,3 +92,30 @@ DiffusersImageProvider（同一個 provider、同一套 RuntimePlan／fp32 階�
 - Civitai 授權開關說明：<https://education.civitai.com/guide-to-licensing-options-on-civitai/>
 - CreativeML OpenRAIL-M 原文：<https://huggingface.co/spaces/CompVis/stable-diffusion-license/raw/main/index.html>
 - DreamShaper 8（未入選；授權標籤互相矛盾）：<https://huggingface.co/Lykon/dreamshaper-8>
+
+## 8. 證據補完（Batch 26，客戶裁示：不下載、先補授權／來源／血統）
+### 8.1 可達性實測（本容器）
+| 網域 | 結果 | 用途 |
+|---|---|---|
+| `huggingface.co` | ✗ DNS／proxy 403 | model card 原文、YAML license、revision（commit SHA）、檔案清單與 sha256（HF API `/api/models/<id>?blobs=true`） |
+| `civitai.com` | ✗ | 授權頁（Addendum 全文）、權限開關、版本 id、檔案 hash（Civitai API `/api/v1/models/<id>`） |
+| `civarchive.com`、`web.archive.org`、`archive.ph`、`hf-mirror.com`、`note.com` | ✗ | 備援快照 |
+| `github.com` | ✓ | 但 GitHub 存取限本專案 repo，不用於讀他人 repo |
+| Web 搜尋 | ✓ | 只能取得原頁摘錄，**無法取得 revision／sha256／授權全文** |
+
+### 8.2 證據可信度
+| 候選 | 作者／正式來源 | 授權證據 | Civitai 權限開關 | 血統 | 可信度 | commercial_cleared |
+|---|---|---|---|---|---|---|
+| MeinaMix | Meina；Civitai `7240`（V12 Final）、HF `Meina/*`（摘錄一致） | HF 標 `creativeml-openrail-m`；Civitai 標「CreativeML Open RAIL-M **Addendum**」（全文未取得） | **未取得**（Civitai 官方說法：開關是「作者的請求」，預設全允許，可逐項關閉） | merge（MeinaPastel、PastelMix、Facebomb、YOZORA 等）；無官方 recipe；同生態大量 merge 混用 Anything／AOM（NAI 血統爭議族群） | **低** | **false**（NAI lineage 無法合理排除） |
+| ACertainModel（新增候選） | JosephusCheung；HF `JosephusCheung/ACertainModel` | HF 標 `creativeml-openrail-m`；卡片摘錄**明文允許商用／作為服務／再散布**（需傳遞使用限制） | 不適用（HF 發布） | 作者設計為**非 NAI 的 fine-tune**（自 SD 初始化，非 merge）；未找到第三方檢測 | 中（來源較乾淨；但僅摘錄、無 revision；品質較舊） | 暫 false（原文核對前） |
+| Waifu Diffusion 1.4 | hakurei；HF `hakurei/waifu-diffusion-v1-4` | 卡片摘錄：OpenRAIL-M，明文允許商用／服務／再散布 | 不適用 | fine-tune（SD 2.1-base）；致謝 NovelAI（意義未確認） | 中 | 暫 false |
+| Mitsua Diffusion（評估後排除） | Mitsua／ELAN MITSUA | 資料最乾淨（CC0／授權資料、U-Net 從零訓練）；但卡片自述畫質很低、無動畫資料；「Mitsua Likes」授權為非商用（例外除外） | — | 最乾淨 | — | 不適用（品質不符 P1） |
+| CyberRealistic | Cyberdelia；HF `cyberdelia/CyberRealistic`、Civitai | **確認不一致**：README YAML＝`creativeml-openrail-m`，同頁內文＝「CreativeML Open RAIL++-M」；同作者其他 repo 另見 `cc0-1.0` 標籤；商用：第三方轉檔者稱 Civitai 原頁允許商用與衍生散布，另一彙整站稱非商用（互相矛盾） | 未取得 | 寫實 fine-tune／merge，未見 NAI 相關（NAI 為動畫模型，寫實模型血統風險較低但未排除） | **低～中** | **false** |
+| Realistic Vision V6.0 B1 | SG161222；HF、Civitai `4201` | HF 標 `creativeml-openrail-m`；Civitai「Open RAIL-M Addendum」全文未取得 | 未取得 | 同上 | 低～中 | false |
+
+attribution：OpenRAIL-M 本身**無強制署名條款**（只要求傳遞授權與使用限制）；CyberRealistic 卡片摘錄提到「需署名」，條文未取得 → 以「需署名」保守處理。
+
+### 8.3 結論
+- 依公開可達來源，**無任一候選能取得 revision、檔案 sha256、授權全文與 Civitai 權限開關** → 證據不完整，維持不下載。
+- 需客戶開放網域（環境設定 → Network access → Allowed domains）：`huggingface.co`、`civitai.com`（只讀 API／頁面，不下載權重）。開放後可在一個 Batch 內取得並存檔：HF YAML／README 原文、commit SHA、檔案大小與 sha256；Civitai Addendum 全文、權限開關、版本 id、檔案 hash。
+- Anime 建議改為雙軌：**品質軌 MeinaMix**（內部驗證，`commercial_cleared=false`）＋**乾淨軌 ACertainModel**（商用候選，待原文與真機品質驗證）。
