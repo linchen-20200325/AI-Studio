@@ -212,8 +212,13 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 
 客戶不是工程師。Windows 操作**一次只能給一個 action／command**，必須等客戶回傳結果後才給下一個；不得一次給一串指令。回報精簡：Decision Gate 才需要客戶處理；安全、免費、可逆、規格明確的工作靜默自主完成，整批完成後一次回報；每個 Batch 標示 Model／Mode／Effort；全程繁體中文（台灣）。對話切換前必須完成 §11.4 與 §12.1（GitHub 化）。
 
-## 15. User Preference ≠ Model Implementation（D-041，永久）
+## 15. User Preference ≠ Model Implementation（D-041、D-042，永久）
 - 任何模型（例：MeinaMix、CyberRealistic、base SD 1.5）、人物設定、Prompt、畫風、生成參數**不得寫死成產品唯一預設**。模型只是可替換的底層引擎。
 - 使用者偏好層（Style Profile、Character Profile、構圖／鏡頭、Generation Settings、模型偏好）與模型實作層分離；偏好以資料表達，經 Provider Agnostic 介面交給引擎。
 - 驗證用的測試案例（`see/core/style_tests.py`）必須是模型／風格中性的構圖描述，可套用於任何 Style Profile 與 checkpoint。
 - 授權狀態（`commercial_cleared` 等）隨模型走，不因偏好設定而改變。
+- **事後可調（D-042，客戶明確要求）**：生成前可選偏好；**生成後可修改風格／人物／色彩／構圖／鏡頭等偏好並重新生成**（只重做受影響的景與下游，沿用 per-scene fingerprint）。
+- Style Profile、Character Profile、Generation Settings 是**可修改的結構化設定**（資料、可序列化、可版本化），不是寫在程式裡的常數。
+- 偏好表達方向：同時支援「選項式調整」與「自然語言描述偏好」（自然語言 → 經 LLM／規則轉成同一份結構化設定，而非另一套路徑）。
+- **更換底層模型時，使用者偏好原則上不需重建**：偏好描述「要什麼」，模型路由／provider 決定「怎麼產生」；模型特有參數（clip skip、scheduler 等）屬於模型 preset，不寫進使用者偏好。
+- 任何測試參數（seed、測試 prompt、測試人物外觀、MeinaMix 等）不得成為產品唯一預設；真機「品質 OK」只代表目前可接受，不等於鎖定模型或畫風。

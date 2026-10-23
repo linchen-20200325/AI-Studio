@@ -311,3 +311,13 @@
 - Tests: 155 passed、1 skipped
 - Decision: D-041
 - Next: Windows `git pull` → MeinaMix × girl_portrait_closeup
+
+---
+- Date: 2026-10-23
+- Start SHA: 29b7d26
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 31 — 人物近景主觀 OK 入庫＋「事後可調整風格」正式需求
+- Result: D-042；PHASE2_EVIDENCE E2-5；PROJECT_RULES §15 擴充（生成後改偏好再生成、結構化設定、選項式＋自然語言、換模型不重建偏好）；ARCHITECTURE §13 能力對照與缺口；BACKLOG Preference Layer
+- Tests: 155 passed、1 skipped（僅文件）
+- Decision: D-042
+- Next: Windows base SD1.5 對照（girl_portrait_closeup）

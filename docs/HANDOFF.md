@@ -18,7 +18,7 @@
 ## 3. Current handoff（細節一律看 PROJECT_STATE／BACKLOG，這裡不複製）
 - Phase：見 `PROJECT_STATE.md`「Current Phase」。
 - **產品視覺方向（必讀，D-034）**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本。**不要把兒童繪本當主要方向**（程式 `default` 繪本水彩只是歷史相容預設）。見 README「產品視覺方向」。
-- **使用者偏好 ≠ 模型實作（必讀，PROJECT_RULES §15／D-041）**：不得把任何模型／人物／prompt／畫風／參數寫死為唯一預設。
+- **使用者偏好 ≠ 模型實作（必讀，PROJECT_RULES §15／D-041／D-042）**：不得把任何模型／人物／prompt／畫風／參數寫死為唯一預設；生成後可改偏好再生成；入口 ARCHITECTURE §13。
 - **驗收分層（必讀，D-035）**：`technical_valid`（自動）≠ `scene_validated` ≠ `style_validated`（人工 `style-review`）。不得把技術有效寫成場景／風格通過。影像品質根因見 [`AI_IMAGE_QUALITY_RCA.md`](AI_IMAGE_QUALITY_RCA.md)；P1 專用模型研究見 [`DG20_IMAGE_MODEL_RESEARCH.md`](DG20_IMAGE_MODEL_RESEARCH.md)（原始證據 `docs/evidence/dg20/`；全部 commercial_cleared=false；D-039 核准 MeinaMix／CyberRealistic 下載**僅限內部品質驗證**）。
 - Decision Gate：見 `PROJECT_STATE.md`「Current Decision Gate」。
 - Next action：見 `PROJECT_STATE.md`「Current next action」。

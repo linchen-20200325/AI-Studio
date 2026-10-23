@@ -9,7 +9,7 @@
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
 | Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
-| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-041）**：MeinaMix 修復後真機成功（動畫感 PASS、臉部因背面遠景無法判定）；新增人物近景案例 `girl_portrait_closeup` 待真機；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-042）**：MeinaMix 人物近景主觀 OK（不鎖定、非商用許可）；正式需求「事後可調整風格」入 PROJECT_RULES §15；下一步 base SD1.5 同條件對照；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
@@ -58,7 +58,7 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Windows（一次一條）：① `git pull` ② `style-test --style anime --case girl_portrait_closeup --gen-policy native --checkpoint meinamix_v12` ③ base 對照（同 case、`--scheduler dpmpp_2m_karras`、無 checkpoint）→ MeinaMix 臉部驗收後才 CyberRealistic。完成後提 DG-21＋導入裁示。研究 (c) Anime LoRA（不下載、不訓練）。永久：PROJECT_RULES §15。
+Windows（一次一條）：① base SD1.5 對照 `style-test --style anime --case girl_portrait_closeup --gen-policy native --scheduler dpmpp_2m_karras`（回答 E：專用 checkpoint 改善是否值得）② CyberRealistic `checkpoint-download cyberrealistic_final --check` → `--yes` → realistic × girl_portrait_closeup（含 base 對照）→ 提 DG-21＋導入裁示。並行可自主：Preference Layer 非 UI 部分（ARCHITECTURE §13）、研究 (c) Anime LoRA。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

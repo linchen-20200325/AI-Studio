@@ -198,3 +198,24 @@ workspace/projects/<project_id>/
 | Preview → 人工微調 → Final | `render(PREVIEW)` → `update_scene`／`regen` → `approve` → `render(FINAL)`（需角色確認） | Real |
 
 相容性原則：每個新層都在「未設定」時與舊版逐位元相同（style=default、無 appearance、lipsync=False／null、audio=null）。
+
+## 13. 使用者偏好層與「生成後調整→再生成」（D-042；入口，未完整實作）
+```
+使用者偏好（結構化、可修改、可版本化）            模型／引擎（可替換）
+  StyleProfile（風格、色彩、光影）                 ModelRouter（未來；DG-20 後）
+  CharacterProfile（外觀、服裝、聲音）   ──資料──▶   └ preset：checkpoint、scheduler、clip skip、VAE、授權
+  CompositionPrefs（構圖、鏡頭、景別）               ImageProvider／TTSProvider／…（Provider Agnostic）
+  GenerationSettings（解析度政策、品質／速度）
+        ▲
+  選項式調整 ／ 自然語言描述 →（LLM／規則）→ 同一份結構
+```
+| 能力 | 現況 | 缺口 |
+|---|---|---|
+| 生成前選風格 | `set_style`（`Project.style_id`，6 內建 Style Profile） | 使用者自訂／微調 Style Profile（目前只能選內建） |
+| 生成後改風格再生成 | `set_style` 使全景回 DRAFT；image fingerprint 含 style terms → 下次 build 只重做 image 與下游 | 只改部分景的風格（per-scene override） |
+| 人物外觀 | `set_character_appearance`（CharacterAppearance 錨點＋結構化 refs） | 外觀變更 → 自動標記「有此角色的景」需重生（目前靠 fingerprint 自然失效，需驗證並加報表） |
+| 單景調整 | `update_scene`／`regenerate_scene` | 構圖／鏡頭欄位（目前混在 visual_description／image_prompt_en） |
+| 色彩／構圖／鏡頭 | 無結構欄位 | `CompositionPrefs`、色彩偏好（Style Profile 子欄位或獨立） |
+| 自然語言偏好 | 無 | 需真 LLM（DG-10）把描述轉成結構化設定；轉換結果需人工確認 |
+| 換模型不重建偏好 | 偏好層與 provider 已分離（style terms 由 `apply_style` 附加；checkpoint 參數在 `CheckpointSpec`） | ModelRouter（style.family → preset）未實作 |
+| 偏好版本／比較 | 無 | 偏好快照（每次再生成記錄使用的偏好版本，供 A/B 與回復） |

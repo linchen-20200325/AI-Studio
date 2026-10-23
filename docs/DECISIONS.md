@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-042 | MeinaMix `girl_portrait_closeup` 主觀 OK（不鎖模型／畫風、非商用許可）；正式需求「事後可調整風格」→ 擴充 PROJECT_RULES §15；建立「生成後調整偏好→再生成」架構入口（ARCHITECTURE §13）與 backlog | 有效 | 可逆 |
 | D-041 | MeinaMix 真機修復後成功（D-040 驗證）；新增模型／風格中性的人物近景案例 `girl_portrait_closeup`；永久規則 PROJECT_RULES §15（使用者偏好 ≠ 模型實作） | 有效 | 可逆 |
 | D-040 | E2-5 真機失敗 RCA：diffusers 0.41 `clip_skip=` 存取 `text_encoder.text_model.final_layer_norm`，transformers 5.x 已攤平 CLIPTextModel → AttributeError；修法＝自行編碼 prompt（A1111 clip skip N＝hidden_states[-N]＋final LN，執行期驗證順序）傳 prompt_embeds；不取消 clip skip、不改條件 | 有效 | 可逆 |
 | D-039 | DG-20 裁示：核准下載 MeinaMix V12 Final＋CyberRealistic Final FP16，**僅限內部品質驗證**、commercial_cleared=false；DG-22＝(a) 動畫商用延後＋僅研究 (c) 自訓 LoRA（不得下載資料／訓練）；下載機制 `checkpoint-download`（只 safetensors、固定 revision、bytes＋sha256 前後核對、provenance） | 有效 | 可逆 |
@@ -315,3 +316,9 @@
 - 新增案例 `girl_portrait_closeup`：正面、半身／胸像、臉部清楚佔足夠比例、眼睛／五官／頭髮、手部（若入鏡）、模糊背景不搶人物。因 Mock LLM 關鍵詞表無法表達構圖／鏡頭，案例自帶**模型／風格中性**的英文 base prompt（`base_prompt_en`，evidence 記 `prompt_source=case_base_prompt_en`）；風格詞仍由 Style Profile 附加。附人工審圖清單 `review_checklist`。
 - 公平條件固定：seed 1234、native（768×512→16:9）、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2（A1111，D-040 編碼）、同一 MeinaMix；只改測試場景／構圖。不換模型、不重下載、不用 PAID、不開始 CyberRealistic。
 - 永久規則：PROJECT_RULES §15（使用者偏好與模型實作分離；不得寫死模型／人物／prompt／畫風／參數為唯一預設）。本輪不設計 UI。
+
+## D-042 2026-10-23 人物近景主觀 OK＋「事後可調整風格」正式需求
+- 真機：MeinaMix × `girl_portrait_closeup`（native、seed 1234、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2）。客戶看圖：「這樣算 OK」→ **single-user subjective**：正面近景、臉部、眼睛、五官、頭髮、整體日系動畫呈現＝目前品質可接受。
+- 限定：只代表「目前品質 OK」；**不鎖定 MeinaMix、不鎖定此人物畫風、不是 commercial clearance**；MeinaMix 仍 `commercial_cleared=false`／internal quality validation only。
+- 正式產品需求（客戶明確）：「事後可以自己調整風格，不要現在寫死」→ PROJECT_RULES §15 擴充（不另立重複規則）：生成前選偏好、生成後改偏好再生成；偏好為結構化可修改設定；選項式＋自然語言兩種表達收斂到同一份結構；換模型不需重建偏好；模型特有參數屬模型 preset。
+- 架構入口：ARCHITECTURE §13（現有能力對照＋缺口）；BACKLOG「Preference Layer」項。本輪不做 UI、不下載、不付費。
