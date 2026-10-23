@@ -8,7 +8,7 @@
 2. [`docs/PROJECT_STATE.md`](PROJECT_STATE.md) — 現在仍有效的狀態、Decision Gate、下一步、已驗證環境
 3. [`docs/BACKLOG.md`](BACKLOG.md) — 所有未完成工作（含能力盤點、Phase 2 建議、Windows／模型／裁示標示）
 4. [`docs/DECISIONS.md`](DECISIONS.md) — 已裁示事項（D-001～；superseded 有標示）
-5. 證據：[`PHASE0_EVIDENCE.md`](PHASE0_EVIDENCE.md)、[`PHASE1_EVIDENCE.md`](PHASE1_EVIDENCE.md)
+5. 證據：[`PHASE0_EVIDENCE.md`](PHASE0_EVIDENCE.md)、[`PHASE1_EVIDENCE.md`](PHASE1_EVIDENCE.md)、[`TTS_PROVIDER_PLAN.md`](TTS_PROVIDER_PLAN.md)（DG-9 研究）
 6. 技術文件：[`ARCHITECTURE.md`](ARCHITECTURE.md)、[`AI_IMAGE_SD15_WINDOWS.md`](AI_IMAGE_SD15_WINDOWS.md)、[`AI_IMAGE_PROVIDER_PLAN.md`](AI_IMAGE_PROVIDER_PLAN.md)
 7. 歷史：[`SESSION_LOG.md`](SESSION_LOG.md)（不必掃完才能知道現況）
 

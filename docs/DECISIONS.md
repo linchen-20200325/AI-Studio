@@ -18,6 +18,7 @@
 | D-023 | 降級 fallback 快取自動重試；Fallback info 穩定 | 有效 | 可逆 |
 | D-024 | Phase 1 COMPLETE；Phase 2 待裁示 | 有效 | — |
 | D-025 | GitHub＝長期記憶 SSOT；canonical 文件；Model/Effort/Token Gate；Windows 互動規則 | 有效 | 治理，可修訂（需裁示） |
+| D-026 | DG-9 TTS 候選研究結論（Project AI 建議 Kokoro；待客戶裁示） | 研究紀錄，裁示未下 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -179,3 +180,8 @@
 - 客戶協作偏好（會影響專案協作者）：繁體中文；極簡回報；Decision Gate 才打擾客戶；Windows 一次一個指令；安全工作靜默自主巡航、整批完成再回報；每批標示 Model／Mode／Effort；Minimum Sufficient Effort；對話切換前 GitHub 化；不依賴 AI Memory。
 - 範圍：治理層；可逆（修訂需新裁示並記錄）。不涉及 production 行為。
 - Phase 2：**未開始**。待裁示 DG-9（第一目標＝自然中文 TTS 候選研究；任何模型下載需同意）。
+
+## D-026 2026-10-23 DG-9 研究紀錄：自然中文 TTS 候選（尚未裁示）
+- 比較表與理由：`docs/TTS_PROVIDER_PLAN.md`。排除不可商用權重（IndexTTS、F5-TTS、Fish Speech）；大模型（CosyVoice2、GPT-SoVITS）列為未來 DG。
+- Project AI 建議：Kokoro-82M v1.1-zh（Apache-2.0、CPU、≈330 MB、100 中文語者，可對應 `scene.voice`）。備選 MeloTTS（MIT，≈1.5 GB）、Piper zh_CN-huayan（≈60 MB，權重授權待確認）。
+- 本輪未下載模型、未改 production。客戶裁示後補記 D-027。

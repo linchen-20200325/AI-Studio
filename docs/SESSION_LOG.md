@@ -141,3 +141,13 @@
 - Tests: 89 passed（未動程式）
 - Decision: D-025
 - Next: 使用者裁示 DG-9；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: 6d17dbc
+- End SHA: 6d17dbc（無程式變更；本輪 docs only）
+- Batch: Batch 14 — 新對話接手驗證 + DG-9 TTS 候選研究（不下載）
+- Result: main=HEAD=6d17dbc、CI success、無 PR；新增 `docs/TTS_PROVIDER_PLAN.md`；STATE／BACKLOG／DECISIONS（D-026）同步
+- Tests: 88 passed、1 skipped（本容器，無 espeak）
+- Decision: D-026（研究紀錄；DG-9 待裁示）
+- Next: 客戶裁示 DG-9 → Batch 15 kokoro provider；可安全換新對話
