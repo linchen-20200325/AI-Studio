@@ -33,5 +33,26 @@ Windows · GTX 1650 4 GB（**TTS 走 CPU**，`SEE_TTS_DEVICE=cpu`）· torch 2.1
 
 結論（事實層）：Kokoro 在此環境**技術可用**；聽感可接受度依 voice 差異大；zf_001 口音為已知使用者體驗限制。
 
-## E2-2 Kokoro 五景 pipeline 整合（待真機）
-命令：`python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voice zm_010`。需回報：每景 `tts_evidence.generated_by=kokoro-tts`、`voice`、`rtf`、`duration`；preview 有聲且字幕對齊；`image_evidence` 仍為 `diffusers-sd15`（Phase 1 路徑未受影響）；工作管理員 CPU／RAM 峰值；總耗時。
+## E2-2 Kokoro 五景 pipeline 整合（2026-10-23，使用者 Windows 真機）— 完成
+程式版本：`4bcae5c`（Batch 16）。命令：
+```
+python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voice zm_010
+```
+### 結果（使用者回報）
+- 整體：status=PREVIEW · 5 景 · preview 42.4 s · 1280×720 · has_video=true · has_audio=true · 成本 NT$0。
+- Image（Phase 1 路徑未受影響）：五景 `generated_by=diffusers-sd15`（GTX 1650）；scene_001 fp16 numeric failure → 自動升 float32，002–005 沿用 float32 plan；五景 is_black=false、is_flat=false、fallback=false。
+- TTS：五景 `provider=generated_by=kokoro-tts`、`model=hexgrad/Kokoro-82M-v1.1-zh`、`voice=zm_010`、`device=cpu`、`degraded=false`、`fallback_from=[]`、`sample_rate=24000`；revision `01e7505bd6a7a2ac4975463114c3a7650a9f7218`、sha256 `b1d8410f…76e2b`（同 E2-1）。
+
+| scene | narration duration (s) | synth (s) | RTF |
+|---|---|---|---|
+| 001 | 6.675 | 5.384 | 0.807（含模型載入） |
+| 002 | 6.250 | 1.922 | 0.307 |
+| 003 | 6.175 | 1.845 | 0.299 |
+| 004 | 6.650 | 2.044 | 0.307 |
+| 005 | 5.350 | 1.621 | 0.303 |
+
+事實結論：Kokoro（CPU）與 SD 1.5（GTX 1650）在同一次 `run` 中共存成功；旁白 duration 正確進入影片流程（has_audio、字幕由實測時長切）；無任何 TTS fallback；LOCAL_FREE、NT$0。穩態 RTF ≈0.30（CPU），首景含載入 ≈0.81。
+聽感：沿用 E2-1 使用者主觀回報（zm_010 最偏好；zf_001 口音明顯），**非客觀排名**。
+
+## 狀態
+E2-1 ✅　E2-2 ✅　→ 等待 DG-13（最終採用與否由客戶裁示；D-027 仍為 Candidate Validation）。

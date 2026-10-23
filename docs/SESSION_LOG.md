@@ -171,3 +171,13 @@
 - Tests: 100 passed、1 skipped
 - Decision: D-028；DG-13 待 E2-2
 - Next: Windows E2-2：`run examples\story_short.txt --project-id kokorotest --voice zm_010`
+
+---
+- Date: 2026-10-23
+- Start SHA: 4bcae5c
+- End SHA: 4bcae5c（無程式變更；docs only）
+- Batch: Batch 17 — E2-2 真機證據入庫 ＋ DG-13 收斂
+- Result: PHASE2_EVIDENCE E2-2（五景 kokoro-tts zm_010 CPU、SD 1.5 共存、RTF 0.30、NT$0）；STATE／BACKLOG／Windows guide 更新；停在 DG-13（A/B/C/D）
+- Tests: 100 passed、1 skipped（未動程式）
+- Decision: 無新裁示；等待 DG-13
+- Next: 客戶裁示 DG-13 → D-029；可安全換新對話

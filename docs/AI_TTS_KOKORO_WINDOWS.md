@@ -29,5 +29,5 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest
 
 ## 5. 真機結果
 - 2026-10-23 E2-1（安裝／下載／`tts-check` 四 voice）：成功；細節與聽感見 `PHASE2_EVIDENCE.md`。
-- 下一步 E2-2：`python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voice zm_010`（`--voice` = scene.voice=default 時的 voice；等同 `SEE_TTS_DEFAULT_VOICE`）。
+- 2026-10-23 E2-2（五景 `run … --voice zm_010`）：成功，Kokoro CPU 與 SD 1.5 GTX 1650 共存、無 fallback、穩態 RTF ≈0.30；見 `PHASE2_EVIDENCE.md`。目前無待做 Windows 步驟，等待 DG-13。
 - `python -m see.app.cli tts-voices` 列出本機 voice 的 id／可讀名稱／性別／已知限制。
