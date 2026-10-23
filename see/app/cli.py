@@ -117,7 +117,9 @@ def cmd_regen(args: argparse.Namespace) -> int:
     _, orch = build()
     project = orch.store.load(args.project_id)
     r = orch.regenerate_scene(project, args.scene_id)
-    print(f"{r.scene_id}: rebuilt={r.rebuilt}")
+    ev = next(e for e in image_evidence(orch, project) if e["scene_id"] == r.scene_id)
+    print(f"{r.scene_id}: rebuilt={r.rebuilt} image: generated_by={ev['generated_by']} final_dtype={ev['final_dtype']} "
+          f"numeric_downgrade={ev['numeric_downgrade']} fallback={ev['fallback']}", file=sys.stderr)
     report = orch.rebuild(project)
     _print_summary(orch, report.project, report.job, report.timeline)
     return 0

@@ -105,8 +105,9 @@ def test_provider_black_output_fails_pipeline_and_leaves_no_artifact(orchestrato
 def test_fallback_rejects_black_candidate_and_records_true_generator(tmp_path: Path):
     black = _BlackProvider()
     prov = FallbackImageProvider([black, PlaceholderImageProvider()])
-    assert prov.info.name == "black-image"  # 生成前 info 只代表第一個可用候選（CLI providers.image.name 不可當生成證據）
+    assert prov.info.name == "black-image"  # info 只代表第一個可用候選（CLI providers.image.name 不可當生成證據）
     res = prov.generate_image(ImageRequest(prompt="山", width=64, height=36), tmp_path / "a.png")
+    assert prov.info.name == "black-image"  # fallback 後 info 仍穩定（fingerprint key 不漂移，D-023）
     assert res.provider == "placeholder-image" and res.meta["generated_by"] == "placeholder-image"
     assert res.meta["fallback"] is True and "black-image: output rejected: black" in res.meta["fallback_from"][0]
     assert prov.last_generated_by == "placeholder-image" and image_defect(tmp_path / "a.png") is None
@@ -279,3 +280,88 @@ def test_numeric_floor_is_carried_to_next_scene(monkeypatch, tmp_path: Path):
     assert r2.meta["plan_origin"].startswith("carried") and r2.meta["numeric_downgrade"] is False
     assert r2.meta["final_dtype"] == "float32" and r2.meta["initial_plan"]["dtype"] == "float32"
     assert r2.meta["fp32_source"] == "upcast fp16 variant at load (no extra download)"
+
+
+# ---------------------------------------------------------------- D-023: fallback (degraded) artifacts are not valid cache; regen semantics
+class _FlakyProvider(ImageProvider):
+    """模擬 diffusers：對 fail_seeds 內的 seed 失敗（→ Fallback 退 placeholder），其餘產生雜訊圖。"""
+
+    def __init__(self, fail_seeds: set[int], available: bool = True) -> None:
+        self.fail_seeds, self.available, self.calls = fail_seeds, available, 0
+
+    @property
+    def info(self) -> ProviderInfo:
+        return ProviderInfo(name="diffusers-fake", kind=ProviderKind.IMAGE, cost_tier=CostTier.LOCAL_FREE, model="fake", version="1")
+
+    def is_available(self) -> bool:
+        return self.available
+
+    def unavailable_reason(self) -> str:
+        return "weights missing"
+
+    def estimate_cost(self, request):
+        return self._estimate(1, "image")
+
+    def generate_image(self, request: ImageRequest, out_path: Path) -> ImageResult:
+        self.calls += 1
+        if request.seed in self.fail_seeds:
+            raise ProviderError("simulated NaN even in fp32")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.effect_noise((request.width, request.height), 64).convert("RGB").save(out_path)
+        return ImageResult(path=str(out_path), width=request.width, height=request.height, provider=self.info.name, model="fake",
+                           meta={"final_dtype": "float32"})
+
+
+def _image_entries(orch, pid):
+    return {s.scene_id: orch.store.load_manifest(pid, s.scene_id).entries["image"] for s in orch.store.load(pid).scenes}
+
+
+@requires_ffmpeg
+def test_fallback_artifact_is_retried_once_preferred_provider_works(orchestrator, providers):
+    """真機情境：scene_001 在 provider 壞掉時退回 placeholder 並被快取；修好後下一次 run 必須重試，其他景繼續 reuse。"""
+    flaky = _FlakyProvider(fail_seeds={0})
+    providers.image = FallbackImageProvider([flaky, PlaceholderImageProvider()])
+    rep = orchestrator.run(TINY_STORY, project_id="dg1")
+    ents = _image_entries(orchestrator, "dg1")
+    first = rep.project.scenes[0].scene_id
+    assert ents[first].provider == "placeholder-image" and ents[first].meta["degraded"] is True and ents[first].meta["fallback"] is True
+    assert all(e.provider == "diffusers-fake" and e.meta["degraded"] is False for sid, e in ents.items() if sid != first)
+    # provider 修好（不改任何 prompt / fingerprint）
+    flaky.fail_seeds = set()
+    calls = flaky.calls
+    rep2 = orchestrator.rebuild(orchestrator.store.load("dg1"))
+    r1 = next(r for r in rep2.scene_reports if r.scene_id == first)
+    assert r1.rebuilt == ["image", "clip"] and "degraded artifact from fallback provider placeholder-image" in r1.reasons["image"]
+    assert r1.image_meta["generated_by"] == "diffusers-fake" and r1.image_meta["degraded"] is False
+    assert all(r.rebuilt == [] for r in rep2.scene_reports if r.scene_id != first)
+    assert flaky.calls == calls + 1
+    # 再跑一次：全部 reuse（不 churn）
+    rep3 = orchestrator.rebuild(orchestrator.store.load("dg1"))
+    assert all(r.rebuilt == [] for r in rep3.scene_reports)
+
+
+@requires_ffmpeg
+def test_placeholder_cache_is_kept_while_preferred_provider_unavailable(orchestrator, providers):
+    """首選 provider 不可用（無權重）時，placeholder 快取是合法的，不得每次 run 都重做。"""
+    providers.image = FallbackImageProvider([_FlakyProvider(set(), available=False), PlaceholderImageProvider()])
+    orchestrator.run(TINY_STORY, project_id="dg2")
+    rep = orchestrator.rebuild(orchestrator.store.load("dg2"))
+    assert all(r.rebuilt == [] for r in rep.scene_reports)
+    assert all(e.meta["degraded"] is False for e in _image_entries(orchestrator, "dg2").values())
+
+
+@requires_ffmpeg
+def test_regen_rebuilds_scene_and_next_run_keeps_it(orchestrator, providers):
+    flaky = _FlakyProvider(set())
+    providers.image = flaky
+    rep = orchestrator.run(TINY_STORY, project_id="rg1")
+    target = rep.project.scenes[1].scene_id
+    before = {s.scene_id: orchestrator.store.load_manifest("rg1", s.scene_id).entries["clip"].fingerprint for s in rep.project.scenes}
+    calls = flaky.calls
+    r = orchestrator.regenerate_scene(orchestrator.store.load("rg1"), target)
+    assert r.rebuilt == ["image", "narration", "subtitle", "clip"] and flaky.calls == calls + 1  # 只重做指定景
+    after = {s.scene_id: orchestrator.store.load_manifest("rg1", s.scene_id).entries["clip"].fingerprint for s in rep.project.scenes}
+    assert after[target] != before[target]  # 雜訊圖內容不同 → clip fingerprint（含圖檔 sha）失效
+    assert all(after[s] == before[s] for s in before if s != target)
+    rep2 = orchestrator.run(TINY_STORY, project_id="rg1")  # 下一次 run 沿用 regen 結果，不再重做
+    assert all(x.rebuilt == [] for x in rep2.scene_reports)

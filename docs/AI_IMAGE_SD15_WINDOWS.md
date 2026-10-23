@@ -38,9 +38,14 @@ python -m see.app.cli run examples\story_short.txt --project-id sd15test
 ## 4c-0. 第三次執行結果（Batch 9 程式，2026-10-23）
 - 黑圖 QA 生效（舊黑圖快取被淘汰）；fp16+VAE fp32 仍 NaN → 升級 fp32 時 `no file named model.safetensors … text_encoder`（只下載了 fp16 檔）→ 退回 placeholder。已修（D-022）：fp32 直接用同一份 fp16 權重 upcast 載入，**不需額外下載**。
 
-## 4c. 第四次執行要看什麼（D-021/D-022 之後）
+## 4c-1. 第四次執行結果（Batch 10 程式，2026-10-23）
+- Scene 002–005：`generated_by=diffusers-sd15`、`final_dtype=float32`、`fallback=false`、圖正常 → **SD 1.5 fp32 upcast 真機成功**。
+- Scene 001：仍是 Batch 9 留下的 placeholder（fallback 產物被當成有效快取；`regen` 後 run 仍 reuse）。已修（D-023）：下一次 `run` 會自動重試 scene_001，不需手動刪任何檔案。`regen <project> <scene>` 語意＝清該景快取並重做全部資產，無需其他參數。
+
+## 4c. 第五次執行要看什麼（D-021/D-022/D-023 之後）
 `providers.image.name` **不是**生成證據；看 `run` 輸出 JSON 的 `image_evidence[]`（每景一筆）：
-- `regenerated: true`、`reason`（`no valid cache` 或 `cached artifact rejected: black ...`）→ 有重新生成。
+- `regenerated: true`、`reason`（`no valid cache`／`cached artifact rejected: black ...`／`cached artifact rejected: degraded artifact from fallback provider placeholder-image ...`）→ 有重新生成；scene_001 預期是第三種。
+- `degraded: false` → 這次不是 fallback 產物。
 - `generated_by`：`diffusers-sd15`＝AI 圖；`placeholder-image` + `fallback: true` + `fallback_from[]`＝diffusers 失敗退回 placeholder（原因在 `fallback_from`）。
 - `final_dtype` / `final_vae_fp32` / `numeric_downgrade` / `oom_downgrade` / `attempts[]`：實際走到哪一級；GTX 1650 預期第一景 `numeric_downgrade=true, final_dtype=float32`，之後各景 `plan_origin=carried…` 直接 fp32。
 - `weights_variant=fp16` + `fp32_source=upcast fp16 variant at load`：證明 fp32 用的是既有 fp16 檔，沒有要求新下載。

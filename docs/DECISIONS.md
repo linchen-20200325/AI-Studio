@@ -134,3 +134,15 @@
 - 實作：`pick_variant()` 依各元件實際存在的 variant 決定（fp16 齊→fp16；僅 fp32 檔→None；不齊→ProviderError 指向 `image-download`）；`load_kwargs()` 純函式，variant 不再綁 dtype；diffusers ≥0.36 用 `dtype=`（以 `_resolve_dtype` 判斷）消除 `torch_dtype` FutureWarning；`vae_fp32` 改為單獨以 fp32 載入 VAE（消除 `.to()` 警告，失敗退回 `.to()`）；同程序內數值失敗後的階梯 `_floor` 延續到下一景（不再每景 fp16→NaN→fp32 重跑）；evidence 新增 `weights_variant`、`fp32_source`、`plan_origin`；`image-download` 對已存在模型印出各元件 variant 與 fp32 策略。
 - 4 GB 可行性：fp32 UNet 3.44 GB 以 `enable_model_cpu_offload` 逐元件上卡，512×512 + attention/VAE slicing 預期可跑；若 OOM 由既有 memory 階梯降到 384。Placeholder 永遠是最後一層，但 **placeholder 不算 SD 1.5 真機成功**（evidence `generated_by` 必須是 `diffusers-sd15`）。
 - 回歸測試：`tests/test_image_integrity.py` +3（fp16-only 權重供 fp32 plan 使用、variant 完整性、階梯延續）；共 86 passed。
+
+## D-023 2026-10-23 fallback 產物被當成有效快取；`regen` 語意（Batch 11）
+- 實機：Scene 002–005 已由 `diffusers-sd15` fp32 生成成功（Batch 10 真機證據）；Scene 001 仍是舊 placeholder，`regen sd15test scene_001` 後下一次 `run` 仍 `reused=['image', …]`，evidence 為舊 fallback 資料。
+- `regen` 現行語意（程式碼驗證）：`regenerate_scene()` 刪除該景 manifest.json（唯一快取真相）→ 立刻重建四種資產 → 重新組裝 preview。本機重現：regen 確實重寫 manifest，下一次 run 合法 reuse regen 的結果；**不需要 asset 參數**，語意正確。使用者看到「無輸出」與舊 evidence 無法在此容器重現；最可能是 regen 在 Batch 10 `git pull` 前執行（產物＝同樣的 fallback placeholder），之後的 run 當然 reuse。
+- **真正的設計缺口（程式 bug）**：fallback 產物（placeholder）以**首選 provider**（diffusers-sd15）的 fingerprint key 寫入 manifest；之後首選 provider 修好／可用時，fingerprint 不變、圖也不黑 → 永遠 reuse，pipeline 永遠不再嘗試真正的生成。這正是 scene_001 卡住的機制，與 regen 是否執行無關。
+- 另一個相關 bug：`FallbackImageProvider.generate_image` 成功後把 `_active` 改成實際生成者，使 `info.name` / `fingerprint_key` 在同一次 run 內漂移（一景 fallback 後其餘景的 key 變成 placeholder 的）。
+- 修正：
+  - Orchestrator 快取重用多一條規則：`cached.provider != 首選 provider`（Fallback 目前第一個可用候選）→ 視為「降級產物」，刪除並重試真正生成；首選不可用時（無權重）placeholder 快取仍合法，不 churn。manifest meta 新增 `degraded`。
+  - Fallback `info` 穩定指向首選可用候選，不再隨生成結果漂移；實際生成者一律看 `meta.generated_by` / `last_generated_by`。
+  - `regen` CLI 於 stderr 印出該景 image evidence（generated_by / final_dtype / numeric_downgrade / fallback）。
+- 不需手動刪 workspace／manifest／PNG：下一次 `run` 會自動重試 scene_001。
+- 回歸測試 +3：fallback 產物在首選修好後被重試（只重做該景 image+clip，其他景 reuse，再跑不 churn）；首選不可用時 placeholder 快取保留；regen 只重做指定景、clip fingerprint 隨圖內容失效、下一次 run 沿用。共 89 passed。

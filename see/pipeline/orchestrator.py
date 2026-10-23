@@ -129,11 +129,16 @@ class Orchestrator:
         img_path = sdir / "image.png"
         cached = manifest.valid("image", img_fp)
         cached_defect = image_defect(Path(cached.path)) if cached else None
+        preferred = self.p.image.info.name  # Fallback 時 = 目前第一個「可用」候選
+        if cached and cached_defect is None and cached.provider and cached.provider != preferred:
+            # D-023：fallback 產物（例如 placeholder）是以首選 provider 的 fingerprint key 快取的；
+            # 首選 provider 現在可用 → 這份降級產物不是有效快取，必須重試真正的生成
+            cached_defect = f"degraded artifact from fallback provider {cached.provider}; preferred {preferred} is available"
         if cached and cached_defect is None:
             report.reused.append("image")
             report.image_meta = {**cached.meta, "regenerated": False}
         else:
-            if cached:  # D-021：fingerprint 相同但內容不可用（黑圖）→ 不得當有效快取
+            if cached:  # D-021：fingerprint 相同但內容不可用（黑圖）／D-023：降級產物 → 不得當有效快取
                 report.reasons["image"] = f"cached artifact rejected: {cached_defect}"
                 Path(cached.path).unlink(missing_ok=True)
             self._gate(self.p.image.estimate_cost, project, img_req)
@@ -147,6 +152,7 @@ class Orchestrator:
                 raise RenderError(f"scene {scene.scene_id}: image provider {res.provider} produced unusable image ({defect})")
             meta = {"generated_by": res.meta.get("generated_by", res.provider), **res.meta, "regenerated": True,
                     "reason": report.reasons.get("image", "no valid cache"),
+                    "degraded": res.provider != preferred,  # True = 這次是 fallback 產物，下次 run 若首選可用會重試
                     "image_stats": res.meta.get("image_stats") or image_stats(Path(res.path)).to_dict()}
             manifest.entries["image"] = AssetRecord(fingerprint=img_fp, path=res.path, provider=res.provider, model=res.model, meta=meta)
             report.rebuilt.append("image")
@@ -298,7 +304,11 @@ class Orchestrator:
         return updated
 
     def regenerate_scene(self, project: Project, scene_id: str) -> SceneBuildReport:
-        """強制重做單一 Scene 的所有產物（其他 Scene 不動）。"""
+        """強制重做單一 Scene 的所有產物（image / narration / subtitle / clip；其他 Scene 不動）。
+
+        語意：清掉該景 manifest（唯一的快取真相）後立刻重建；重建的 image 內容若改變，clip fingerprint（含圖檔 sha256）
+        自然失效。不需要也不提供 asset 參數——使用者不必知道內部快取結構。
+        """
         scene = project.scene(scene_id)
         self.store.clear_manifest(project.project_id, scene_id)
         scene.status = Status.DRAFT

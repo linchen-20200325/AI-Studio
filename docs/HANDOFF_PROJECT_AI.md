@@ -49,7 +49,7 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - Commit 訊息不含模型識別字串；不得 push 到未授權分支；不自行開 PR。
 - 分支慣例：功能開發在指派分支；`main` 只以 fast-forward 指向已驗證 SHA（tests 全綠、tree clean、remote 未漂移），不在 main 上重新產生內容。
 - AI Image：`DiffusersImageProvider` 絕不自動下載權重；下載是人工步驟且需使用者同意（停手條件）。實機已有模型於 `D:\ai-models\sd15`（使用者 Windows PC，GTX 1650 4 GB）。
-- 影像產物一律經 `see/core/image_qa.image_defect` 驗證（快取重用前、生成後、fallback 候選後）；fingerprint 只證明輸入沒變，不證明產物可用；`providers.image.name` 不是生成證據，看 manifest `meta` / CLI `image_evidence`（D-021）。改變 provider 輸出行為時必須 bump `ProviderInfo.version`。runtime 降級階梯所需的權重必須與 `image-download` 實際下載內容一致（`pick_variant`，D-022）；fp32 升級用 fp16 檔 upcast，不另外下載。
+- 影像產物一律經 `see/core/image_qa.image_defect` 驗證（快取重用前、生成後、fallback 候選後）；fingerprint 只證明輸入沒變，不證明產物可用；`providers.image.name` 不是生成證據，看 manifest `meta` / CLI `image_evidence`（D-021）。改變 provider 輸出行為時必須 bump `ProviderInfo.version`。runtime 降級階梯所需的權重必須與 `image-download` 實際下載內容一致（`pick_variant`，D-022）；fp32 升級用 fp16 檔 upcast，不另外下載。fallback 產物會標 `meta.degraded=true`，首選 provider 可用時下一次 run 自動重試（D-023）；`regen <project> <scene>` 清該景 manifest 並重做全部資產，無 asset 參數。
 - 所有 subprocess 一律走 `see/core/proc.run_text`（UTF-8，不依賴 Windows locale）；不得再用 `subprocess.run(text=True)`（D-020）。
 - Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 

@@ -72,7 +72,8 @@ class FallbackImageProvider(ImageProvider):
                 if defect is not None:  # 候選回報成功但產物不可用（黑圖／無法解碼）→ 視同失敗，換下一個
                     Path(res.path).unlink(missing_ok=True)
                     raise ProviderError(f"output rejected: {defect}")
-                self._active = c
+                # 注意：不把 _active 改成 c——info / fingerprint_key 必須穩定指向「首選可用候選」，
+                # 否則一景 fallback 後其餘景的 fingerprint 會漂移（D-023）。實際生成者看 meta / last_generated_by。
                 self.last_generated_by = res.provider
                 self.last_fallback_from = list(errors)
                 res.meta = {**res.meta, "generated_by": res.provider, "fallback_from": list(errors),
