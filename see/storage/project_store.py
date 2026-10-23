@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ class AssetRecord(BaseModel):
     duration: float | None = None
     provider: str = ""
     model: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict, description="產物證據（image：regenerated / plan / attempts / stats）")
 
 
 class SceneManifest(BaseModel):

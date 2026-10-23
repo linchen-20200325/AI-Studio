@@ -33,12 +33,20 @@ python -m see.app.cli run examples\story_short.txt --project-id sd15test
 - 失敗：Windows cp950 解碼 subprocess 輸出 → `UnicodeDecodeError`（已修，D-020）。
 - 警告：`invalid value encountered in cast` = fp16 NaN → 黑圖風險；GTX 16xx 現在預設 VAE fp32，並自動偵測 NaN 升級到 fp32（D-020）。
 - 警告：torchvision 缺失 → 已改 `feature_extractor=None`，不需安裝 torchvision。
-- 下一步：`git pull` 後重跑同一命令；看 `run` 輸出 `providers.image.name=diffusers-sd15`，並檢查 `scenes/scene_001/image.png` 不是黑圖。
+- 第二次執行（Batch 8 修正後）：CLI 正常結束、`providers.image.name=diffusers-sd15`，但 image.png 全黑 → root cause 是第一次留下的黑圖被當成有效快取重用（D-021），新版生成根本沒跑。
+
+## 4c. 第三次執行要看什麼（D-021 之後）
+`providers.image.name` **不是**生成證據；看 `run` 輸出 JSON 的 `image_evidence[]`（每景一筆）：
+- `regenerated: true`、`reason`（`no valid cache` 或 `cached artifact rejected: black ...`）→ 有重新生成。
+- `generated_by`：`diffusers-sd15`＝AI 圖；`placeholder-image` + `fallback: true` + `fallback_from[]`＝diffusers 失敗退回 placeholder（原因在 `fallback_from`）。
+- `final_dtype` / `final_vae_fp32` / `numeric_downgrade` / `oom_downgrade` / `attempts[]`：實際走到哪一級。
+- `image_stats.is_black` 必為 `false`（黑圖現在會被刪除並讓 pipeline 失敗，不會再「成功」）。
+stderr 另有 `INFO see.image.diffusers: ... attempt N: RuntimePlan(...)` 與每景 `rebuilt/reused/reasons`。
 
 ## 5. 驗收
-- `run` 輸出的 `providers.image.name` 為 `diffusers-sd15`（不是 placeholder）。
-- `workspace/projects/sd15test/scenes/scene_001/image.png` 為 AI 圖；preview.mp4 可播。
-- 把 `hardware`、`run` 輸出與一張 image.png 縮圖貼回 → 記入 PHASE 證據。
+- `image_evidence[*].generated_by == "diffusers-sd15"`、`regenerated == true`、`image_stats.is_black == false`。
+- `workspace/projects/sd15test/scenes/scene_001/image.png` 肉眼為 AI 圖；preview.mp4 可播。
+- 把 `run` 的 `image_evidence` 與一張 image.png 縮圖貼回 → 記入證據。
 
 ## 6. 失敗處理
 - `torch.cuda.is_available()` 為 False：NVIDIA 驅動版本過舊（需 ≥ 550）或裝到 CPU 版 torch；重裝 cu126 wheel。

@@ -101,11 +101,23 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "camera_motion": s.camera_motion, "transition": s.transition,
                 "image_url": f"/api/projects/{project.project_id}/scenes/{s.scene_id}/image.png"
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
+                "image_meta": _image_meta(project.project_id, s.scene_id),
             } for s in project.scenes],
             "render_jobs": [j.model_dump(mode="json") for j in project.render_jobs[-5:]],
             "approvals": [a.model_dump(mode="json") for a in project.approvals],
             "cost": _cost(project),
         }
+
+    def _image_meta(pid: str, sid: str) -> dict[str, Any]:
+        """Scene 卡顯示用的生成證據（D-021）：真正生成者、是否重生、dtype、降級／fallback。"""
+        rec = store.load_manifest(pid, sid).entries.get("image")
+        if rec is None:
+            return {}
+        m = rec.meta
+        return {"provider": rec.provider, "generated_by": m.get("generated_by"), "regenerated": m.get("regenerated"),
+                "final_dtype": m.get("final_dtype"), "final_vae_fp32": m.get("final_vae_fp32"),
+                "numeric_downgrade": m.get("numeric_downgrade"), "oom_downgrade": m.get("oom_downgrade"),
+                "fallback": m.get("fallback"), "fallback_from": m.get("fallback_from"), "image_stats": m.get("image_stats")}
 
     # ------------------------------------------------------------ pages
     @app.get("/", response_class=HTMLResponse)

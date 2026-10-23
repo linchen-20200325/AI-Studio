@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 import sys
 from pathlib import Path
@@ -42,6 +43,21 @@ def _read_text(src: str) -> str:
     return Path(src).read_text(encoding="utf-8")
 
 
+def image_evidence(orch: Orchestrator, project) -> list[dict]:
+    """每景 image 的生成證據（來自 manifest；D-021）：真正生成者、是否重生、最終 dtype/vae_fp32、降級與 fallback。"""
+    rows = []
+    for s in project.scenes:
+        rec = orch.store.load_manifest(project.project_id, s.scene_id).entries.get("image")
+        m = rec.meta if rec else {}
+        rows.append({"scene_id": s.scene_id, "provider": rec.provider if rec else None,
+                     "generated_by": m.get("generated_by"), "regenerated": m.get("regenerated"), "reason": m.get("reason"),
+                     "final_dtype": m.get("final_dtype"), "final_vae_fp32": m.get("final_vae_fp32"),
+                     "numeric_downgrade": m.get("numeric_downgrade"), "oom_downgrade": m.get("oom_downgrade"),
+                     "fallback": m.get("fallback"), "fallback_from": m.get("fallback_from"),
+                     "attempts": m.get("attempts"), "image_stats": m.get("image_stats")})
+    return rows
+
+
 def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
     ff = FFmpeg(orch.settings.ffmpeg, orch.settings.ffprobe)
     out = Path(job.output_path or "")
@@ -53,6 +69,7 @@ def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
         "job": {"id": job.job_id, "status": job.status, "provider": job.provider, "model": job.model,
                 "estimated_cost": job.estimated_cost, "actual_cost": job.actual_cost, "currency": job.currency},
         "providers": {k: getattr(orch.p, k).info.model_dump() for k in ("llm", "image", "video", "tts", "audio", "lipsync")},
+        "image_evidence": image_evidence(orch, project),  # providers.image.name 只是「第一個可用候選」，這裡才是實際生成證據
     }, ensure_ascii=False, indent=2))
 
 
@@ -64,6 +81,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         settings.workspace = Path(args.workspace).resolve()
     _, orch = build(settings)
     report = orch.run(_read_text(args.source), title=args.title, project_id=args.project_id)
+    for r in report.scene_reports:
+        print(f"{r.scene_id}: rebuilt={r.rebuilt} reused={r.reused}" + (f" reasons={r.reasons}" if r.reasons else ""), file=sys.stderr)
     _print_summary(orch, report.project, report.job, report.timeline)
     return 0
 
@@ -216,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     from see.core.proc import ensure_utf8_stdio
 
     ensure_utf8_stdio()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s", stream=sys.stderr)
     ap = argparse.ArgumentParser(prog="see", description="文字 → 影片（Phase 0 MVP）")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="從文字檔跑完整 pipeline 產生 preview.mp4")

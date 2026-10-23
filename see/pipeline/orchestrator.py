@@ -15,7 +15,8 @@ from pathlib import Path
 from see.core.approval import ApprovalGate
 from see.core.config import Settings
 from see.core.errors import InvalidTransition, RenderError
-from see.core.hashing import fingerprint, short_id
+from see.core.hashing import file_sha256, fingerprint, short_id
+from see.core.image_qa import image_defect, image_stats
 from see.core.subtitles import build_cues, to_srt
 from see.models.approval import Approval
 from see.models.enums import ApprovalKind, JobKind, JobStatus, Status
@@ -39,6 +40,8 @@ class SceneBuildReport:
     scene_id: str
     rebuilt: list[str] = field(default_factory=list)
     reused: list[str] = field(default_factory=list)
+    reasons: dict[str, str] = field(default_factory=dict)  # 為何重做（例如 image: "cached artifact rejected: black"）
+    image_meta: dict[str, object] = field(default_factory=dict)  # 本次 image 的證據（manifest 同步保存）
 
 
 @dataclass
@@ -124,14 +127,30 @@ class Orchestrator:
                                seed=scene.index, caption=scene.visual_description)
         img_fp = fingerprint("image", img_req.model_dump(), self.p.image.info.fingerprint_key)
         img_path = sdir / "image.png"
-        if manifest.valid("image", img_fp):
+        cached = manifest.valid("image", img_fp)
+        cached_defect = image_defect(Path(cached.path)) if cached else None
+        if cached and cached_defect is None:
             report.reused.append("image")
+            report.image_meta = {**cached.meta, "regenerated": False}
         else:
+            if cached:  # D-021：fingerprint 相同但內容不可用（黑圖）→ 不得當有效快取
+                report.reasons["image"] = f"cached artifact rejected: {cached_defect}"
+                Path(cached.path).unlink(missing_ok=True)
             self._gate(self.p.image.estimate_cost, project, img_req)
             res = self.executor.run(Task(task_id=f"{scene.scene_id}:image", kind="image",
                                          fn=self.p.image.generate_image, kwargs={"request": img_req, "out_path": img_path}))
-            manifest.entries["image"] = AssetRecord(fingerprint=img_fp, path=res.path, provider=res.provider, model=res.model)
+            defect = image_defect(Path(res.path))
+            if defect is not None:  # 任何 provider 都不得交出黑圖讓 pipeline 回報成功
+                Path(res.path).unlink(missing_ok=True)
+                manifest.entries.pop("image", None)
+                self.store.save_manifest(pid, manifest)
+                raise RenderError(f"scene {scene.scene_id}: image provider {res.provider} produced unusable image ({defect})")
+            meta = {"generated_by": res.meta.get("generated_by", res.provider), **res.meta, "regenerated": True,
+                    "reason": report.reasons.get("image", "no valid cache"),
+                    "image_stats": res.meta.get("image_stats") or image_stats(Path(res.path)).to_dict()}
+            manifest.entries["image"] = AssetRecord(fingerprint=img_fp, path=res.path, provider=res.provider, model=res.model, meta=meta)
             report.rebuilt.append("image")
+            report.image_meta = meta
 
         # ---- narration (TTS)
         tts_req = TTSRequest(text=scene.narration, language=project.language, voice=scene.voice, speed=project.speech_speed)
@@ -168,7 +187,8 @@ class Orchestrator:
         vid_req = VideoRequest(prompt=scene.video_prompt, image_path=str(img_path), duration=scene.duration,
                                width=out.width, height=out.height, fps=out.fps, camera_motion=scene.camera_motion.value,
                                audio_path=str(wav_path), subtitle_path=str(srt_path), subtitle_font=s.subtitle_font)
-        clip_fp = fingerprint("clip", img_fp, tts_fp, sub_fp, vid_req.model_dump(exclude={"image_path", "audio_path", "subtitle_path"}),
+        # D-021：clip 綁定實際圖檔內容（不只 image fingerprint），圖被重生（例如黑圖被拒）時 clip 必然重做
+        clip_fp = fingerprint("clip", img_fp, file_sha256(img_path), tts_fp, sub_fp, vid_req.model_dump(exclude={"image_path", "audio_path", "subtitle_path"}),
                               s.fingerprint_params(), self.p.video.info.fingerprint_key)
         clip_path = sdir / "clip.mp4"
         if manifest.valid("clip", clip_fp):

@@ -65,6 +65,8 @@ class ImageResult(BaseModel):
     height: int
     provider: str
     model: str
+    meta: dict[str, Any] = Field(default_factory=dict,
+                                 description="生成證據：實際 provider、最終 runtime plan、重試階梯、fallback 來源、影像統計")
 
 
 class ImageProvider(BaseProvider):

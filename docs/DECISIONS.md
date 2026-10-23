@@ -107,3 +107,19 @@
 - **torchvision warning**：`CLIPImageProcessor requires torchvision` 來自 feature_extractor，只有 safety_checker 用得到；已 `feature_extractor=None`，**不新增 torchvision 依賴**。
 - 4 GB 安全策略（fp16、slicing、offload、≤512）與 Placeholder fallback 全部保留；OOM 降級與數值降級為兩條獨立階梯。
 - 回歸測試：`tests/test_windows_regressions.py`（7 項）。
+
+## D-021 2026-10-23 Windows 真機 SD 1.5「純黑 PNG 卻回報成功」：root cause 與修正（Batch 9）
+- 實機事實：GTX 1650 4 GB、torch 2.14.1+cu126、`RuntimePlan(cuda, float16, low_vram, cpu_offload, max_side=512, vae_fp32=True)`、CLI 正常結束、`providers.image.name=diffusers-sd15`，但 `scene_001/image.png` min=max=mean=0。
+- 四個假設逐項驗證結果（以 `02fac28` 程式碼 + diffusers 0.41.0 原始碼）：
+  1. **cache 重用不驗內容 + version 未 bump（主因，已確認）**：`SceneManifest.valid()` 只比 fingerprint 與檔案存在；`diffusers-sd15` 的 `ProviderInfo.version` 自 Batch 7（`1e81668`）起為 `"2"`，Batch 8 修 NaN 時未 bump → 第一次真機（舊 fp16 路徑）留下的黑圖 + manifest，在第二次 `run --project-id sd15test` 被當成有效快取直接重用，新版生成程式碼根本沒被呼叫，pipeline 因而「成功」。
+  2. **`providers.image.name` 不是生成證據（已確認）**：`FallbackImageProvider.info` 回傳第一個「可用」候選；快取重用時任何 provider 都沒被呼叫，顯示 `diffusers-sd15` 只代表它可用。
+  3. **`is_numeric_failure()` 只驗生成當下 ndarray（已確認）**：存檔後、快取重用時、Fallback 收到候選結果時都沒有再驗。
+  4. **VAE fp32 + fp16 latents dtype（已確認為潛在 bug，非本次黑圖主因）**：diffusers 0.41.0 `StableDiffusionPipeline` 直接 `vae.decode(latents / scaling_factor)`，不 cast dtype；`vae_fp32=True` 時會丟 dtype 不匹配例外 → ProviderError → Placeholder（會是漸層圖而非黑圖，故非主因，但下一次真機必踩）。
+- 修正（全部 LOCAL_FREE、Provider Agnostic、4 GB 策略與 Placeholder fallback 不變）：
+  - `see/core/image_qa.py`：唯一的影像內容檢查（全黑 max≤5／單色平面 std<1／無法解碼／缺檔）。
+  - Orchestrator：快取重用前驗證內容，黑圖→刪檔重生並記 `reasons["image"]`；生成後再驗，任何 provider 交出黑圖 → 刪檔、manifest 移除、`RenderError`（pipeline 不得回報成功）；clip fingerprint 加入圖檔 sha256（圖內容變 → clip 必重做）。
+  - `DiffusersImageProvider`：version `"3"`（舊 fingerprint 全部失效，強制重生）；`output_type="latent"` 後自行 `latents.to(vae.dtype)` decode（修 4.）；latents NaN 直接視為數值失敗；存檔後重開驗證，黑圖刪檔 raise；`ImageResult.meta` 記 initial/final plan、attempts、numeric/oom downgrade、elapsed、image_stats；logging 輸出每次嘗試。
+  - `FallbackImageProvider`：候選輸出經 `image_defect` 驗證，黑圖視同失敗換下一候選；`meta.generated_by / fallback / fallback_from`；`last_generated_by`。
+  - Evidence：`AssetRecord.meta` 入 manifest；CLI `run` 輸出 `image_evidence[]`（generated_by / regenerated / reason / final_dtype / final_vae_fp32 / numeric_downgrade / oom_downgrade / fallback / attempts / image_stats）與 stderr 每景 rebuilt/reused/reasons；UI `/api/projects/{id}` 每景 `image_meta`，Scene 卡顯示「圖：生成者 · dtype · 降級 · fallback · 快取」。
+- 回歸測試：`tests/test_image_integrity.py`（10 項）+ CLI/Web API 斷言；共 83 passed。
+- 下一次真機驗證只需一次 `git pull` + 同一條 `run` 命令：version bump 保證 image 重生，`image_evidence` 會寫明實際發生了什麼。

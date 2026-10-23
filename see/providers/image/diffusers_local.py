@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import gc
 import importlib.util
-from dataclasses import dataclass
+import logging
+import time
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from see.core.errors import ProviderError, ProviderUnavailable
+from see.core.image_qa import image_defect, image_stats
 from see.models.cost import CostEstimate
 from see.models.enums import CostTier, ProviderKind
 from see.models.provider import ProviderInfo
@@ -32,6 +35,8 @@ MODEL_PRESETS: dict[str, dict[str, Any]] = {
                                 "text_encoder/model.fp16.safetensors"]},
 }
 LOW_VRAM_MB = 6_500
+PROVIDER_VERSION = "3"  # D-021：bump 使 Batch 7/8 舊 fp16 路徑留下的 image fingerprint 全部失效（強制重生）
+log = logging.getLogger("see.image.diffusers")
 
 
 @dataclass(frozen=True)
@@ -144,7 +149,7 @@ class DiffusersImageProvider(ImageProvider):
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(name=f"diffusers-{self.preset}", kind=ProviderKind.IMAGE, cost_tier=CostTier.LOCAL_FREE,
-                            model=self.model_id, version="2")
+                            model=self.model_id, version=PROVIDER_VERSION)
 
     def is_available(self) -> bool:
         return _torch_available() and _weights_present(self.model_id, self.model_path)
@@ -222,31 +227,52 @@ class DiffusersImageProvider(ImageProvider):
         except Exception:  # noqa: BLE001
             pass
 
+    # ------------------------------------------------------------ generation
+    def _run_pipe(self, pipe: Any, plan: RuntimePlan, request: ImageRequest) -> Any:
+        """跑一次推理，回傳 numpy float 影像 [0,1]（HxWx3）。
+
+        D-021：不用 pipeline 內建的 decode。SD 1.5 pipeline 把 fp16 latents 直接餵 VAE（diffusers 0.41 無 dtype cast），
+        `vae_fp32=True` 時會 dtype 不匹配丟例外。改取 `output_type="latent"`，自行 cast 到 VAE dtype 再 decode；
+        latents 本身含 NaN 代表 UNet 階段就壞了，直接視為數值失敗（不用浪費 VAE decode）。
+        """
+        import torch  # type: ignore
+
+        gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
+        gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
+        with torch.inference_mode():
+            latents = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
+                           num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen,
+                           output_type="latent").images
+            if not torch.isfinite(latents).all():
+                return None  # UNet 階段 NaN/Inf
+            vae = pipe.vae
+            scaling = float(getattr(getattr(vae, "config", None), "scaling_factor", 0.18215))
+            z = (latents / scaling).to(dtype=vae.dtype)
+            image = vae.decode(z, return_dict=False)[0]
+            return pipe.image_processor.postprocess(image, output_type="np")[0]
+
     def generate_image(self, request: ImageRequest, out_path: Path) -> ImageResult:
         if not self.is_available():
             raise ProviderUnavailable(self.unavailable_reason())
         self.calls += 1
-        import torch  # type: ignore
-
         import numpy as np
         from PIL import Image
 
+        t0 = time.monotonic()
         dev, vram = self._resolve_device()
         plan = make_runtime_plan(dev, vram, int(self.cfg["max_side"]), getattr(self, "gpu_name", None))
+        initial = plan
         self.attempts: list[str] = []
         img = None
-        for attempt in range(4):  # OOM 最多降一次、數值問題最多降兩次
+        for _attempt in range(4):  # OOM 最多降一次、數值問題最多降兩次
             try:
                 pipe = self._load(plan)
-                gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
-                gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
-                with torch.inference_mode():
-                    arr = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
-                               num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen,
-                               output_type="np").images[0]
-                if is_numeric_failure(arr):
+                log.info("diffusers %s attempt %d: %s", self.preset, len(self.attempts) + 1, plan)
+                arr = self._run_pipe(pipe, plan, request)
+                if arr is None or is_numeric_failure(arr):
                     nxt = plan.downgrade_numeric()
                     self.attempts.append(f"numeric failure (NaN/black) with dtype={plan.dtype} vae_fp32={plan.vae_fp32}")
+                    log.warning("diffusers %s: %s -> %s", self.preset, self.attempts[-1], "escalate" if nxt else "give up")
                     if nxt is None:
                         raise ProviderError("generation produced NaN/black image even in fp32: " + "; ".join(self.attempts))
                     plan = nxt
@@ -260,6 +286,7 @@ class DiffusersImageProvider(ImageProvider):
                 is_oom = "out of memory" in str(e).lower() or type(e).__name__ == "OutOfMemoryError"
                 if is_oom and "oom" not in self.attempts:
                     self.attempts.append("oom")
+                    log.warning("diffusers %s: OOM at %s -> downgrade memory", self.preset, plan)
                     plan = plan.downgrade_memory()
                     self._release()
                     continue
@@ -270,5 +297,24 @@ class DiffusersImageProvider(ImageProvider):
             img = img.resize((request.width, request.height), Image.LANCZOS)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(out_path, format="PNG")
+        # D-021：存檔後重開驗證；黑圖不得留在磁碟上被後續流程（manifest / clip）當成功
+        defect = image_defect(out_path)
+        if defect is not None:
+            out_path.unlink(missing_ok=True)
+            raise ProviderError(f"diffusers saved image rejected: {defect}; attempts=" + "; ".join(self.attempts))
+        meta = self.evidence(initial, plan, out_path, time.monotonic() - t0)
+        self.last_evidence = meta
+        log.info("diffusers %s done: %s", self.preset, meta)
         return ImageResult(path=str(out_path), width=request.width, height=request.height,
-                           provider=self.info.name, model=self.info.model)
+                           provider=self.info.name, model=self.info.model, meta=meta)
+
+    def evidence(self, initial: RuntimePlan, final: RuntimePlan, out_path: Path, elapsed_s: float) -> dict[str, Any]:
+        """可追蹤的最終狀態（寫入 manifest / CLI / UI）。"""
+        return {
+            "generated_by": self.info.name, "model": self.model_id, "gpu": getattr(self, "gpu_name", None),
+            "initial_plan": asdict(initial), "final_plan": asdict(final),
+            "final_dtype": final.dtype, "final_vae_fp32": final.vae_fp32, "final_max_side": final.max_side,
+            "attempts": list(self.attempts), "numeric_downgrade": any(a.startswith("numeric") for a in self.attempts),
+            "oom_downgrade": "oom" in self.attempts, "elapsed_s": round(elapsed_s, 2),
+            "image_stats": image_stats(out_path).to_dict(),
+        }

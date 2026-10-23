@@ -20,6 +20,9 @@ def test_cli_run_and_status(tmp_path: Path, capsys, monkeypatch):
     summary = json.loads(capsys.readouterr().out)
     assert summary["status"] == "PREVIEW" and Path(summary["output"]).exists()
     assert summary["probe"]["has_video"] and summary["probe"]["has_audio"]
+    ev = summary["image_evidence"]  # D-021：實際生成證據（非 providers.image.name）
+    assert len(ev) == summary["scenes"] and all(e["regenerated"] is True and e["generated_by"] == "placeholder-image" for e in ev)
+    assert all(e["image_stats"]["is_black"] is False for e in ev)
     assert main(["status", "cli1"]) == 0
     assert "scene_001" in capsys.readouterr().out
     assert main(["final", "cli1"]) == 2  # 未核准 → 拒絕

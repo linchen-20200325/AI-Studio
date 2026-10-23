@@ -15,9 +15,9 @@
 - [x] DG-8：採 B（SD 1.5），D-018。
 - [x] `image_prompt_en` + negative prompt（D-018）。
 - [x] 使用者已安裝 torch/diffusers 並下載 SD 1.5（D-020）。
-- [ ] **使用者手動**：`git pull` 後重跑 `run`，貼回 `providers.image.name`、一張 image.png 縮圖、每景秒數 → 記入證據。
+- [ ] **使用者手動**：`git pull` 後重跑 `run`，貼回 `image_evidence`（D-021）與一張 image.png 縮圖 → 記入證據。
 - [ ] 若 GTX 1650 fp32 全程仍 OOM：改 `max_side` 448 或改 1:1 比例（可自主）。
-- [ ] UI 顯示實際使用的 image provider 與 fallback 原因（`/api/health` 已有 `image`/`image_skipped`；前端顯示待做）。
+- [x] UI 顯示實際使用的 image provider 與 fallback 原因（D-021：Scene 卡 `image_meta`）。
 - [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
@@ -25,7 +25,7 @@
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。
 - [ ] `OllamaLLMProvider`（LOCAL_FREE）：暫緩（DG-2）。
 - [ ] BGM / SFX：`AudioProvider` 實作（免費素材庫或程序化生成），含 ducking。
-- [ ] QA 階段：自動檢查（音量 LUFS、黑幀、字幕超長、總長度區間）。
+- [ ] QA 階段：自動檢查（音量 LUFS、黑幀、字幕超長、總長度區間）。圖片黑圖／平面檢查已有（`see/core/image_qa.py`，D-021），可擴充到影片黑幀。
 
 ## P1
 - [x] 真正 ImageProvider 骨架（D-017）；模型下載與真機驗證待 DG-8。

@@ -91,3 +91,13 @@
 - Tests: 73 passed；CI success @ 02fac28
 - Decision: 無
 - Next: 新對話依 STATE 筆記執行 Batch 9
+
+---
+- Date: 2026-10-23
+- Start SHA: 1b0bce5
+- End SHA: __END__
+- Batch: Batch 9 — Windows 真機「純黑 PNG 卻回報成功」root cause 與修復
+- Result: 主因＝黑圖被 manifest 當有效快取重用（version 未 bump、不驗內容）；修 image_qa 內容驗證（快取前／生成後／fallback／存檔後）、version 3、VAE dtype cast、evidence（manifest meta／CLI image_evidence／UI image_meta）
+- Tests: 83 passed（+10 回歸）；CI 見 STATE
+- Decision: D-021
+- Next: 使用者 `git pull` 後重跑同一條 run 命令並貼回 `image_evidence`

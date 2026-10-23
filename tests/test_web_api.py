@@ -39,6 +39,8 @@ def test_create_preview_play_edit_approve_final(client: TestClient):
     assert rv.status_code == 206 and len(rv.content) == 100
     img = client.get(p["scenes"][0]["image_url"])
     assert img.status_code == 200 and img.headers["content-type"] == "image/png"
+    m = p["scenes"][0]["image_meta"]  # D-021：UI 可看見實際生成者／是否重生／黑圖統計
+    assert m["generated_by"] == "placeholder-image" and m["regenerated"] is True and m["image_stats"]["is_black"] is False
     # 單景修改
     sid = p["scenes"][1]["scene_id"]
     r = client.post(f"/api/projects/{pid}/scenes/{sid}", json={"narration": "牠一跳，就跳上了最高的那顆石頭。", "camera_motion": "pan_left"})

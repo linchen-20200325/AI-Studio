@@ -43,7 +43,8 @@ Phase 0 的「VideoProvider」是 `KenBurnsVideoProvider`：以 FFmpeg `zoompan`
 see/
   app/        cli.py — 命令列入口（run / status / set-scene / regen / approve / final）
   core/       config.py（設定）、prompting.py（中→英 image prompt）、hardware.py（GPU/VRAM/RAM/disk/torch 偵測 + image tier 建議）、cost.py（CostTier / CostEstimate）、approval.py（ApprovalGate）、
-              errors.py、hashing.py（fingerprint）、subtitles.py（SRT 切句）、ffmpeg.py（ffmpeg/ffprobe 封裝）
+              errors.py、hashing.py（fingerprint）、subtitles.py（SRT 切句）、ffmpeg.py（ffmpeg/ffprobe 封裝）、
+              image_qa.py（影像產物內容驗證：黑圖／平面／無法解碼；快取重用前與生成後皆驗，D-021）
   models/     Pydantic schema：project / script / character / scene / asset / render_job /
               provider / worker / cost / approval / timeline
   providers/  base.py（六個 Provider 介面 + ProviderInfo）、registry.py（ProviderRegistry）
