@@ -21,10 +21,22 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: ffmpeg (static build via setup-ffmpeg; avoids slow apt mirrors — D-019)
+        # 外部 action 偶發「Failed to read version from readme」→ 視為 best-effort，下一步 apt fallback（D-025 附註）
+        id: ffmpeg_static
+        continue-on-error: true
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
           ffmpeg-version: release
           architecture: x64
+      - name: ffmpeg fallback (apt) when static build step failed
+        if: steps.ffmpeg_static.outcome != 'success'
+        timeout-minutes: 8
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          command -v ffmpeg && command -v ffprobe && exit 0
+          sudo timeout 120 apt-get update -q -o Acquire::Retries=2 || true
+          sudo timeout 300 apt-get install -y -q --no-install-recommends -o Acquire::Retries=2 ffmpeg
       - name: Optional system packages (espeak-ng, CJK font) — best effort
         # 缺少時 espeak 測試會 skip、字幕以預設字型燒錄；不得因 apt 鏡像慢而讓 CI 紅
         continue-on-error: true

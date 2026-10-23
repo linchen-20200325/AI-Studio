@@ -137,7 +137,7 @@
 - Start SHA: 1b944aa
 - End SHA: 1b944aa（無程式變更；本輪為 governance/docs commit，SHA 見 GitHub main HEAD）
 - Batch: Batch 13 — Knowledge Consolidation / Memory Migration / PROJECT_STATE 建立 / Handoff Closeout
-- Result: PROJECT_RULES §10 補齊、§12–§14 新增；PROJECT_STATE 建立；STATE→指標；HANDOFF→導航頁；BACKLOG 加 DG-9～DG-12 與標示；DECISIONS 狀態索引＋D-025；README 產品願景；Dry-run 24 題可由 repo 回答
+- Result: CI 一次紅（setup-ffmpeg 外部 action readme 讀取失敗，非本次 diff）→ ci.yml 改 best-effort + apt fallback；PROJECT_RULES §10 補齊、§12–§14 新增；PROJECT_STATE 建立；STATE→指標；HANDOFF→導航頁；BACKLOG 加 DG-9～DG-12 與標示；DECISIONS 狀態索引＋D-025；README 產品願景；Dry-run 24 題可由 repo 回答
 - Tests: 89 passed（未動程式）
 - Decision: D-025
 - Next: 使用者裁示 DG-9；可安全換新對話
