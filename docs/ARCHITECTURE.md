@@ -188,7 +188,7 @@ workspace/projects/<project_id>/
 | 步驟 | 模組／資料 | 現況 |
 |---|---|---|
 | 故事 | `Project.input_text` → `write_script`（`LLMProvider`） | Mock（DG-10） |
-| Style Profile | `Project.style_id` → `see/core/styles.py` `apply_style` → `ImageRequest` | 6 個內建；default 已驗證 |
+| Style Profile | `Project.style_id` → `see/core/styles.py` `apply_style` → `ImageRequest` | 6 個內建；default 已驗證；產品優先序 P1 anime／realistic／cinematic（D-034） |
 | 角色設定 | `Project.characters[id]`（voice＋`appearance`）；`scene.character_ids` | 文字錨點＋結構化 refs |
 | Voice 選擇／試聽／語速 | `set_character`／`preview_voice`／`confirm_character`（D-030） | CLI＋API；UI 待 DG-19 |
 | 分鏡與影像 | `storyboard` → `image_request` → `ImageProvider`（SD 1.5） | Real |

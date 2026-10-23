@@ -6,6 +6,13 @@
 
 目前階段：**Phase 1 COMPLETE**（SD 1.5 本機 AI 生圖已於 GTX 1650 真機驗收，`docs/PHASE1_EVIDENCE.md`）；Phase 2 方向待裁示。現況一律看 `docs/PROJECT_STATE.md`。
 
+## 產品視覺方向（canonical，客戶裁示 D-034）
+**主要產品方向 ≠ 兒童繪本。** 視覺優先序：
+- **P1**：① 日系動畫（Anime）② AI 真人／寫實（Realistic）③ 電影感真人（Cinematic）
+- **P2**：④ 3D
+- **P3**：⑤ 兒童繪本（picture_book）等其他風格
+> 註：程式 `default` Style 與 Mock LLM 模板仍是 Phase 0/1 留下的「繪本水彩」，**只是歷史相容預設，不代表產品方向**（是否改預設見 BACKLOG／DG-20）。
+
 ## 產品願景（canonical）
 AI-Studio 不是「讓 AI 幫忙生成一支影片」，而是**可長時間自主運作、可恢復、可追溯、有人類 Decision Gate 的 AI 短片生產系統**：
 文字描述／故事 → story understanding → scene planning → structured scenes → visual prompt → AI image → motion/video → narration → character voices → BGM → SFX → audio mixing → lipsync（必要時）→ subtitles → editing → PREVIEW → human review／scene regeneration → APPROVED → FINAL。

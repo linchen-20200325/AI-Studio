@@ -8,7 +8,8 @@
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
-| Current Status | Batch 22 進行中：E2-4 Style 真機出圖驗收（D-033；工具 `style-test` 已就緒）；等待 Windows 逐張回報；SAFE_TO_HANDOFF = **YES** |
+| Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
+| Current Status | Batch 22 進行中：E2-4 Style 真機驗收（D-033／D-034）；picture_book 技術 PASS／主觀 FAIL（不再處理）；下一張 anime；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
@@ -33,7 +34,7 @@
 | Video | `KenBurnsVideoProvider`（ffmpeg zoompan 靜態圖運鏡） | **Partial**（非真正 image-to-video） |
 | TTS | `auto` → **kokoro**（**D-029 正式採用**；E2-1／E2-2 真機驗證；CPU；voice 由 `scene.voice`／`--voice`／`SEE_TTS_DEFAULT_VOICE` 指定，程式預設未鎖 zm_010）→ espeak-ng → silent；`edge-tts` 不採用（D-014） | **Real**（provider-agnostic 保留；永久預設 voice 待 DG-14） |
 | Audio（BGM/SFX） | 預設 `null-audio`；`procedural-audio`（D-031，`--audio procedural`） | **Real（BGM／ducking 真機 OK，D-032）**；SFX 真機未驗證；預設維持 null（待產品 UI） |
-| Style | `Project.style_id`；內建 6 個 Style Profile（D-032） | **Partial**：default 已驗證；其他風格未經真機視覺驗收 |
+| Style | `Project.style_id`；內建 6 個 Style Profile（D-032） | **Partial**：default 已驗證；picture_book 技術 PASS／主觀 FAIL（D-034）；anime／realistic／cinematic／3d 未驗收 |
 | Character consistency | `CharacterAppearance` 文字錨點＋結構化 refs（D-032） | **Partial**：prompt 層；無 IP-Adapter／LoRA；未真機驗收 |
 | LipSync | `null-lipsync`（介面＋opt-in pipeline stage，D-032） | **Null**（無真實模型；DG-18 C） |
 | Subtitle／Timeline／Render | 確定性 SRT、燒錄、xfade、preview/final.mp4 | **Real** |
@@ -51,11 +52,12 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - 開放、非阻塞：DG-14 永久預設 voice（zm_010 僅目前人耳偏好候選）；DG-15 Voice Selector UI；DG-10 LLM／DG-11 Video／DG-12 Queue。
 - DG-16 **已裁示 A（D-031）**：Audio Layer。
 - DG-17：真機聽感 OK（D-032）；**BGM 預設開啟延後**到完整產品流程／UI（維持 null）。
-- DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4）。
+- DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4；順序 D-034）。
+- DG-20（待 anime／realistic／cinematic 目視完成後提出）：A SD1.5 足夠→角色一致性驗證｜B 明顯不足→研究更適合 anime／AI 真人的 LOCAL_FREE 模型｜C 依視覺路線分模型／provider。裁示前不下載、不導 IP-Adapter／LoRA、不付費、不做 Lip-sync 模型、不做 DG-19 UI。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Windows E2-4（一次一條）：`python -m see.app.cli style-test --style picture_book` → anime → realistic → cinematic → 3d；每張回報 json 重點＋人眼判斷 → 全部完成後寫 PHASE2_EVIDENCE E2-4 與結論。可自主（不需裁示）：Script.characters 自動建立角色設定、SFX 真機測試指引、evidence 擴充到 clip、QA 規則。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
+Windows E2-4（一次一條，同一個已設 `SEE_MODELS_DIR=D:\ai-models` 的視窗）：`python -m see.app.cli style-test --style anime` → realistic → cinematic →（次要）3d；每張回報 json 重點＋人眼判斷 → P1 三張完成後提 DG-20。可自主（不需裁示）：Script.characters 自動建立角色設定、SFX 真機測試指引、evidence 擴充到 clip、QA 規則。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

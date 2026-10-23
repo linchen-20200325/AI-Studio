@@ -17,6 +17,7 @@
 
 ## 3. Current handoff（細節一律看 PROJECT_STATE／BACKLOG，這裡不複製）
 - Phase：見 `PROJECT_STATE.md`「Current Phase」。
+- **產品視覺方向（必讀，D-034）**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本。**不要把兒童繪本當主要方向**（程式 `default` 繪本水彩只是歷史相容預設）。見 README「產品視覺方向」。
 - Decision Gate：見 `PROJECT_STATE.md`「Current Decision Gate」。
 - Next action：見 `PROJECT_STATE.md`「Current next action」。
 

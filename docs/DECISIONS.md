@@ -25,7 +25,8 @@
 | D-030 | Voice Selection 非 UI 實作：角色 voice／語速、優先序、試聽、確認閘門（使用角色時 Final 需確認） | 有效 | 可逆 |
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
-| D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中 | 可逆 |
+| D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-034 | **產品視覺方向**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等。picture_book 技術 PASS／主觀 FAIL，不重跑不修正；E2-4 目的改為判斷 SD1.5 是否足以支撐 P1 | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -242,3 +243,13 @@
 - 規則：不下載模型、不用 PAID、不研究 IP-Adapter／LoRA／Lip-sync；**不修改 Style Profile 內容迎合結果（先驗證現況）**；NT$0。
 - 方法（公平比較）：CLI `style-test --style <id>`：固定場景「小貓咪在院子裡追蝴蝶，陽光很溫暖」、seed 1234（CPU generator，跨風格確定性）、尺寸 1920×1080 請求（SD 1.5 低 VRAM 計畫自動縮到 512 長邊）、同一 base prompt／negative，只換 style terms。輸出 `workspace/style_tests/<style>_seed1234.png/.json`；**不建立專案、不寫 manifest、不動任何快取**；非 diffusers 產生者標 `valid_for_style_test=false`（exit 3）。
 - 每張：技術證據（generated_by、dtype、fallback、image_stats、sha256、耗時、實際 prompt）＋客戶人眼判斷（主觀，不寫成客觀品質結論）。Windows 一次一條命令。
+
+## D-034 2026-10-23 產品視覺方向（客戶裁示）＋ E2-4 順序調整
+- 決策：**主要產品方向不是兒童繪本**。P1：日系動畫（anime）、AI 真人／寫實（realistic）、電影感真人（cinematic）；P2：3D；P3：兒童繪本（picture_book）等其他風格。寫入 README「產品視覺方向」為 canonical。
+- picture_book 真機（`style-test`）：`generated_by=diffusers-sd15`、`final_dtype=float32`（fp16 numeric failure → 正常升 fp32）、`valid_for_style_test=true`、非黑圖非 flat、≈234.5 s、無 OOM、無 fallback、NT$0 → **技術生成 PASS**。客戶主觀：「比較像藝術品。」→ **主觀風格驗收 FAIL**（場景語意呈現不足；單一使用者主觀，非客觀品質結論）。
+- 裁示：picture_book **不重跑、不調整、不投入修正**。
+- 同場先一次無效嘗試：`generated_by=placeholder-image`、`valid_for_style_test=false`（新 cmd 視窗未設 `SEE_MODELS_DIR`）；工具正確 fail-closed，不計入比較。
+- E2-4 後續順序：anime → realistic → cinematic →（次要）3d；公平比較條件不變（同 scene、seed 1234、同尺寸、同 base prompt，只換 style terms；不改 Style Profile；不下載；不用 PAID；NT$0）。
+- E2-4 真正目的：判斷**既有 SD1.5 是否足以支撐 P1 方向**。anime／realistic／cinematic 目視比較完成後提 DG-20：A 足夠→角色一致性驗證；B 明顯不足→研究更適合 anime／AI 真人的 LOCAL_FREE 模型；C 依視覺路線採不同模型／provider。
+- 裁示前不下載新模型、不導入 IP-Adapter／LoRA、不新增付費服務、不開始 Lip-sync 模型、不開始 DG-19 UI。
+- 已知待裁事項（記錄，不擅改）：`default` Style 與 Mock LLM `image_prompt_en` 模板仍內含 storybook watercolor；改預設會改變舊專案 fingerprint → 併入 DG-20 之後處理。

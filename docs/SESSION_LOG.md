@@ -221,3 +221,13 @@
 - Tests: 130 passed、1 skipped
 - Decision: D-032；DG-18 待裁示
 - Next: 客戶裁示 DG-18；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: 6950a7f
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 22（進行中）— E2-4 Style 真機驗收；客戶確立產品視覺方向
+- Result: picture_book 無效嘗試一次（placeholder，未設 SEE_MODELS_DIR，fail-closed 正確）；重跑 diffusers-sd15／fp32／234.5 s 技術 PASS、主觀「比較像藝術品」FAIL，不再處理。D-034：P1 anime＋realistic＋cinematic、P2 3d、P3 繪本；README 新增 canonical「產品視覺方向」；E2-4 順序改 anime → realistic → cinematic →（次要）3d；DG-20 預告
+- Tests: 131 passed、1 skipped（僅文件變更）
+- Decision: D-034
+- Next: Windows `python -m see.app.cli style-test --style anime`
