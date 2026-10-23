@@ -28,4 +28,6 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest
 中文發音是否正確、自然度、大陸口音明顯度、`zf_*` 與 `zm_*` 差異、`tts-check` 的 `synth_seconds`／`rtf`／`load_seconds`、工作管理員 CPU／RAM（VRAM 應為 0）、與 SD 1.5 同一次 `run` 是否共存、`tts_evidence` 每景 `generated_by=kokoro-tts`、`duration` 與字幕對齊、刻意填錯 voice 時是否 fail-closed。
 
 ## 5. 真機結果
-（待填：`PHASE2_EVIDENCE.md`）
+- 2026-10-23 E2-1（安裝／下載／`tts-check` 四 voice）：成功；細節與聽感見 `PHASE2_EVIDENCE.md`。
+- 下一步 E2-2：`python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voice zm_010`（`--voice` = scene.voice=default 時的 voice；等同 `SEE_TTS_DEFAULT_VOICE`）。
+- `python -m see.app.cli tts-voices` 列出本機 voice 的 id／可讀名稱／性別／已知限制。

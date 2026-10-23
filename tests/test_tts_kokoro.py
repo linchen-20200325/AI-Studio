@@ -181,3 +181,25 @@ def test_pipeline_uses_kokoro_meta_and_retries_degraded_narration(tmp_path: Path
     # 第三次：全部 reuse
     reports3 = orch.build_scene_assets(project)
     assert "narration" in reports3[0].reused and reports3[0].narration_meta["regenerated"] is False
+
+
+def test_list_voices_and_default_voice(tmp_path: Path):
+    d = make_model_dir(tmp_path, voices=("zf_001", "zm_010"))
+    tts = KokoroTTSProvider(d, backend=FakeBackend())
+    vs = {v.voice_id: v for v in tts.list_voices()}
+    assert set(vs) == {"zf_001", "zm_010"} and vs["zf_001"].gender == "female" and vs["zm_010"].gender == "male"
+    assert vs["zm_010"].display_name != "zm_010" and "口音" in vs["zf_001"].accent_note
+    assert tts.resolve_voice("default").stem == "zf_001"  # 未設定 default_voice → 既有行為
+    tts2 = KokoroTTSProvider(d, backend=FakeBackend(), default_voice="zm_010")
+    assert tts2.resolve_voice("default").stem == "zm_010" and tts2.resolve_voice("zf_001").stem == "zf_001"
+    with pytest.raises(ProviderError, match="not downloaded"):
+        KokoroTTSProvider(d, backend=FakeBackend(), default_voice="zm_099").resolve_voice("default")
+    assert SilentTTSProvider().list_voices() == []  # 介面預設
+
+
+def test_registry_passes_default_voice(tmp_path: Path):
+    s = Settings()
+    s.models_dir = tmp_path
+    s.tts_provider = "kokoro"
+    s.tts_default_voice = "zm_010"
+    assert ProviderRegistry(s).build().tts.default_voice == "zm_010"

@@ -13,7 +13,9 @@
 - [x] DG-6：不採用 edge-tts，adapter 保留（D-014）。
 - [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。🚦（使用者手動）
 - [x] DG-9：裁示 D-027 — Kokoro-82M v1.1-zh 候選驗證核准（非最終採用）。原題：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
-- [ ] **DG-13（真機驗證後）**：Kokoro 聽感裁示：正式採用／繼續調整／測試第二候選（MeloTTS）／放棄。🚦🖥️
+- [ ] **DG-13（E2-2 五景 pipeline 真機後）**：Kokoro 聽感裁示：正式採用／繼續調整／測試第二候選（MeloTTS）／放棄。🚦🖥️
+- [ ] **DG-14**：產品永久預設 voice（目前候選 zm_010 僅為內部首選，未鎖死；D-028）。🚦
+- [ ] **DG-15**：Voice Selector UI 形式（角色→選 voice→試聽→語速→確認）；屬產品 UI 決策。🚦
 - [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
 - [ ] DG-11：真正 VideoProvider（image-to-video）模型／provider：本機模型下載或 API 皆需裁示。🚦📦💰🖥️
 - [ ] DG-12：`QueueExecutor`／NAS worker：需客戶提供 NAS／GPU 硬體資訊（停手條件）。🚦
@@ -32,8 +34,9 @@
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
-- [ ] 自然中文 TTS provider（LOCAL_FREE）— Batch 15 **程式完成**（`kokoro` provider、auto 鏈、tts-setup/download/check CLI、UI 聲證據、10 tests）；**待真機**下載 v1.1-zh（≈330 MB，D-027 已核准）並驗證；停 DG-13。📦🖥️
-- [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色。kokoro 已可用 voice id（zf_*/zm_*）；UI 尚無 voice 選擇欄；更多 voice 需另下載（小檔，仍需裁示）。🖥️
+- [ ] 自然中文 TTS provider（LOCAL_FREE）— Kokoro 候選：E2-1 真機技術驗證**成功**（D-028）；**待 E2-2** 五景 pipeline 真機（`run … --voice zm_010`）→ 停 DG-13。🖥️
+- [ ] **Voice Selection（規格，D-028）**：使用者流程「角色 → 選擇 voice → 試聽 → 調整語速 → 確認 → 才進正式影片生成」。已有：`VoiceInfo`／`TTSProvider.list_voices()`（provider-agnostic）、kokoro 型錄（可讀名稱／性別／accent_note）、CLI `tts-voices`、`--voice`／`SEE_TTS_DEFAULT_VOICE`。待做：角色（character）模型與 voice 依角色保存；試聽 API（單句合成、不進 manifest）；語速 per-scene／per-character；UI（DG-15）；其他 provider 的 `list_voices`。不得綁死 kokoro；保留 fallback／fail-closed／evidence；不動 SD 1.5 路徑。🤖（UI 需 DG-15）
+- [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色。kokoro 已可用 voice id（zf_*/zm_*）；更多 voice 需另下載（小檔，仍需裁示）。🖥️
 - [ ] Evidence／provenance 擴充到 clip（manifest meta、CLI、UI）。TTS 部分已完成（Batch 15：`tts_evidence`、`narration_meta`、provenance.json）。🤖
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
 - [ ] Retry／resume：中斷後續跑（per-scene fingerprint 已可續跑）；明確 retry policy 與失敗景標記。🤖

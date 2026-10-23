@@ -93,6 +93,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     settings = Settings()
     if args.tts:
         settings.tts_provider = args.tts
+    if getattr(args, "voice", None):
+        settings.tts_default_voice = args.voice
     if args.workspace:
         settings.workspace = Path(args.workspace).resolve()
     _, orch = build(settings)
@@ -292,6 +294,19 @@ def cmd_tts_download(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tts_voices(args: argparse.Namespace) -> int:
+    """列出目前 TTS provider 本機可用的 voice（Voice Selector 規格的 CLI 版）。"""
+    from see.providers.registry import ProviderRegistry
+
+    s = Settings()
+    if args.tts:
+        s.tts_provider = args.tts
+    tts = ProviderRegistry(s).build().tts
+    print(json.dumps({"provider": tts.info.name, "default_voice": s.tts_default_voice or "(provider default)",
+                      "voices": [v.model_dump() for v in tts.list_voices()]}, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_tts_check(args: argparse.Namespace) -> int:
     """真機驗證：以本機 Kokoro 合成一句，印出 duration / rtf / device / voice（不進 pipeline）。"""
     from see.providers.base import TTSRequest
@@ -325,6 +340,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--title")
     r.add_argument("--project-id")
     r.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"])
+    r.add_argument("--voice", default=None, help="scene.voice=default 時使用的 voice id（例如 zm_010；等同 SEE_TTS_DEFAULT_VOICE）")
     r.add_argument("--workspace")
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status"); st.add_argument("project_id"); st.set_defaults(fn=cmd_status)
@@ -350,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
     tdl.add_argument("--dest", default=None); tdl.add_argument("--yes", action="store_true")
     tdl.add_argument("--voices", nargs="*", default=None, help="要下載的 voice id（預設 2 女 2 男）")
     tdl.set_defaults(fn=cmd_tts_download)
+    tvs = sub.add_parser("tts-voices", help="列出目前 TTS provider 本機可用 voice（id／可讀名稱／性別／已知限制）")
+    tvs.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"], default=None); tvs.set_defaults(fn=cmd_tts_voices)
     tck = sub.add_parser("tts-check", help="以本機 Kokoro 合成一句並印出 duration/rtf/device（真機驗證用）")
     tck.add_argument("--text", default="你好，這是 AI-Studio 的中文旁白測試。"); tck.add_argument("--voice", default="default")
     tck.add_argument("--speed", type=float, default=1.0); tck.add_argument("--out", default="tts_check.wav")

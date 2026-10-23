@@ -130,9 +130,26 @@ class TTSResult(BaseModel):
     meta: dict[str, Any] = Field(default_factory=dict, description="證據：generated_by / voice / device / fallback_from / rtf")
 
 
+class VoiceInfo(BaseModel):
+    """Provider-agnostic 的 voice 描述（Voice Selector 規格基礎；BACKLOG／D-028）。UI 不應只顯示內部 id。"""
+
+    voice_id: str = Field(min_length=1, description="provider 內部 id（送進 TTSRequest.voice）")
+    provider: str
+    display_name: str = Field(min_length=1)
+    language: str = "zh"
+    gender: str = Field(default="unknown", description="female | male | neutral | unknown（由 provider 推斷或型錄給定）")
+    tags: list[str] = Field(default_factory=list, description="聲線特徵，例如 narration、young、deep")
+    accent_note: str = Field(default="", description="已知口音／限制（使用者真機聽感，非客觀排名）")
+    preview_text: str = Field(default="你好，這是試聽。", description="試聽用句")
+
+
 class TTSProvider(BaseProvider):
     @abstractmethod
     def synthesize(self, request: TTSRequest, out_path: Path) -> TTSResult: ...
+
+    def list_voices(self) -> list[VoiceInfo]:
+        """此 provider 目前本機可用的 voice；預設空（只有 default）。"""
+        return []
 
     @abstractmethod
     def estimate_cost(self, request: TTSRequest) -> CostEstimate: ...

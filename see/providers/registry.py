@@ -68,7 +68,7 @@ class ProviderRegistry:
         }
         def _kokoro() -> KokoroTTSProvider:
             path = settings.tts_model_path or str(settings.models_dir / KokoroTTSProvider.DEFAULT_DIRNAME)
-            return KokoroTTSProvider(model_dir=path, ffmpeg=self.ffmpeg, device=settings.tts_device)
+            return KokoroTTSProvider(model_dir=path, ffmpeg=self.ffmpeg, device=settings.tts_device, default_voice=settings.tts_default_voice)
 
         self._tts: dict[str, Callable[[], TTSProvider]] = {
             "kokoro": _kokoro,

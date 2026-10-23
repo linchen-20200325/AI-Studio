@@ -11,7 +11,7 @@ from see.core.errors import ProviderError, ProviderUnavailable
 from see.models.cost import CostEstimate
 from see.models.enums import CostTier
 from see.models.provider import ProviderInfo
-from see.providers.base import TTSProvider, TTSRequest, TTSResult
+from see.providers.base import TTSProvider, TTSRequest, TTSResult, VoiceInfo
 
 
 class FallbackTTSProvider(TTSProvider):
@@ -46,6 +46,9 @@ class FallbackTTSProvider(TTSProvider):
 
     def estimate_cost(self, request: TTSRequest) -> CostEstimate:
         return self.active.estimate_cost(request)
+
+    def list_voices(self) -> list[VoiceInfo]:
+        return self.active.list_voices()
 
     def synthesize(self, request: TTSRequest, out_path: Path) -> TTSResult:
         errors: list[str] = []

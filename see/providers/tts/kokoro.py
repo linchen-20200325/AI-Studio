@@ -24,7 +24,7 @@ from see.core.ffmpeg import FFmpeg
 from see.models.cost import CostEstimate
 from see.models.enums import CostTier, ProviderKind
 from see.models.provider import ProviderInfo
-from see.providers.base import TTSProvider, TTSRequest, TTSResult
+from see.providers.base import TTSProvider, TTSRequest, TTSResult, VoiceInfo
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +39,13 @@ SAMPLE_RATE = 24000
 # 預設先抓 2 女 2 男做角色差異驗證；repo 若無該檔名，下載器會改抓實際存在的前幾個 zf_/zm_
 PREFERRED_VOICES = ("zf_001", "zf_002", "zm_009", "zm_010")
 MIN_AUDIO_SECONDS = 0.2
+# 可讀名稱／已知限制型錄（Voice Selector 規格）。accent_note 來自使用者 2026-10-23 真機主觀聽感（PHASE2_EVIDENCE），不是客觀排名。
+VOICE_CATALOG: dict[str, dict[str, Any]] = {
+    "zf_001": {"display_name": "女聲 1", "tags": ["narration"], "accent_note": "使用者真機聽感：大陸口音明顯；不建議作預設"},
+    "zf_002": {"display_name": "女聲 2", "tags": ["narration"], "accent_note": "使用者真機聽感：較 zf_001 好，仍非首選"},
+    "zm_009": {"display_name": "男聲 9", "tags": ["narration"], "accent_note": "使用者真機聽感：無明顯大陸口音，自然度尚可"},
+    "zm_010": {"display_name": "男聲 10", "tags": ["narration"], "accent_note": "使用者真機聽感：四者中最自然；目前 Kokoro 內部首選候選（D-028，未鎖死）"},
+}
 
 
 def download_plan() -> dict[str, Any]:
@@ -144,10 +151,11 @@ class KokoroTTSProvider(TTSProvider):
     DEFAULT_DIRNAME = "kokoro-v1_1-zh"
 
     def __init__(self, model_dir: str | Path, ffmpeg: FFmpeg | None = None, device: str = "cpu",
-                 backend: KokoroBackend | None = None) -> None:
+                 backend: KokoroBackend | None = None, default_voice: str = "") -> None:
         self.model_dir = Path(model_dir)
         self.ffmpeg = ffmpeg or FFmpeg()
         self.device = device
+        self.default_voice = default_voice  # 空 = 第一個 zf_*（程式既有行為）；設定值缺檔 → fail-closed
         self._backend = backend
         self.calls = 0
 
@@ -165,12 +173,29 @@ class KokoroTTSProvider(TTSProvider):
     def estimate_cost(self, request: TTSRequest) -> CostEstimate:
         return self._estimate(units=len(request.text), unit_name="chars")
 
+    @staticmethod
+    def _gender(voice_id: str) -> str:
+        return "female" if voice_id.startswith("zf_") else "male" if voice_id.startswith("zm_") else "unknown"
+
+    def list_voices(self) -> list[VoiceInfo]:
+        out = []
+        for v in local_voices(self.model_dir):
+            c = VOICE_CATALOG.get(v, {})
+            out.append(VoiceInfo(voice_id=v, provider=self.info.name, display_name=c.get("display_name", v), language="zh",
+                                 gender=self._gender(v), tags=list(c.get("tags", [])), accent_note=c.get("accent_note", "")))
+        return out
+
     def resolve_voice(self, voice: str) -> Path:
-        """`scene.voice` → 本機 voices/<id>.pt；default = 第一個女聲（zf_*），找不到就第一個；未知 voice fail-closed。"""
+        """`scene.voice` → 本機 voices/<id>.pt；default = `default_voice`（SEE_TTS_DEFAULT_VOICE／--voice），
+        未設定則第一個女聲（zf_*），找不到就第一個；未知 voice 或缺檔一律 fail-closed。"""
         available = local_voices(self.model_dir)
         if not available:
             raise ProviderUnavailable(f"no kokoro voices in {self.model_dir / 'voices'}; run `tts-download --yes`")
-        if voice in ("", "default"):
+        if voice in ("", "default") and self.default_voice:
+            if self.default_voice not in available:
+                raise ProviderError(f"default voice '{self.default_voice}' not downloaded; available: {available}")
+            chosen = self.default_voice
+        elif voice in ("", "default"):
             chosen = next((v for v in available if v.startswith("zf_")), available[0])
         elif voice in available:
             chosen = voice

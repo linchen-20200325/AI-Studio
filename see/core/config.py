@@ -55,6 +55,7 @@ class Settings:
     tts_provider: str = field(default_factory=lambda: _env("SEE_TTS_PROVIDER", "auto"))
     tts_model_path: str = field(default_factory=lambda: _env("SEE_TTS_MODEL_PATH", ""))  # 空 = models_dir/kokoro-v1_1-zh
     tts_device: str = field(default_factory=lambda: _env("SEE_TTS_DEVICE", "cpu"))  # cpu 預設：不與 SD 1.5 搶 4 GB VRAM
+    tts_default_voice: str = field(default_factory=lambda: _env("SEE_TTS_DEFAULT_VOICE", ""))  # scene.voice=default 時用；空=provider 自定（永久預設待 DG-14）
     audio_provider: str = field(default_factory=lambda: _env("SEE_AUDIO_PROVIDER", "null"))
     lipsync_provider: str = field(default_factory=lambda: _env("SEE_LIPSYNC_PROVIDER", "null"))
     subtitle_font: str = field(default_factory=lambda: _env("SEE_SUBTITLE_FONT", "") or detect_cjk_font())

@@ -161,3 +161,13 @@
 - Tests: 98 passed、1 skipped
 - Decision: D-027（實作）；DG-13 待真機
 - Next: Windows 真機一次一步（AI_TTS_KOKORO_WINDOWS.md §3）→ PHASE2_EVIDENCE → DG-13
+
+---
+- Date: 2026-10-23
+- Start SHA: 59bbdd2
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 16 — Kokoro E2-1 真機證據入庫 ＋ Voice Selection 規格（VoiceInfo／list_voices／--voice／tts-voices）
+- Result: PHASE2_EVIDENCE E2-1（revision 01e7505b、329.3 MB、sha256、四 voice 成功、使用者聽感）；D-028；BACKLOG Voice Selection 規格＋DG-14/15；`VoiceInfo` 介面、kokoro 型錄、`SEE_TTS_DEFAULT_VOICE`／`--voice`（未鎖死預設）；未下載新模型
+- Tests: 100 passed、1 skipped
+- Decision: D-028；DG-13 待 E2-2
+- Next: Windows E2-2：`run examples\story_short.txt --project-id kokorotest --voice zm_010`
