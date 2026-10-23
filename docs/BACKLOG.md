@@ -18,7 +18,8 @@
 - [x] DG-17（部分）：Audio 真機聽感「OK」（D-032）。**BGM 預設開啟與否：延後到完整產品流程／UI 一起決定（維持 null）**；CC0／使用者素材仍需另核准。
 - [x] DG-18：裁示 A（D-033）— Style 真機出圖驗收（進行中，E2-4）。B 角色一致性模型研究、C Lip-sync 研究待之後裁示。
 - [ ] **E2-4 Style 真機驗收**（順序 D-034）：~~picture_book~~（技術 PASS／主觀 FAIL，不再處理）→ **anime → realistic → cinematic** →（次要）3d（`style-test --style <id>`，一次一條）。🖥️
-- [ ] **E2-4 RCA（D-035）**：真機 `style-test --style picture_book --gen-policy native` A/B → 判定 H1（512×288 生成解析度）；無改善再 `--base-prompt` 分離 H3。🖥️
+- [x] **E2-4 RCA（D-035／D-036）**：native A/B 證實 H1；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5。
+- [ ] **DG-20 研究（D-036）**：P1 現成專用 checkpoint shortlist（anime 2、realistic 2；cinematic 盡量共用真人模型）、授權／商用逐項、Model Router 架構 → 停在 DG-20。🚦📦
 - [ ] **DG-21**（native A/B 後）：`gen_policy=native` 是否成為產品預設（fingerprint 失效重生、耗時增加）。🚦
 - [ ] Mock LLM `build_image_prompt_en` 關鍵詞依詞長排序、無主體—動作—地點結構（H3）；正式解法＝真 LLM（DG-10）。
 - [ ] **DG-20**（native A/B＋P1 三張目視後提出）：SD1.5 是否足以支撐 P1（日系動畫／AI 真人／電影感）：A 足夠→角色一致性驗證；B 不足→研究 LOCAL_FREE 替代模型（下載需裁示）；C 依路線分模型／provider。🚦📦

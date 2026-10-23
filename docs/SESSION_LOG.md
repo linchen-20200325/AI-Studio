@@ -241,3 +241,13 @@
 - Tests: 138 passed、1 skipped
 - Decision: D-035；DG-21／DG-20 待真機 A/B
 - Next: Windows `git pull` → `style-test --style picture_book --gen-policy native`
+
+---
+- Date: 2026-10-23
+- Start SHA: b344f71
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 24（進行中）— native A/B 真機結果入庫；DG-20 研究啟動
+- Result: D-036：picture_book native scene/style PASS（H1 證實）；anime＋girl_city_night native scene PASS／style FAIL（「這是畢卡索嗎？」）；客戶裁示停止以 Base SD1.5 調 Anime；DG-20 改為現成專用模型研究（不下載）
+- Tests: 138 passed、1 skipped（僅文件）
+- Decision: D-036
+- Next: DG-20 研究（Effort Gate：建議 High）

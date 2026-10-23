@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-036 | native A/B：picture_book scene／style PASS（H1 證實）；anime＋girl_city_night scene PASS／style FAIL；**停止以 Base SD1.5 調 Anime**；啟動 DG-20 現成專用模型研究（只研究、不下載） | 有效 | 可逆 |
 | D-035 | **E2-4 暫停於 RCA**：`technical_valid`≠scene／style 通過（分層驗收）；主要嫌疑＝生成解析度 512×288（pipeline）；診斷參數 opt-in、預設不變；DG-20 延後到真機 A/B 之後 | 有效 | 可逆 |
 | D-034 | **產品視覺方向**：P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等。picture_book 技術 PASS／主觀 FAIL，不重跑不修正；E2-4 目的改為判斷 SD1.5 是否足以支撐 P1 | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
@@ -262,3 +263,10 @@
 - 修正（低風險、預設不變、舊 fingerprint 不變）：分層欄位 `technical_valid`（自動）／`prompt_subject_check`（自動，僅驗 prompt）／`scene_validated`、`style_validated`（僅人工 `style-review`）；舊 `style_validated` 改名 `style_profile_catalog_validated`；`STYLE_TEST_CASES`（kitten_butterfly、girl_city_night）；診斷 `--gen-policy native`、`--base-prompt`、`--scene`（`fair_comparison=false`、檔名加後綴、不覆寫基準證據）；evidence 增 gen 尺寸、crop、upscale、scheduler、steps、guidance、prompt token／截斷。
 - 失敗證據保留：`workspace\style_tests\picture_book_seed1234.png/.json`（不入 repo；sha256 在該 json 的 `image_sha256`）。
 - 下一步：真機 A/B 只換解析度（`--gen-policy native`）；結果決定 DG-21（native 是否成為預設；會使既有 image fingerprint 失效並增加耗時）或 DG-20（模型路線）。候選模型表為初步、未下載，授權須下載前逐一核對。
+
+## D-036 2026-10-23 native 解析度 A/B 結果＋停止以 Base SD1.5 調 Anime（客戶裁示）
+- picture_book＋`--gen-policy native`（768×512 生成→裁 16:9）：場景明顯恢復；**scene PASS／style PASS**（單一客戶主觀）。證實 D-035 H1：原 512×288 生成解析度是重要根因。
+- anime＋`girl_city_night`＋native：technical_valid=true；女孩／城市／夜晚皆在（**scene PASS**）；臉部、五官、人體與背景細節嚴重失真，客戶：「這是畢卡索嗎？」→ **style FAIL**，正式產品品質不可接受（單一客戶主觀，非客觀結論）。
+- 裁示：**停止繼續用 Base SD1.5 以 prompt 調整 Anime（及 P1 真人）Style Profile**。DG-20 改為「現成、成熟、可直接接入 pipeline 的專用模型」研究（P1-A 日系動畫、P1-B AI 真人／寫實、P1-C 電影感，可由真人 checkpoint＋prompt 達成者不另加模型）；研究需含授權／商用逐項核對，未核對者標 `LICENSE_UNVERIFIED`；架構評估 Style/Content intent → Model Router → 各 checkpoint → 既有 ImageProvider。
+- 本 Batch 禁止：下載模型、安裝套件、改預設模型、LoRA、IP-Adapter、Lip-sync、UI、PAID、刪除 SD1.5。
+- DG-21（native 是否成為產品預設；既有 image fingerprint 失效重生）**仍待裁示**，不因本次結果自動切換。

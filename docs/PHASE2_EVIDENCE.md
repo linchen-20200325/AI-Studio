@@ -68,16 +68,19 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 
 | style | generated_by | dtype | is_black/flat | 耗時 | 客戶人眼判斷（主觀） |
 |---|---|---|---|---|---|
-| anime（P1） | ⏳ | | | | |
+| anime（P1）＋`girl_city_night`＋native 768×512（診斷） | diffusers-sd15 | （客戶未回報） | 否／否（technical_valid＝true） | （未回報） | 女孩、城市、夜晚都有，但臉部／五官／人體／背景細節嚴重失真；客戶：「這是畢卡索嗎？」→ **technical PASS／scene PASS／style FAIL**；正式產品品質不可接受（D-036） |
 | realistic（P1） | ⏳ | | | | |
 | cinematic（P1） | ⏳ | | | | |
 | 3d（P2，次要） | ⏳ | | | | |
+| picture_book（P3）＋native 768×512（診斷 A/B，D-035） | diffusers-sd15 | （客戶未回報） | 否／否（technical_valid＝true） | （未回報） | 場景明顯恢復 → **technical PASS／scene PASS／style PASS**（D-036）；證實 512×288 生成解析度是重要根因（H1） |
 | picture_book（P3） | diffusers-sd15 | float32（fp16 numeric failure → 升級；無 OOM、無 fallback） | 否／否（technical_valid＝true） | ≈234.5 s | 「比較像藝術品。」→ **technical PASS／scene FAIL／style FAIL**：幾乎看不到貓、無追蝴蝶、無庭院構圖，高飽和粗黑線＋抽象／水果／幾何圖形（D-034、D-035）。**保留為 regression／failure evidence** |
 
 - 無效嘗試（不計入）：picture_book 第一次 `generated_by=placeholder-image`、`valid_for_style_test=false`（新 cmd 視窗未設 `SEE_MODELS_DIR`）；工具 exit 3 fail-closed，行為正確。
 - 人眼判斷皆為單一使用者主觀感受，非客觀品質結論。
 - **分層（D-035）**：technical_valid（自動）≠ scene_validated ≠ style_validated（人工）。上表「技術 PASS」不代表場景或風格通過。
-- 實際生成解析度 512×288（fit）→ 放大到 1920×1080；根因分析見 `AI_IMAGE_QUALITY_RCA.md`。E2-4 其餘風格暫停，待 native 解析度 A/B。
+- 實際生成解析度 512×288（fit）→ 放大到 1920×1080；根因分析見 `AI_IMAGE_QUALITY_RCA.md`。native A/B 已完成（D-036）：H1 證實。
+- **客戶裁示（D-036）：停止用 Base SD1.5 調整 Anime Style Profile**；realistic／cinematic／3d 的 base SD1.5 style-test 不再進行；改走 DG-20 現成專用模型研究。
+- 上述 native 兩列只有客戶口頭摘要；dtype、耗時、sha256 等存在本機 `workspace\style_tests\*_native.json`，未入 repo。
 
 ## 狀態
 E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。E2-3（Audio Layer）自動測試 ✅、真機 BGM／ducking ✅（客戶「OK」）、SFX 真機 ⏳；BGM 預設維持 null（D-032）。

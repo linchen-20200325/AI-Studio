@@ -61,3 +61,8 @@ GTX 1650 前提：fp16 會 NaN → 實務上必須 fp32（權重記憶體 ×2）
    - 場景明顯改善 → H1 證實 → **DG-21**：是否把 `native` 設為產品預設（會讓所有既有專案 image fingerprint 失效並重生、每張耗時增加）→ 之後再用 native 做 anime／realistic／cinematic 公平比較。
    - 無改善 → 再以 `--base-prompt "a kitten chasing butterflies in a sunny courtyard"` 分離 H3；仍無改善 → 證據指向 H4 → **DG-20**（A 維持 SD 1.5｜B 研究 SD 1.5 fine-tune／LoRA｜C 依路線分 provider）。
 3. 任何新 checkpoint／LoRA／依賴／下載 → 停在 Decision Gate。
+
+## 6. 真機 A/B 結果（D-036）
+- picture_book native：scene PASS／style PASS → **H1 證實**（pipeline 生成解析度）。
+- anime＋girl_city_night native：scene PASS／style FAIL（臉部／人體／背景嚴重失真）→ 解析度修正後仍不足，指向 **H4：SD 1.5 base 對動畫人物能力不足**。
+- 客戶裁示：不再以 prompt 調 Base SD1.5；進入 DG-20 專用模型研究（§4 表為舊初稿，以 DG-20 研究文件為準）。
