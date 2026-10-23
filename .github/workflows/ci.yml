@@ -26,17 +26,27 @@ jobs:
         continue-on-error: true
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
-          ffmpeg-version: release
+          ffmpeg-version: "6.1.0"   # 固定版本：避免 action 去解析 johnvansickle readme 的 "release"
           architecture: x64
-      - name: ffmpeg fallback (apt) when static build step failed
+      - name: ffmpeg fallback 1 (BtbN static GPL build from GitHub release)
         if: steps.ffmpeg_static.outcome != 'success'
-        timeout-minutes: 8
+        id: ffmpeg_btbn
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -e
+          curl -fsSL --retry 3 -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
+          mkdir -p /tmp/ff && tar -xJf /tmp/ff.tar.xz -C /tmp/ff --strip-components=1
+          sudo install -m755 /tmp/ff/bin/ffmpeg /tmp/ff/bin/ffprobe /usr/local/bin/
+          ffmpeg -version | head -1
+      - name: ffmpeg fallback 2 (apt; slow Azure mirror, last resort)
+        if: steps.ffmpeg_static.outcome != 'success' && steps.ffmpeg_btbn.outcome != 'success'
+        timeout-minutes: 12
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          command -v ffmpeg && command -v ffprobe && exit 0
-          sudo timeout 120 apt-get update -q -o Acquire::Retries=2 || true
-          sudo timeout 300 apt-get install -y -q --no-install-recommends -o Acquire::Retries=2 ffmpeg
+          sudo timeout 180 apt-get update -q -o Acquire::Retries=3 || true
+          sudo timeout 600 apt-get install -y -q --no-install-recommends -o Acquire::Retries=3 ffmpeg
       - name: Optional system packages (espeak-ng, CJK font) — best effort
         # 缺少時 espeak 測試會 skip、字幕以預設字型燒錄；不得因 apt 鏡像慢而讓 CI 紅
         continue-on-error: true
