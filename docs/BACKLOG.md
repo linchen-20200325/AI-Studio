@@ -13,7 +13,8 @@
 - [x] DG-6：不採用 edge-tts，adapter 保留（D-014）。
 - [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。🚦（使用者手動）
 - [x] DG-9：裁示 D-027 — Kokoro-82M v1.1-zh 候選驗證核准（非最終採用）。原題：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
-- [ ] **DG-13（現在等待）**：A 正式採用 Kokoro／B 繼續調整／C 再測第二候選（MeloTTS，需新下載裁示）／D 放棄。E2-1、E2-2 皆完成（`PHASE2_EVIDENCE.md`）。🚦
+- [x] DG-13：裁示 A（D-029）— Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider；Provider Agnostic、DG-14／DG-15 獨立。
+- [ ] **DG-16**：Phase 2 第二目標方向（BGM/SFX〔素材授權需確認〕／LLM 規劃〔DG-10，需模型下載〕／其他）。🚦
 - [ ] **DG-14**：產品永久預設 voice（目前候選 zm_010 僅為內部首選，未鎖死；D-028）。🚦
 - [ ] **DG-15**：Voice Selector UI 形式（角色→選 voice→試聽→語速→確認）；屬產品 UI 決策。🚦
 - [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
@@ -34,7 +35,7 @@
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
 - [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
-- [ ] 自然中文 TTS provider（LOCAL_FREE）— Kokoro 候選 E2-1、E2-2 真機**皆成功**（五景、CPU、無 fallback、與 SD 1.5 共存）；關閉需 DG-13 選 A。🚦
+- [x] 自然中文 TTS provider（LOCAL_FREE）— Kokoro（D-029；證據 `PHASE2_EVIDENCE.md`）。更適合台灣中文的 provider 可另開 DG 新增。
 - [ ] **Voice Selection（規格，D-028）**：使用者流程「角色 → 選擇 voice → 試聽 → 調整語速 → 確認 → 才進正式影片生成」。已有：`VoiceInfo`／`TTSProvider.list_voices()`（provider-agnostic）、kokoro 型錄（可讀名稱／性別／accent_note）、CLI `tts-voices`、`--voice`／`SEE_TTS_DEFAULT_VOICE`。待做：角色（character）模型與 voice 依角色保存；試聽 API（單句合成、不進 manifest）；語速 per-scene／per-character；UI（DG-15）；其他 provider 的 `list_voices`。不得綁死 kokoro；保留 fallback／fail-closed／evidence；不動 SD 1.5 路徑。🤖（UI 需 DG-15）
 - [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色。kokoro 已可用 voice id（zf_*/zm_*）；更多 voice 需另下載（小檔，仍需裁示）。🖥️
 - [ ] Evidence／provenance 擴充到 clip（manifest meta、CLI、UI）。TTS 部分已完成（Batch 15：`tts_evidence`、`narration_meta`、provenance.json）。🤖
@@ -72,7 +73,7 @@
 | SD 1.5 image generation | ✅ | GTX 1650 真機五景（PHASE1_EVIDENCE） |
 | Image QA | ✅ | `image_qa`（黑／平面／無法解碼）＋ fail-closed（D-021） |
 | Video / motion generation | 🟡 | 只有 Ken Burns（ffmpeg zoompan）；真正 image-to-video 未做（P1） |
-| Narration / TTS | 🟡 | espeak（機械聲）／silent；edge-tts adapter 存在但不採用（D-014）；自然中文語音未有 |
+| Narration / TTS | ✅ | Kokoro-82M v1.1-zh（D-029，CPU，LOCAL_FREE）→ espeak → silent fallback；台灣口音 provider 未有（可新增） |
 | Character voices | ⬜ | `scene.voice` 欄位存在；無多角色語音 provider |
 | Subtitle | ✅ | 切句、SRT、燒錄、覆寫（Phase 0） |
 | Background music | ⬜ | `AudioProvider` 介面＋`null-audio`；`AudioCue` schema 有，無實作 |
@@ -95,7 +96,7 @@
 統計（上表 25 項）：✅ 13　🟡 8　⬜ 5（character voices、BGM、SFX、mixing、lipsync）　🔴 1（DG-7，待使用者手動）。
 未完成 BACKLOG 條目：P0 7、P1 5、P2 5（全部保留於上方清單，無刪除）。
 
-## Phase 2 建議（排序，尚未開工；對應 DG-9；需使用者選擇方向 → 停手條件）
+## Phase 2 建議（排序；第 1 項已完成 D-029；第 2、3 項開工前需裁示 DG-16）
 **第一目標建議：自然中文旁白（真正可聽的 TTS，LOCAL_FREE）。** 理由：目前成品「畫面是 AI、聲音是 espeak」是離可看短片最遠的一環；不需新 GPU 模型即可大幅提升；Provider 介面與 fallback 已就緒；可獨立驗收（聽得出中文、時長量測正確、字幕對齊）。候選須先盤點授權與體積（例如 Piper／其他 open TTS），**任何新模型下載前先裁示**。
 
 | 優先 | 項目 | 為什麼現在做 | Windows 真機 | 可能下載模型 | 可能成本 | Effort |

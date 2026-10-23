@@ -181,3 +181,13 @@
 - Tests: 100 passed、1 skipped（未動程式）
 - Decision: 無新裁示；等待 DG-13
 - Next: 客戶裁示 DG-13 → D-029；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: 80c9808
+- End SHA: 80c9808（docs only）
+- Batch: Batch 18 — DG-13 裁示 A 入庫（D-029）
+- Result: DECISIONS D-029；STATE Phase 2 第一目標完成、TTS=Real（並修正 Batch 16/17 未更新的 TTS 列漂移）；BACKLOG TTS 項關閉、Narration ✅、新增 DG-16；DG-14／DG-15 維持獨立
+- Tests: 100 passed、1 skipped（未動程式）
+- Decision: D-029
+- Next: Batch 19 Voice Selection 非 UI（可自主）；DG-16 待裁示；可安全換新對話

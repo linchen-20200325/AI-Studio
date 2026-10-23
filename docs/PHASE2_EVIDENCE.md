@@ -55,4 +55,4 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 聽感：沿用 E2-1 使用者主觀回報（zm_010 最偏好；zf_001 口音明顯），**非客觀排名**。
 
 ## 狀態
-E2-1 ✅　E2-2 ✅　→ 等待 DG-13（最終採用與否由客戶裁示；D-027 仍為 Candidate Validation）。
+E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。

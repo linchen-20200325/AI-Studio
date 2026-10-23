@@ -49,7 +49,7 @@ see/
               provider / worker / cost / approval / timeline
   providers/  base.py（六個 Provider 介面 + ProviderInfo）、registry.py（ProviderRegistry）
               llm/mock.py、image/placeholder.py、video/kenburns.py、
-              tts/kokoro.py（D-027 候選）、tts/espeak.py、tts/silent.py、tts/edge.py（optional FREE_TIER）、
+              tts/kokoro.py（D-029 採用）、tts/espeak.py、tts/silent.py、tts/edge.py（optional FREE_TIER）、
               audio/null.py、lipsync/null.py
   workers/    base.py（Task / Executor / Worker 介面）、local.py（LocalExecutor）
   pipeline/   stages.py（各階段純函式）、orchestrator.py（串接 + per-scene cache + 狀態機）
