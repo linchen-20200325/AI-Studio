@@ -123,3 +123,14 @@
   - Evidence：`AssetRecord.meta` 入 manifest；CLI `run` 輸出 `image_evidence[]`（generated_by / regenerated / reason / final_dtype / final_vae_fp32 / numeric_downgrade / oom_downgrade / fallback / attempts / image_stats）與 stderr 每景 rebuilt/reused/reasons；UI `/api/projects/{id}` 每景 `image_meta`，Scene 卡顯示「圖：生成者 · dtype · 降級 · fallback · 快取」。
 - 回歸測試：`tests/test_image_integrity.py`（10 項）+ CLI/Web API 斷言；共 83 passed。
 - 下一次真機驗證只需一次 `git pull` + 同一條 `run` 命令：version bump 保證 image 重生，`image_evidence` 會寫明實際發生了什麼。
+
+## D-022 2026-10-23 fp16 numeric failure → fp32 升級時「找不到 fp32 權重」：root cause 與方案（Batch 10）
+- 實機（Batch 9 程式）：黑圖 QA 生效；attempt 1 `float16 + vae_fp32` 仍 NaN/黑 → 升級 full fp32 → `OSError: no file named model.safetensors … text_encoder` → ProviderError → Placeholder（5 景皆如此，evidence 正確顯示 `generated_by=placeholder-image`、`fallback_from`）。
+- Root cause（程式碼驗證）：`_load()` 只在 `plan.dtype=="float16"` 時傳 `variant="fp16"`；`image-download` 的 `allow_patterns` 只抓 `*.fp16.safetensors`。fp32 plan 不帶 variant → diffusers 去找無 variant 的 fp32 檔 → 不存在。runtime 階梯與下載內容不一致。
+- 方案比較：
+  - A. 補下載 fp32 權重：官方 repo 無 variant 檔 unet 3.44 GB + text_encoder 0.49 GB + vae 0.33 GB ≈ **4.3 GB** 額外下載（CreativeML OpenRAIL-M，同授權）。可行但非必要。
+  - B.（採用）**同一份 fp16 權重以 `dtype=float32` 載入**：diffusers `load_model_dict_into_meta` 會把浮點參數 cast 成傳入 dtype（0.41.0 原始碼確認），text_encoder（transformers）同理。fp16 儲存精度不是 NaN 成因（成因是 fp16 計算時 activation 溢位），等同 A1111 `--no-half` 對 fp16 ckpt 的做法。**零下載、可逆、Free First。**
+  - C. 其他 LOCAL_FREE 數值手段（upcast_attention、部分層 fp32）：在 SDPA attention processor 下不保證生效，且仍是 fp16 UNet；列為 BACKLOG 備案，不採用。
+- 實作：`pick_variant()` 依各元件實際存在的 variant 決定（fp16 齊→fp16；僅 fp32 檔→None；不齊→ProviderError 指向 `image-download`）；`load_kwargs()` 純函式，variant 不再綁 dtype；diffusers ≥0.36 用 `dtype=`（以 `_resolve_dtype` 判斷）消除 `torch_dtype` FutureWarning；`vae_fp32` 改為單獨以 fp32 載入 VAE（消除 `.to()` 警告，失敗退回 `.to()`）；同程序內數值失敗後的階梯 `_floor` 延續到下一景（不再每景 fp16→NaN→fp32 重跑）；evidence 新增 `weights_variant`、`fp32_source`、`plan_origin`；`image-download` 對已存在模型印出各元件 variant 與 fp32 策略。
+- 4 GB 可行性：fp32 UNet 3.44 GB 以 `enable_model_cpu_offload` 逐元件上卡，512×512 + attention/VAE slicing 預期可跑；若 OOM 由既有 memory 階梯降到 384。Placeholder 永遠是最後一層，但 **placeholder 不算 SD 1.5 真機成功**（evidence `generated_by` 必須是 `diffusers-sd15`）。
+- 回歸測試：`tests/test_image_integrity.py` +3（fp16-only 權重供 fp32 plan 使用、variant 完整性、階梯延續）；共 86 passed。

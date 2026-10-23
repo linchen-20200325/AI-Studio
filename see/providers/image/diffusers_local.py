@@ -28,6 +28,8 @@ MODEL_PRESETS: dict[str, dict[str, Any]] = {
                      "variant": None, "multiple": 16, "download_gb": 24.0, "allow_patterns": None},
     "sd15": {"model_id": "stable-diffusion-v1-5/stable-diffusion-v1-5", "steps": 25, "guidance": 7.0, "max_side": 512,
              "variant": "fp16", "multiple": 8, "download_gb": 2.2,
+             # D-022：fp32 升級不另外下載 fp32 權重，而是把同一份 fp16 權重在載入時 upcast（diffusers 依 dtype cast 浮點參數）
+             "fp32_escalation": "upcast fp16 variant at load (no extra download)",
              # 只抓 fp16 權重與設定；略過 safety_checker（省 ~600MB 與 VRAM）
              "allow_patterns": ["*.json", "*.txt", "tokenizer/*", "scheduler/*", "feature_extractor/*",
                                 "unet/diffusion_pytorch_model.fp16.safetensors",
@@ -109,7 +111,68 @@ def gen_size(width: int, height: int, max_side: int, multiple: int) -> tuple[int
 def download_plan(preset: str) -> dict[str, Any]:
     cfg = MODEL_PRESETS[preset]
     return {"preset": preset, "model_id": cfg["model_id"], "estimated_gb": cfg["download_gb"],
-            "allow_patterns": cfg["allow_patterns"], "variant": cfg["variant"]}
+            "allow_patterns": cfg["allow_patterns"], "variant": cfg["variant"],
+            "fp32_escalation": cfg.get("fp32_escalation", "n/a")}
+
+
+WEIGHT_COMPONENTS = ("unet", "vae", "text_encoder")
+
+
+def local_weight_variants(model_path: str | Path) -> dict[str, set[str | None]]:
+    """每個元件資料夾實際存在的權重 variant（None = 無 variant 的 fp32 檔）。純檔案系統檢查，不碰 torch。"""
+    out: dict[str, set[str | None]] = {}
+    for comp in WEIGHT_COMPONENTS:
+        d = Path(model_path) / comp
+        found: set[str | None] = set()
+        for f in d.glob("*.safetensors") if d.is_dir() else []:
+            parts = f.name.split(".")
+            found.add(parts[-2] if len(parts) >= 3 else None)  # model.fp16.safetensors → "fp16"
+        for f in d.glob("*.bin") if d.is_dir() else []:
+            parts = f.name.split(".")
+            found.add(parts[-2] if len(parts) >= 3 else None)
+        out[comp] = found
+    return out
+
+
+def pick_variant(model_path: str | None, preferred: str | None, plan_dtype: str) -> str | None:
+    """決定 from_pretrained 的 `variant`，使 runtime 階梯與實際下載內容一致（D-022）。
+
+    規則：優先用所有元件都齊的 variant；preferred（fp16）齊 → 用它（dtype=float32 時由 diffusers 載入即 upcast，
+    不需要 fp32 檔）；否則無 variant 檔齊 → None；都不齊 → ProviderError 指向 image-download。
+    model_path=None（HF cache）無法檢查 → 維持舊行為。
+    """
+    if not model_path:
+        return preferred if plan_dtype == "float16" else None
+    have = local_weight_variants(model_path)
+    complete = set.intersection(*have.values()) if have else set()
+    if preferred in complete:
+        return preferred
+    if None in complete:
+        return None
+    missing = {c: sorted(str(v) for v in vs) for c, vs in have.items()}
+    raise ProviderError(f"model weights incomplete at {model_path}: per-component variants {missing}; "
+                        f"re-run `python -m see.app.cli image-download --yes`")
+
+
+def diffusers_supports_dtype_kwarg() -> bool:
+    """diffusers ≥ 0.36 以 `dtype=` 取代 `torch_dtype=`（後者 FutureWarning）。以 `_resolve_dtype` 存在與否判斷。"""
+    try:
+        from diffusers.pipelines import pipeline_utils  # type: ignore
+
+        return hasattr(pipeline_utils, "_resolve_dtype")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def load_kwargs(plan: RuntimePlan, variant: str | None, preset: str, dtype_obj: Any, supports_dtype: bool) -> dict[str, Any]:
+    """from_pretrained 參數（純函式可測）。variant 由 pick_variant 決定，不再綁 plan.dtype。"""
+    kw: dict[str, Any] = {("dtype" if supports_dtype else "torch_dtype"): dtype_obj, "local_files_only": True}
+    if variant:
+        kw["variant"] = variant
+    if preset == "sd15":
+        kw["safety_checker"] = None  # 未下載 safety_checker；省 VRAM
+        kw["feature_extractor"] = None  # 只有 safety_checker 需要；避免 torchvision warning
+    return kw
 
 
 def _torch_available() -> bool:
@@ -145,6 +208,8 @@ class DiffusersImageProvider(ImageProvider):
         self._plan: RuntimePlan | None = None
         self.calls = 0
         self.last_plan: RuntimePlan | None = None
+        self.weights_variant: str | None = None
+        self._floor: RuntimePlan | None = None  # 本程序內已證實需要的最低精度階梯（避免每景重走 fp16→NaN→fp32）
 
     @property
     def info(self) -> ProviderInfo:
@@ -188,26 +253,32 @@ class DiffusersImageProvider(ImageProvider):
         from diffusers import AutoPipelineForText2Image  # type: ignore
 
         dtype = getattr(torch, plan.dtype)
-        kwargs: dict[str, Any] = {"torch_dtype": dtype, "local_files_only": True}
-        if self.cfg["variant"] and plan.dtype == "float16":
-            kwargs["variant"] = self.cfg["variant"]
-        if self.preset == "sd15":
-            kwargs["safety_checker"] = None  # 未下載 safety_checker；省 VRAM
-            kwargs["feature_extractor"] = None  # 只有 safety_checker 需要；避免 torchvision warning
-        pipe = AutoPipelineForText2Image.from_pretrained(self.model_path or self.model_id, **kwargs)
+        variant = pick_variant(self.model_path, self.cfg["variant"], plan.dtype)
+        self.weights_variant = variant
+        supports_dtype = diffusers_supports_dtype_kwarg()
+        kwargs = load_kwargs(plan, variant, self.preset, dtype, supports_dtype)
+        src = self.model_path or self.model_id
+        if plan.vae_fp32 and plan.dtype != "float32":
+            # D-022：VAE 直接以 fp32 載入（同一份 fp16 檔 upcast），避免 `.to()` 事後 cast 的 diffusers 警告
+            try:
+                from diffusers import AutoencoderKL  # type: ignore
+
+                vkw: dict[str, Any] = {("dtype" if supports_dtype else "torch_dtype"): torch.float32, "local_files_only": True,
+                                       "subfolder": "vae"}
+                if variant:
+                    vkw["variant"] = variant
+                kwargs["vae"] = AutoencoderKL.from_pretrained(src, **vkw)
+            except Exception as e:  # noqa: BLE001
+                log.warning("separate fp32 VAE load failed (%s); falling back to .to(float32)", e)
+        pipe = AutoPipelineForText2Image.from_pretrained(src, **kwargs)
         if plan.attention_slicing and hasattr(pipe, "enable_attention_slicing"):
             pipe.enable_attention_slicing()
         if plan.vae_slicing and hasattr(pipe, "enable_vae_slicing"):
             pipe.enable_vae_slicing()
             if hasattr(pipe, "enable_vae_tiling"):
                 pipe.enable_vae_tiling()
-        if plan.vae_fp32 and hasattr(pipe, "vae"):
+        if plan.vae_fp32 and hasattr(pipe, "vae") and pipe.vae.dtype != torch.float32:
             pipe.vae.to(dtype=torch.float32)
-            if hasattr(pipe.vae, "config"):
-                try:
-                    pipe.vae.config.force_upcast = True
-                except Exception:  # noqa: BLE001
-                    pass
         if plan.cpu_offload and plan.device == "cuda" and hasattr(pipe, "enable_model_cpu_offload"):
             pipe.enable_model_cpu_offload()
         else:
@@ -261,6 +332,9 @@ class DiffusersImageProvider(ImageProvider):
         t0 = time.monotonic()
         dev, vram = self._resolve_device()
         plan = make_runtime_plan(dev, vram, int(self.cfg["max_side"]), getattr(self, "gpu_name", None))
+        plan_origin = "fresh"
+        if self._floor is not None and self._floor.device == plan.device:
+            plan, plan_origin = self._floor, "carried from previous scene (numeric failure already proven)"
         initial = plan
         self.attempts: list[str] = []
         img = None
@@ -302,7 +376,10 @@ class DiffusersImageProvider(ImageProvider):
         if defect is not None:
             out_path.unlink(missing_ok=True)
             raise ProviderError(f"diffusers saved image rejected: {defect}; attempts=" + "; ".join(self.attempts))
+        if any(a.startswith("numeric") for a in self.attempts):
+            self._floor = plan
         meta = self.evidence(initial, plan, out_path, time.monotonic() - t0)
+        meta["plan_origin"] = plan_origin
         self.last_evidence = meta
         log.info("diffusers %s done: %s", self.preset, meta)
         return ImageResult(path=str(out_path), width=request.width, height=request.height,
@@ -316,5 +393,7 @@ class DiffusersImageProvider(ImageProvider):
             "final_dtype": final.dtype, "final_vae_fp32": final.vae_fp32, "final_max_side": final.max_side,
             "attempts": list(self.attempts), "numeric_downgrade": any(a.startswith("numeric") for a in self.attempts),
             "oom_downgrade": "oom" in self.attempts, "elapsed_s": round(elapsed_s, 2),
+            "weights_variant": self.weights_variant,
+            "fp32_source": self.cfg.get("fp32_escalation", "n/a") if final.dtype == "float32" or final.vae_fp32 else None,
             "image_stats": image_stats(out_path).to_dict(),
         }

@@ -225,3 +225,57 @@ def test_run_pipe_casts_latents_to_vae_dtype(monkeypatch):
     # UNet 階段 NaN → None（視為數值失敗，不浪費 VAE decode）
     Pipe.__call__ = lambda self, **kw: types.SimpleNamespace(images=T(np.full((1, 4, 8, 8), np.nan)))
     assert prov._run_pipe(Pipe(), plan, ImageRequest(prompt="cat", width=640, height=360)) is None
+
+
+# ---------------------------------------------------------------- D-022: fp32 escalation with fp16-only local weights
+from see.providers.image.diffusers_local import load_kwargs, local_weight_variants, pick_variant  # noqa: E402
+
+
+def _fake_model_dir(tmp_path: Path, variants: dict[str, list[str | None]]) -> Path:
+    root = tmp_path / "sd15"
+    (root / "model_index.json").parent.mkdir(parents=True, exist_ok=True)
+    (root / "model_index.json").write_text("{}")
+    for comp, vs in variants.items():
+        (root / comp).mkdir(parents=True, exist_ok=True)
+        for v in vs:
+            name = ("model" if comp == "text_encoder" else "diffusion_pytorch_model") + (f".{v}" if v else "") + ".safetensors"
+            (root / comp / name).write_bytes(b"\0")
+    return root
+
+
+def test_fp16_only_weights_are_reused_for_fp32_plan(tmp_path: Path):
+    """真機事實：image-download 只抓 fp16 檔；fp32 升級必須仍用 variant=fp16（載入時 upcast），不得去找不存在的 fp32 檔。"""
+    root = _fake_model_dir(tmp_path, {"unet": ["fp16"], "vae": ["fp16"], "text_encoder": ["fp16"]})
+    assert local_weight_variants(root) == {"unet": {"fp16"}, "vae": {"fp16"}, "text_encoder": {"fp16"}}
+    assert pick_variant(str(root), "fp16", "float16") == "fp16"
+    assert pick_variant(str(root), "fp16", "float32") == "fp16"
+    kw = load_kwargs(RuntimePlan("cuda", "float32", True, True, True, True, 512, True), "fp16", "sd15", "F32", supports_dtype=True)
+    assert kw["variant"] == "fp16" and kw["dtype"] == "F32" and "torch_dtype" not in kw and kw["safety_checker"] is None
+    kw_old = load_kwargs(RuntimePlan("cuda", "float16", True, True, True, True, 512), None, "sd15", "F16", supports_dtype=False)
+    assert kw_old["torch_dtype"] == "F16" and "variant" not in kw_old
+
+
+def test_pick_variant_prefers_complete_set_and_reports_incomplete(tmp_path: Path):
+    fp32_only = _fake_model_dir(tmp_path / "a", {"unet": [None], "vae": [None], "text_encoder": [None]})
+    assert pick_variant(str(fp32_only), "fp16", "float16") is None  # 只有 fp32 檔 → 不要求 fp16 variant
+    both = _fake_model_dir(tmp_path / "b", {"unet": ["fp16", None], "vae": ["fp16", None], "text_encoder": ["fp16", None]})
+    assert pick_variant(str(both), "fp16", "float32") == "fp16"
+    broken = _fake_model_dir(tmp_path / "c", {"unet": ["fp16"], "vae": ["fp16"], "text_encoder": []})
+    with pytest.raises(ProviderError, match="image-download"):
+        pick_variant(str(broken), "fp16", "float16")
+    assert pick_variant(None, "fp16", "float16") == "fp16" and pick_variant(None, "fp16", "float32") is None  # HF cache：舊行為
+
+
+def test_numeric_floor_is_carried_to_next_scene(monkeypatch, tmp_path: Path):
+    """第一景 fp16 → NaN → fp32 成功後，第二景直接從 fp32 開始（不重走階梯），evidence 標 plan_origin。"""
+    good = np.random.default_rng(2).random((36, 64, 3)).astype(np.float32)
+    nan = good.copy(); nan[0, 0, 0] = np.nan
+    prov = DiffusersImageProvider("sd15")
+    plans = _prime(monkeypatch, prov, [nan, good, good])
+    r1 = prov.generate_image(ImageRequest(prompt="a", width=64, height=36), tmp_path / "1.png")
+    r2 = prov.generate_image(ImageRequest(prompt="b", width=64, height=36), tmp_path / "2.png")
+    assert [p.dtype for p in plans] == ["float16", "float32", "float32"]
+    assert r1.meta["plan_origin"] == "fresh" and r1.meta["numeric_downgrade"] is True
+    assert r2.meta["plan_origin"].startswith("carried") and r2.meta["numeric_downgrade"] is False
+    assert r2.meta["final_dtype"] == "float32" and r2.meta["initial_plan"]["dtype"] == "float32"
+    assert r2.meta["fp32_source"] == "upcast fp16 variant at load (no extra download)"

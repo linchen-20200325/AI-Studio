@@ -16,7 +16,8 @@
 - [x] `image_prompt_en` + negative prompt（D-018）。
 - [x] 使用者已安裝 torch/diffusers 並下載 SD 1.5（D-020）。
 - [ ] **使用者手動**：`git pull` 後重跑 `run`，貼回 `image_evidence`（D-021）與一張 image.png 縮圖 → 記入證據。
-- [ ] 若 GTX 1650 fp32 全程仍 OOM：改 `max_side` 448 或改 1:1 比例（可自主）。
+- [ ] 若 GTX 1650 fp32 全程仍 OOM：memory 階梯已自動降 384；仍不行再改 1:1 比例（可自主）。
+- [ ] 備案（D-022 C）：fp16 UNet + upcast_attention／部分層 fp32，僅在 fp32 全程太慢或 OOM 時評估。
 - [x] UI 顯示實際使用的 image provider 與 fallback 原因（D-021：Scene 卡 `image_meta`）。
 - [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。

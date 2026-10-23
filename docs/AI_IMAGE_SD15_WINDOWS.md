@@ -35,11 +35,15 @@ python -m see.app.cli run examples\story_short.txt --project-id sd15test
 - 警告：torchvision 缺失 → 已改 `feature_extractor=None`，不需安裝 torchvision。
 - 第二次執行（Batch 8 修正後）：CLI 正常結束、`providers.image.name=diffusers-sd15`，但 image.png 全黑 → root cause 是第一次留下的黑圖被當成有效快取重用（D-021），新版生成根本沒跑。
 
-## 4c. 第三次執行要看什麼（D-021 之後）
+## 4c-0. 第三次執行結果（Batch 9 程式，2026-10-23）
+- 黑圖 QA 生效（舊黑圖快取被淘汰）；fp16+VAE fp32 仍 NaN → 升級 fp32 時 `no file named model.safetensors … text_encoder`（只下載了 fp16 檔）→ 退回 placeholder。已修（D-022）：fp32 直接用同一份 fp16 權重 upcast 載入，**不需額外下載**。
+
+## 4c. 第四次執行要看什麼（D-021/D-022 之後）
 `providers.image.name` **不是**生成證據；看 `run` 輸出 JSON 的 `image_evidence[]`（每景一筆）：
 - `regenerated: true`、`reason`（`no valid cache` 或 `cached artifact rejected: black ...`）→ 有重新生成。
 - `generated_by`：`diffusers-sd15`＝AI 圖；`placeholder-image` + `fallback: true` + `fallback_from[]`＝diffusers 失敗退回 placeholder（原因在 `fallback_from`）。
-- `final_dtype` / `final_vae_fp32` / `numeric_downgrade` / `oom_downgrade` / `attempts[]`：實際走到哪一級。
+- `final_dtype` / `final_vae_fp32` / `numeric_downgrade` / `oom_downgrade` / `attempts[]`：實際走到哪一級；GTX 1650 預期第一景 `numeric_downgrade=true, final_dtype=float32`，之後各景 `plan_origin=carried…` 直接 fp32。
+- `weights_variant=fp16` + `fp32_source=upcast fp16 variant at load`：證明 fp32 用的是既有 fp16 檔，沒有要求新下載。
 - `image_stats.is_black` 必為 `false`（黑圖現在會被刪除並讓 pipeline 失敗，不會再「成功」）。
 stderr 另有 `INFO see.image.diffusers: ... attempt N: RuntimePlan(...)` 與每景 `rebuilt/reused/reasons`。
 

@@ -217,7 +217,10 @@ def cmd_image_download(args: argparse.Namespace) -> int:
         print("未加 --yes：只顯示計畫，未下載任何檔案。", file=sys.stderr)
         return 0
     if (dest / "model_index.json").exists():
-        print(f"已存在：{dest}（略過下載）")
+        from see.providers.image.diffusers_local import local_weight_variants
+
+        print(f"已存在：{dest}（略過下載）；各元件權重 variant：{ {k: sorted(map(str, v)) for k, v in local_weight_variants(dest).items()} }")
+        print(f"fp32 升級策略：{plan['fp32_escalation']}")
         return 0
     try:
         from huggingface_hub import snapshot_download  # type: ignore

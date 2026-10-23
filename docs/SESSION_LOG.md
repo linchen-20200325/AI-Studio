@@ -101,3 +101,13 @@
 - Tests: 83 passed（+10 回歸）；CI 見 STATE
 - Decision: D-021
 - Next: 使用者 `git pull` 後重跑同一條 run 命令並貼回 `image_evidence`
+
+---
+- Date: 2026-10-23
+- Start SHA: 8d6ad06
+- End SHA: __END__
+- Batch: Batch 10 — fp32 升級找不到權重（runtime 階梯 vs fp16-only 下載不一致）
+- Result: 採方案 B：同一份 fp16 權重以 dtype=float32 載入 upcast（零下載）；pick_variant 依實際檔案決定；dtype= kwarg；VAE 單獨 fp32 載入；階梯跨景延續；evidence +weights_variant/fp32_source/plan_origin
+- Tests: 86 passed（+3）；CI 見 STATE
+- Decision: D-022
+- Next: 使用者 `git pull` 後重跑同一條 run 命令並貼回 `image_evidence`
