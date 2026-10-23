@@ -45,6 +45,7 @@ class SceneEditIn(BaseModel):
     voice: str | None = None
     narrator_id: str | None = None
     speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0)
+    audio_cues: list[dict[str, Any]] | None = Field(default=None, max_length=20, description="AudioCue 清單（bgm/sfx）；由 Scene schema 驗證")
 
 
 class CharacterIn(BaseModel):
@@ -125,6 +126,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             "cost": _cost(project),
             "characters": {k: v.model_dump(mode="json") for k, v in project.characters.items()},
             "unconfirmed_characters": orch.unconfirmed_characters(project),
+            "audio_evidence": _audio_evidence(project.project_id),
         }
 
     def _image_meta(pid: str, sid: str) -> dict[str, Any]:
@@ -137,6 +139,12 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "final_dtype": m.get("final_dtype"), "final_vae_fp32": m.get("final_vae_fp32"),
                 "numeric_downgrade": m.get("numeric_downgrade"), "oom_downgrade": m.get("oom_downgrade"),
                 "fallback": m.get("fallback"), "fallback_from": m.get("fallback_from"), "image_stats": m.get("image_stats")}
+
+    def _audio_evidence(pid: str) -> dict[str, Any]:
+        import json as _json
+
+        f = store.renders_dir(pid) / "preview.audio.json"
+        return _json.loads(f.read_text(encoding="utf-8")) if f.exists() else {"status": "missing"}
 
     def _narration_meta(pid: str, sid: str) -> dict[str, Any]:
         """Scene 卡顯示用的旁白證據：真正生成者、voice、device、rtf、是否降級／fallback。"""

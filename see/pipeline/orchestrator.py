@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from see.audio.layer import AudioLayer
 from see.core.approval import ApprovalGate
 from see.core.config import Settings
 from see.core.errors import InvalidTransition, PaidProviderNotApproved, RenderError, SchemaViolation
@@ -255,14 +256,28 @@ class Orchestrator:
         project.render_jobs.append(job)
         self.store.write_json(rdir / f"{kind.value}.json", timeline)
         self._write_global_srt(project, timeline, rdir / f"{kind.value}.srt")
+        # D-031：Audio Layer（BGM／SFX／ducking）。null provider 或沒有 cue → 與舊版完全相同的單一步驟組裝
+        layer = AudioLayer(self.p.audio, self.renderer.ffmpeg, self.settings.mix_params)
+        plan = layer.plan(project, timeline) if layer.enabled else None
+        mixing = plan is not None and not plan.empty
+        audio_ev: dict[str, object] = {"enabled": layer.enabled, "provider": self.p.audio.info.name,
+                                       "cost_tier": self.p.audio.info.cost_tier,
+                                       "status": "disabled" if not layer.enabled else ("no_cues" if not mixing else "pending")}
+        if plan is not None and plan.skipped:
+            audio_ev["skipped"] = plan.skipped
+        target = rdir / f"{kind.value}.dry.mp4" if mixing else out
         try:
             self.executor.run(Task(task_id=job.job_id, kind="render", requires={"cpu", "ffmpeg"},
-                                   fn=self.renderer.assemble, kwargs={"timeline": timeline, "out_path": out, "profile": profile}))
+                                   fn=self.renderer.assemble, kwargs={"timeline": timeline, "out_path": target, "profile": profile}))
+            if mixing:
+                audio_ev = layer.apply(project, plan, target, out, rdir / "audio", audio_bitrate=profile.audio_bitrate)
         except Exception as e:
             job.status, job.error = JobStatus.FAILED, str(e)
             job.finished_at = datetime.now(timezone.utc)
             self.store.save(project)
             raise
+        self.store.write_json(rdir / f"{kind.value}.audio.json", audio_ev)
+        self.last_audio_evidence = audio_ev
         job.status, job.output_path = JobStatus.DONE, str(out)
         job.finished_at = datetime.now(timezone.utc)
         if kind == JobKind.PREVIEW:
@@ -305,7 +320,7 @@ class Orchestrator:
         """修改單一 Scene 的欄位（narration / subtitle_override / image_prompt / camera_motion / transition ...）。"""
         scene = project.scene(scene_id)
         allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
-                   "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed"}
+                   "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")

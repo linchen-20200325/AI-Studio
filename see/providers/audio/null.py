@@ -11,6 +11,8 @@ from see.providers.base import AudioProvider, AudioRequest, AudioResult
 
 
 class NullAudioProvider(AudioProvider):
+    generates_audio = False
+
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(name="null-audio", kind=ProviderKind.AUDIO, cost_tier=CostTier.LOCAL_FREE, model="none")

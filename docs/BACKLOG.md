@@ -14,7 +14,8 @@
 - [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。🚦（使用者手動）
 - [x] DG-9：裁示 D-027 — Kokoro-82M v1.1-zh 候選驗證核准（非最終採用）。原題：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
 - [x] DG-13：裁示 A（D-029）— Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider；Provider Agnostic、DG-14／DG-15 獨立。
-- [ ] **DG-16**：Phase 2 第二目標方向（BGM/SFX〔素材授權需確認〕／LLM 規劃〔DG-10，需模型下載〕／其他）。🚦
+- [x] DG-16：裁示 A（D-031）— Audio Layer（BGM／SFX／ducking），程序生成、NT$0。
+- [ ] **DG-17**：Audio Layer 聽感裁示（Windows 真機）＋是否預設開啟 BGM（目前預設 null）＋是否引入 CC0／使用者素材來源（需另核准）。🚦🖥️
 - [ ] **DG-14**：產品永久預設 voice（目前候選 zm_010 僅為內部首選，未鎖死；D-028）。🚦
 - [ ] **DG-15**：Voice Selector UI 形式（角色→選 voice→試聽→語速→確認）；屬產品 UI 決策。🚦
 - [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
@@ -42,7 +43,7 @@
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
 - [ ] Retry／resume：中斷後續跑（per-scene fingerprint 已可續跑）；明確 retry policy 與失敗景標記。🤖
 - [ ] `OllamaLLMProvider`（LOCAL_FREE）：暫緩（DG-2）。
-- [ ] BGM / SFX：`AudioProvider` 實作（免費素材庫或程序化生成），含 audio mixing 與 ducking；素材授權需確認。🖥️（🚦若素材授權不明）
+- [ ] BGM / SFX：**第一版完成（D-031，Batch 20）**：程序化 BGM／SFX、ducking、limiter、mux、evidence。待做：Windows 真機聽感（DG-17）；ambience；多段 BGM；CC0／使用者上傳來源（新 AudioProvider，素材授權需核准）；UI 調整 cue（DG-15 相關）。🖥️🚦
 - [ ] QA 階段：自動檢查（video QA：黑幀／凍結；audio QA：LUFS／靜音；subtitle QA：超長／重疊；總長度區間）。圖片黑圖／平面檢查已有（`see/core/image_qa.py`，D-021）。🤖
 
 ## P1
@@ -74,11 +75,11 @@
 | Image QA | ✅ | `image_qa`（黑／平面／無法解碼）＋ fail-closed（D-021） |
 | Video / motion generation | 🟡 | 只有 Ken Burns（ffmpeg zoompan）；真正 image-to-video 未做（P1） |
 | Narration / TTS | ✅ | Kokoro-82M v1.1-zh（D-029，CPU，LOCAL_FREE）→ espeak → silent fallback；台灣口音 provider 未有（可新增） |
-| Character voices | ⬜ | `scene.voice` 欄位存在；無多角色語音 provider |
+| Character voices | 🟡 | 角色 voice／語速／試聽／確認（D-030，CLI＋API）；UI 未做（DG-15） |
 | Subtitle | ✅ | 切句、SRT、燒錄、覆寫（Phase 0） |
-| Background music | ⬜ | `AudioProvider` 介面＋`null-audio`；`AudioCue` schema 有，無實作 |
-| Sound effects | ⬜ | 同上 |
-| Audio mixing / ducking | ⬜ | 未做 |
+| Background music | 🟡 | 程序化 BGM（D-031；預設關閉，`--audio procedural`）；真機聽感未驗證（DG-17）；無外部素材來源 |
+| Sound effects | 🟡 | 程序化 SFX（scene `sfx` cue；chime／whoosh／thud／pop）；真機聽感未驗證 |
+| Audio mixing / ducking | 🟡 | numpy 混音＋ducking＋limiter（13 tests）；真機聽感未驗證（DG-17） |
 | Lipsync | ⬜ | `null-lipsync` 介面而已 |
 | Preview rendering | ✅ | ffmpeg 組裝、轉場、字幕、1280×720（真機 42.4 s） |
 | Human approval | ✅ | PREVIEW→APPROVED→FINAL 狀態機，CLI/UI `approve` |
@@ -88,12 +89,12 @@
 | Local / free provider strategy | ✅ | LOCAL_FREE 全程 NT$0；PAID 需核准（ApprovalGate 測試） |
 | Windows GPU support | ✅ | cp950 修正、4 GB runtime plan、fp32 upcast（D-020～D-022） |
 | Cache / resume | ✅ | per-scene fingerprint、內容驗證、降級快取重試（D-021/D-023） |
-| Evidence / provenance | ✅ | manifest meta、CLI `image_evidence`、UI `image_meta`（僅 image；TTS/clip 尚無同等 evidence → 🟡 整體） |
-| Failure / fallback handling | ✅（image）🟡（其他） | image 階梯＋fail-closed；TTS 有 auto fallback；video/audio 無 |
+| Evidence / provenance | ✅ | image／TTS（`tts_evidence`、provenance.json）／audio（`audio_evidence`）；clip 尚無同等 evidence |
+| Failure / fallback handling | ✅（image／TTS／audio）🟡（video） | image 階梯；TTS kokoro→espeak→silent；audio 來源 unavailable 照實記錄；video 無 fallback |
 | Configuration / setup UX | 🟡 | env 變數＋`image-setup`／`image-download`／`hardware`；UI 無設定頁；`image_prompt_en` UI 欄未做 |
 | Access control / 部署 | 🔴 | 限可信任區網（D-011）；DG-7 repo Private 待使用者手動 |
 
-統計（上表 25 項）：✅ 13　🟡 8　⬜ 5（character voices、BGM、SFX、mixing、lipsync）　🔴 1（DG-7，待使用者手動）。
+統計（上表 25 項，2026-10-23 Batch 20 重算）：✅ 15　🟡 8　⬜ 1（lipsync）　🔴 1（DG-7，待使用者手動）。
 未完成 BACKLOG 條目：P0 7、P1 5、P2 5（全部保留於上方清單，無刪除）。
 
 ## Phase 2 建議（排序；第 1 項已完成 D-029；第 2、3 項開工前需裁示 DG-16）

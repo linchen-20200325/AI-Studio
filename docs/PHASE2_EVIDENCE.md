@@ -54,5 +54,11 @@ python -m see.app.cli run examples\story_short.txt --project-id kokorotest --voi
 事實結論：Kokoro（CPU）與 SD 1.5（GTX 1650）在同一次 `run` 中共存成功；旁白 duration 正確進入影片流程（has_audio、字幕由實測時長切）；無任何 TTS fallback；LOCAL_FREE、NT$0。穩態 RTF ≈0.30（CPU），首景含載入 ≈0.81。
 聽感：沿用 E2-1 使用者主觀回報（zm_010 最偏好；zf_001 口音明顯），**非客觀排名**。
 
+## E2-3 Audio Layer（BGM／SFX／ducking；D-031）
+### 自動測試證據（雲端容器，2026-10-23，Batch 20）
+`tests/test_audio_layer.py` 13 項：程序化來源確定性；ducking 在人聲中衰減至 −12 dB、hold 期間不恢復、release 後平順恢復且無階梯跳變；無人聲 → 不 duck；narration-only 不被改動；limiter 在 0 dB 疊加下仍 ≤ −1 dBFS；SFX 定位與超出時間軸標示；BGM 比人聲低 > 20 dB；null 預設與舊版相容（無 dry 檔、不建 audio 目錄）；加 BGM／SFX 不觸發任何 scene 重做；來源失敗照實標 unavailable；PAID 來源被 ApprovalGate 擋下。CLI 實跑：`run --audio procedural` → status=mixed、peak −24 dBFS；`set-scene --sfx 一陣風@0.3` → whoosh 於 0.3 s。
+### Windows 真機（待做）
+命令：`python -m see.app.cli run examples\story_short.txt --project-id audiotest --voice zm_010 --audio procedural`。需回報：`audio_evidence.status`、`mix.peak_db`、`mix.ducking.active_ratio`；聽感（人聲是否清楚、BGM 是否太大／太小、淡入淡出是否自然）；`image_evidence`／`tts_evidence` 仍為 diffusers-sd15／kokoro-tts。
+
 ## 狀態
-E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。
+E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider（D-029）。E2-3（Audio Layer）自動測試 ✅、真機 ⏳ → DG-17。

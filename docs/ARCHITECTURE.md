@@ -108,7 +108,8 @@ class LipSyncProvider: lipsync(req, out_path) -> LipSyncResult
 | TTS | `EspeakTTSProvider` | LOCAL_FREE | espeak-ng `cmn`；品質低但離線可用 |
 | TTS | `SilentTTSProvider` | LOCAL_FREE | 靜音 + 以字數估算時長；測試與無 TTS 環境 fallback |
 | TTS | `EdgeTTSProvider` | FREE_TIER | 需網路、不需 key；本環境無法連線，未啟用 |
-| Audio | `NullAudioProvider` | LOCAL_FREE | 不產生 BGM/SFX |
+| Audio | `NullAudioProvider` | LOCAL_FREE | 不產生 BGM/SFX（預設；Audio Layer 停用） |
+| Audio | `ProceduralAudioProvider` | LOCAL_FREE | 程式生成確定性 BGM／SFX（D-031）；`see/audio/layer.py`＋`mixer.py` 在 render 階段混音（ducking、limiter），per-scene clip 不變 |
 | LipSync | `NullLipSyncProvider` | LOCAL_FREE | 介面預留 |
 
 ## 6. 成本與核准（`see/core/approval.py`）

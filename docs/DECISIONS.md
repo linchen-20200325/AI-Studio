@@ -23,6 +23,7 @@
 | D-028 | Kokoro E2-1 真機技術驗證成功（候選仍非最終）；zm_010 為 Kokoro 內部首選候選（不鎖死）；zf_001 口音＝已知限制；Voice Selection 產品需求入規格；DG-14 預設 voice 裁示 | 有效 | 可逆 |
 | D-029 | DG-13 裁示 A：正式採用 Kokoro 為「目前 Phase 2 LOCAL_FREE 中文 TTS provider」；Provider Agnostic 保留；zm_010 非永久預設；DG-14／DG-15 獨立 | 有效 | 可逆（換 provider 需新 DG） |
 | D-030 | Voice Selection 非 UI 實作：角色 voice／語速、優先序、試聽、確認閘門（使用角色時 Final 需確認） | 有效 | 可逆 |
+| D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -215,3 +216,11 @@
 - 流程：設定角色 → 試聽（`preview_voice`：單句合成到 `workspace/voice_previews/`，不寫 manifest；PAID 一律拒絕）→ 人工確認 → **使用角色的專案 Final render 需全部角色已確認**（未使用角色者不受影響）。任何角色變更清掉 confirmed、相關景回 DRAFT。
 - 介面：CLI `character`、`voice-preview`、`set-scene --voice/--narrator/--speed`；Web API `GET /api/voices`、`POST /api/voices/preview`、`GET /api/voice-previews/{id}.wav`、`POST /api/projects/{pid}/characters/{cid}`、`…/confirm`。**HTML UI 未改（DG-15）**；預設 voice 未鎖（DG-14）。
 - espeak 作 fallback 時遇到其他 provider 的 voice id（如 zm_010）改用語言預設聲，不直接掉到 silent。
+
+## D-031 2026-10-23 DG-16 裁示 A：Audio Layer（BGM／SFX／ducking）— Batch 20 實作
+- 客戶裁示限制：NT$0；不下載 AI 模型；不用 PAID；第一版以程式生成測試 BGM／SFX；Provider／Source Agnostic；未經核准不新增外部音樂素材庫；SD 1.5／Kokoro／Voice Selection 不得回歸。
+- 架構：per-scene clip 仍只含 narration（**既有 fingerprint 不變**）；render 階段 `see/audio/layer.py` 取已組裝的 narration 音軌 → BGM（第一個 `bgm` cue，整支一條，loop＋淡入淡出）＋ SFX（`sfx` cue，scene start + start_offset）→ `see/audio/mixer.py`（ducking、gain、look-ahead limiter）→ mux 回影片。來源只經 `AudioProvider`；第一個來源 `procedural-audio`（確定性 pad／chime／whoosh／thud／pop，license=generated）。
+- 參數集中 `MixParams`（`Settings.mix_params`）：narration 0 dB、BGM −18 dB、SFX −6 dB、ducking depth −12 dB／threshold −40 dB／attack 60 ms／release 450 ms／hold 200 ms、limiter ceiling −1 dBFS。
+- Evidence：`renders/<kind>.audio.json`（CLI `audio_evidence`、Web view）：status（disabled／no_cues／mixed／mixed_degraded／unavailable）、BGM／SFX 的 provider／source_type／license／seed／cost_tier／status、ducking 統計、peak／limiter 衰減、skipped cue。來源失敗 → unavailable 照實寫、輸出 narration-only；PAID 來源 → ApprovalGate 拒絕（render 失敗，fail-closed）。
+- **預設 `SEE_AUDIO_PROVIDER=null`（舊行為）**：是否預設開啟 BGM 屬產品聲音體驗 → **DG-17**（需 Windows 真機聽感）。開啟：`run --audio procedural`／`SEE_AUDIO_PROVIDER=procedural`；SFX：`set-scene --sfx 描述@秒數`。
+- 第一版限制：ambience 未支援（記為 skipped）；僅一條 BGM；程序化音訊是測試等級，非產品級配樂。

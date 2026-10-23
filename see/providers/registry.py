@@ -12,6 +12,7 @@ from see.core.config import Settings
 from see.core.errors import ProviderUnavailable
 from see.core.ffmpeg import FFmpeg
 from see.providers.audio.null import NullAudioProvider
+from see.providers.audio.procedural import ProceduralAudioProvider
 from see.providers.base import (
     AudioProvider,
     ImageProvider,
@@ -78,7 +79,7 @@ class ProviderRegistry:
             # auto：kokoro 有套件＋本機權重就用（D-027 候選），否則 espeak，再否則 silent；永不自動跨到 PAID
             "auto": lambda: FallbackTTSProvider([_kokoro(), EspeakTTSProvider(ffmpeg=self.ffmpeg), SilentTTSProvider()]),
         }
-        self._audio: dict[str, Callable[[], AudioProvider]] = {"null": NullAudioProvider}
+        self._audio: dict[str, Callable[[], AudioProvider]] = {"null": NullAudioProvider, "procedural": ProceduralAudioProvider}
         self._lipsync: dict[str, Callable[[], LipSyncProvider]] = {"null": NullLipSyncProvider}
 
     @staticmethod

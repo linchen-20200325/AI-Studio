@@ -73,6 +73,25 @@ def tts_evidence(orch: Orchestrator, project) -> list[dict]:
     return rows
 
 
+def audio_evidence(orch: Orchestrator, project, kind: str = "preview") -> dict:
+    """最近一次 render 的 Audio Layer 證據（renders/<kind>.audio.json）；沒有檔案 → 明確回報 missing，不補假資料。"""
+    f = orch.store.renders_dir(project.project_id) / f"{kind}.audio.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {"status": "missing"}
+
+
+def _parse_sfx(items: list[str] | None) -> list[dict] | None:
+    """`--sfx 描述@秒數`（可重複）→ AudioCue dict；`--sfx none` 清空本景 sfx。"""
+    if items is None:
+        return None
+    if items == ["none"]:
+        return []
+    out = []
+    for it in items:
+        desc, _, off = it.rpartition("@") if "@" in it else (it, "", "0")
+        out.append({"kind": "sfx", "description": desc.strip(), "start_offset": float(off or 0)})
+    return out
+
+
 def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
     ff = FFmpeg(orch.settings.ffmpeg, orch.settings.ffprobe)
     out = Path(job.output_path or "")
@@ -86,6 +105,7 @@ def _print_summary(orch: Orchestrator, project, job, timeline) -> None:
         "providers": {k: getattr(orch.p, k).info.model_dump() for k in ("llm", "image", "video", "tts", "audio", "lipsync")},
         "image_evidence": image_evidence(orch, project),  # providers.image.name 只是「第一個可用候選」，這裡才是實際生成證據
         "tts_evidence": tts_evidence(orch, project),
+        "audio_evidence": audio_evidence(orch, project, getattr(job.kind, "value", str(job.kind))),
     }, ensure_ascii=False, indent=2))
 
 
@@ -95,6 +115,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         settings.tts_provider = args.tts
     if getattr(args, "voice", None):
         settings.tts_default_voice = args.voice
+    if getattr(args, "audio", None):
+        settings.audio_provider = args.audio
     if args.workspace:
         settings.workspace = Path(args.workspace).resolve()
     _, orch = build(settings)
@@ -119,9 +141,15 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_set_scene(args: argparse.Namespace) -> int:
-    _, orch = build()
+    settings = Settings()
+    if args.audio:
+        settings.audio_provider = args.audio
+    _, orch = build(settings)
     project = orch.store.load(args.project_id)
-    orch.update_scene(project, args.scene_id, narration=args.narration, subtitle_override=args.subtitle,
+    cues = _parse_sfx(args.sfx)
+    if cues is not None:  # 保留本景既有的 bgm／其他 cue，只替換 sfx
+        cues = [c.model_dump() for c in project.scene(args.scene_id).audio_cues if c.kind != "sfx"] + cues
+    orch.update_scene(project, args.scene_id, audio_cues=cues, narration=args.narration, subtitle_override=args.subtitle,
                       image_prompt=args.image_prompt, image_prompt_en=args.image_prompt_en,
                       camera_motion=args.camera, transition=args.transition,
                       voice=args.voice, narrator_id=args.narrator, speech_speed=args.speed)
@@ -372,6 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--project-id")
     r.add_argument("--tts", choices=["auto", "kokoro", "espeak", "silent", "edge"])
     r.add_argument("--voice", default=None, help="scene.voice=default 時使用的 voice id（例如 zm_010；等同 SEE_TTS_DEFAULT_VOICE）")
+    r.add_argument("--audio", choices=["null", "procedural"], default=None, help="BGM/SFX 來源（預設 null = 不加；procedural = 程式生成測試音）")
     r.add_argument("--workspace")
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status"); st.add_argument("project_id"); st.set_defaults(fn=cmd_status)
@@ -381,6 +410,8 @@ def main(argv: list[str] | None = None) -> int:
     ss.add_argument("--camera"); ss.add_argument("--transition")
     ss.add_argument("--voice", help="本景 voice id（覆寫角色）"); ss.add_argument("--narrator", help="本景旁白角色 id")
     ss.add_argument("--speed", type=float, help="本景語速覆寫（0.5–2.0）")
+    ss.add_argument("--sfx", action="append", help="本景音效「描述@秒數」（可重複；none = 清空）")
+    ss.add_argument("--audio", choices=["null", "procedural"], default=None)
     ss.set_defaults(fn=cmd_set_scene)
     rg = sub.add_parser("regen", help="強制重做單一 scene"); rg.add_argument("project_id"); rg.add_argument("scene_id"); rg.set_defaults(fn=cmd_regen)
     apv = sub.add_parser("approve", help="人工核准（PREVIEW → APPROVED）"); apv.add_argument("project_id")

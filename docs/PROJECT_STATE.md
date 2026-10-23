@@ -8,13 +8,13 @@
 |---|---|
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
-| Current Status | Batch 19 完成（Voice Selection 非 UI，D-030）；工作樹乾淨；無待做 Windows 步驟；**等待 DG-16**；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 20 完成（Audio Layer 第一版，D-031）；工作樹乾淨；**等待 Windows 聽感驗證（E2-3）→ DG-17**；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
-| Last Updated | 2026-10-23（Batch 19：Voice Selection 非 UI，D-030） |
+| Last Updated | 2026-10-23（Batch 20：Audio Layer，D-031） |
 
 ## Current GitHub checkpoint
 - Phase 1 真機驗收版本：functional `ada08f9`／checkpoint `ec8ff77`（D-023）。Phase 1 收尾 docs：`1b944aa`（D-024）。之後只有 governance／文件 commit。
-- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：106 passed、1 skipped（espeak 缺時 skip）。
+- CI：GitHub Actions `ci.yml`（push to `main` / `ccr-*`）；最近 run 皆 success。Tests：119 passed、1 skipped（espeak 缺時 skip）。
 - Open / draft PR：無（流程不開 PR；開發分支驗證後 fast-forward `main`）。
 
 ## Current validated environment（last known validated snapshot，非永久硬體假設）
@@ -32,7 +32,7 @@
 | Image | `diffusers-sd15`（LOCAL_FREE，真機驗證）→ fallback `placeholder-image`；`paid-stub` 永遠被 ApprovalGate 擋 | **Real**（SD 1.5）；placeholder 只是 fallback |
 | Video | `KenBurnsVideoProvider`（ffmpeg zoompan 靜態圖運鏡） | **Partial**（非真正 image-to-video） |
 | TTS | `auto` → **kokoro**（**D-029 正式採用**；E2-1／E2-2 真機驗證；CPU；voice 由 `scene.voice`／`--voice`／`SEE_TTS_DEFAULT_VOICE` 指定，程式預設未鎖 zm_010）→ espeak-ng → silent；`edge-tts` 不採用（D-014） | **Real**（provider-agnostic 保留；永久預設 voice 待 DG-14） |
-| Audio（BGM/SFX） | `null-audio` | **Null** |
+| Audio（BGM/SFX） | 預設 `null-audio`；`procedural-audio`（D-031：程序化 BGM／SFX＋ducking＋limiter，`--audio procedural`） | **Partial**（自動測試通過；真機聽感未驗證；預設關閉待 DG-17） |
 | LipSync | `null-lipsync` | **Null** |
 | Subtitle／Timeline／Render | 確定性 SRT、燒錄、xfade、preview/final.mp4 | **Real** |
 | Web UI | FastAPI 單頁（貼文→Preview→單景修改／重做→核准→Final），限可信任區網（D-011） | **Real**（缺 `image_prompt_en` 欄、每景進度、專案刪除） |
@@ -47,11 +47,12 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-9 **已裁示（D-027）**：Kokoro-82M v1.1-zh 為候選，Candidate Validation Approval（非最終採用）；授權下載 ≈330 MB 做真機驗證。**尚未下載。**
 - DG-13 **已裁示 A（D-029）**。
 - 開放、非阻塞：DG-14 永久預設 voice（zm_010 僅目前人耳偏好候選）；DG-15 Voice Selector UI；DG-10 LLM／DG-11 Video／DG-12 Queue。
-- **DG-16（下一個需裁示）**：Phase 2 第二目標方向（BACKLOG Phase 2 排序：BGM/SFX → LLM 規劃）。
+- DG-16 **已裁示 A（D-031）**：Audio Layer。
+- **DG-17（E2-3 真機後）**：Audio Layer 聽感（BGM 是否蓋人聲、SFX 是否突兀）＋是否預設開啟 BGM＋是否引入 CC0／使用者素材（需另核准）。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-客戶裁示 DG-16（Phase 2 第二目標方向）。Voice Selection 非 UI 已完成（D-030；CLI `character`／`voice-preview`、Web API）。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
+Windows E2-3（一次一指令）：`python -m see.app.cli run examples\story_short.txt --project-id audiotest --voice zm_010 --audio procedural` → 使用者回報 `audio_evidence` 與聽感 → 寫 `PHASE2_EVIDENCE.md` E2-3 → 停在 DG-17。其他可自主：evidence 擴充到 clip、QA 規則、`image_prompt_en` UI 欄、GTX 16xx 直起 fp32。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

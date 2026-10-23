@@ -168,9 +168,14 @@ class AudioResult(BaseModel):
     duration: float = 0.0
     provider: str
     model: str
+    meta: dict[str, Any] = Field(default_factory=dict,
+                                 description="來源證據：source_type（procedural / cc0 / user / ...）、license、seed、variant")
 
 
 class AudioProvider(BaseProvider):
+    #: False = 此 provider 不產生任何音訊（null）；Audio Layer 直接停用，輸出與舊版完全相同
+    generates_audio: bool = True
+
     @abstractmethod
     def generate_audio(self, request: AudioRequest, out_path: Path) -> AudioResult: ...
 

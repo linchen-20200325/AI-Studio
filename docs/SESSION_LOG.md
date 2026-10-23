@@ -201,3 +201,13 @@
 - Tests: 106 passed、1 skipped
 - Decision: D-030
 - Next: 客戶裁示 DG-16；可安全換新對話
+
+---
+- Date: 2026-10-23
+- Start SHA: f323765
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 20 — Audio Layer 第一版（BGM／SFX／ducking／limiter／evidence）
+- Result: D-031；`see/audio/`（pcm、mixer、layer）、`procedural-audio` provider、CLI `--audio`／`--sfx`、`audio_evidence`；預設 null（舊行為、fingerprint 不變）；BACKLOG 能力表重算
+- Tests: 119 passed、1 skipped
+- Decision: D-031（DG-16=A）；DG-17 待真機
+- Next: Windows E2-3：`run examples\story_short.txt --project-id audiotest --voice zm_010 --audio procedural`
