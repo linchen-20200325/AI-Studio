@@ -250,4 +250,14 @@
 - Result: D-036：picture_book native scene/style PASS（H1 證實）；anime＋girl_city_night native scene PASS／style FAIL（「這是畢卡索嗎？」）；客戶裁示停止以 Base SD1.5 調 Anime；DG-20 改為現成專用模型研究（不下載）
 - Tests: 138 passed、1 skipped（僅文件）
 - Decision: D-036
-- Next: DG-20 研究（Effort Gate：建議 High）
+- Next: DG-20 研究（Effort Gate：客戶已調 High）
+
+---
+- Date: 2026-10-23
+- Start SHA: c0e0eb6
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 25 — DG-20 P1 專用影像模型研究（Effort High；只研究）
+- Result: `docs/DG20_IMAGE_MODEL_RESEARCH.md`：anime shortlist MeinaMix／Waifu Diffusion 1.4；realistic shortlist CyberRealistic／Realistic Vision V6.0 B1；cinematic 共用真人模型；排除 Anything／Counterfeit／OrangeMix（NAI 洩漏血統爭議）、Cool Japan Diffusion（禁商用）、NovelAI 官方權重（非商用）、SDXL 系（硬體）；Model Router 架構提案；容器網路擋 huggingface.co／civitai.com → 全部 LICENSE_UNVERIFIED。未下載、未安裝、NT$0
+- Tests: 138 passed、1 skipped（僅文件）
+- Decision: DG-20 待裁示
+- Next: 客戶裁示 DG-20；研究完成可降回 Medium／Low（DOWNSHIFT RECOMMENDED）

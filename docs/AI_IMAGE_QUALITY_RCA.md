@@ -65,4 +65,4 @@ GTX 1650 前提：fp16 會 NaN → 實務上必須 fp32（權重記憶體 ×2）
 ## 6. 真機 A/B 結果（D-036）
 - picture_book native：scene PASS／style PASS → **H1 證實**（pipeline 生成解析度）。
 - anime＋girl_city_night native：scene PASS／style FAIL（臉部／人體／背景嚴重失真）→ 解析度修正後仍不足，指向 **H4：SD 1.5 base 對動畫人物能力不足**。
-- 客戶裁示：不再以 prompt 調 Base SD1.5；進入 DG-20 專用模型研究（§4 表為舊初稿，以 DG-20 研究文件為準）。
+- 客戶裁示：不再以 prompt 調 Base SD1.5；進入 DG-20 專用模型研究（§4 表為舊初稿，以 `DG20_IMAGE_MODEL_RESEARCH.md` 為準）。
