@@ -115,7 +115,7 @@
 ---
 - Date: 2026-10-23
 - Start SHA: 11d90c5
-- End SHA: __END__
+- End SHA: ada08f9
 - Batch: Batch 11 — fallback 產物被當有效快取／regen 語意
 - Result: root cause＝placeholder fallback 產物以首選 provider fingerprint 快取，首選修好後永不重試；修 degraded-cache 規則、Fallback info 穩定、regen 印 evidence；regen 本身語意正確
 - Tests: 89 passed（+3）；CI 見 STATE
