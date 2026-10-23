@@ -1,0 +1,50 @@
+{
+ "id": "SG161222/Realistic_Vision_V6.0_B1_noVAE",
+ "revision_sha": "9a857a696b9aabbf509073e0aa55ec8200b6ef7d",
+ "license_yaml": "creativeml-openrail-m",
+ "createdAt": "2023-11-29T08:02:09.000Z",
+ "lastModified": "2024-10-08T16:36:37.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "Realistic_Vision_V6.0_NV_B1.safetensors",
+   "bytes": 4265096996,
+   "sha256": "5d814d2f9c489f9d3bffc56126a66c182eee7729bffacf71c048260aa366c269"
+  },
+  {
+   "name": "Realistic_Vision_V6.0_NV_B1_fp16.safetensors",
+   "bytes": 2132625894,
+   "sha256": "c48bfd159cd7a6507b128685e963c398fa72399cefafaf603781df50ce836cc7"
+  },
+  {
+   "name": "Realistic_Vision_V6.0_NV_B1_inpainting.safetensors",
+   "bytes": 4265203868,
+   "sha256": "e9c575dbbe237ea889e14c41f953fc9fb311439a88b15bb2e789b0630ae45efe"
+  },
+  {
+   "name": "Realistic_Vision_V6.0_NV_B1_inpainting_fp16.safetensors",
+   "bytes": 2136906350,
+   "sha256": "d939cbdbce19a9d8837794acd06ef8db1ad4a2f2bcf1418432d897eac98f1afd"
+  },
+  {
+   "name": "safety_checker/pytorch_model.bin",
+   "bytes": 1216064769,
+   "sha256": "16d28f2b37109f222cdc33620fdd262102ac32112be0352a7f77e9614b35a394"
+  },
+  {
+   "name": "text_encoder/pytorch_model.bin",
+   "bytes": 492307041,
+   "sha256": "9a9ce8416debe549369349713a653af9493baa1cfdd9fb1f3cc9cc7699396a41"
+  },
+  {
+   "name": "unet/diffusion_pytorch_model.bin",
+   "bytes": 3438366373,
+   "sha256": "9d95f59174bb2d41cf4195e197fd2806022a7cbafa3cc7c20294e08052b18ab2"
+  },
+  {
+   "name": "vae/diffusion_pytorch_model.bin",
+   "bytes": 334712113,
+   "sha256": "251086e7c7793410070d11a421db3886a7b2a7ff27cdea006a67a4cd76a7a899"
+  }
+ ]
+}

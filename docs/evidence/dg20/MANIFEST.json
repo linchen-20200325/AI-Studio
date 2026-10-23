@@ -1,0 +1,30 @@
+{
+ "fetched_at_utc": "2026-10-23T12:39:26+00:00",
+ "note": "原始頁面快照（HF API／raw README、Civitai API／license 頁），僅文字與 metadata；未下載任何權重",
+ "files": {
+  "civitai_license_245598.txt": "3b1f6229c2a116832bc1cf3cb7d96610b5be6b2d0b5381bdc88567e7596ed52e",
+  "civitai_license_2681234.txt": "3e874c5127515ed24e95f352ab1509dd0810dd68964011f712832f02884196cd",
+  "civitai_license_948574.txt": "f812658e7695246d984dc0a8af2f2d0a16b4b29652adef3999f9a987c6f31f4f",
+  "civitai_model_15003.json": "f9463619b9360a407a42e0218bc500d336d23c101d4a043be5617885d0e01c91",
+  "civitai_model_4201.json": "815a7a5ef38639ddf2007a37a128eb627a9dfaacec67e22ad7cff24dd39546a4",
+  "civitai_model_5414.json": "c3b24c65800192818dc287eda31c004ff3d28abdebfd9bd0c71160689019adb6",
+  "civitai_model_7240.json": "cb6c59f7287e03ee114b132d138965117c09cdf279852225113dbc34fd561a44",
+  "hf_JosephusCheung_ACertainModel.README.md": "e11ff95fb0fb0ca5da5ae5ef92dc698ebac471f1760ccd348a778031f2195f0a",
+  "hf_JosephusCheung_ACertainModel.json": "0f8a9e27ef72faa7bc677c966a683404d7ec560d22af08f45d676bb7cd4f8800",
+  "hf_Meina_MeinaMix.README.md": "40e91c72c97340407426d10ff42968d3ad2b03a946c769a3470d15a4c9d31880",
+  "hf_Meina_MeinaMix.json": "a69615adfc6d1a9cedbeed6b3d9894959388ada9b228219a1e4340ae7b99da9c",
+  "hf_Meina_MeinaMix_V11.README.md": "c3b85300d9702b2feb737780977c3ebc05cd5e0bef59832bd819dcd38e5b2f7e",
+  "hf_Meina_MeinaMix_V11.json": "152860e6e08608f741994e219a1e4b58f81863556c1b59f48ecddcb2c90e1d1a",
+  "hf_SG161222_Realistic_Vision_V6.0_B1_noVAE.README.md": "a51ba5985056d91937a6f5f2ea2dda16766369279ed03d8723f3f8707a7cbdf0",
+  "hf_SG161222_Realistic_Vision_V6.0_B1_noVAE.json": "c41ef96a90552d8400758be2adfbf15805af7e00d2d5e7b170f548c2d71f51f7",
+  "hf_cyberdelia_CyberRealistic.README.md": "d72272da0f1c27604d0fd4c5ef974a080c0c3122d1e3453cec3301916cf53d3c",
+  "hf_cyberdelia_CyberRealistic.json": "32ec7e91c53c3fde503b5286be4de99e8e164e644d3b0d547fde8f9062266b03",
+  "hf_hakurei_waifu-diffusion-v1-4.README.md": "679e4f6b1da2b84b67070e6ed16ea098b158a50c901469546b02f1a93979a067",
+  "hf_hakurei_waifu-diffusion-v1-4.json": "c8d14ef08cbfcc53ab188213dddc61e77628f8ec6719d8de833f2444823913f6",
+  "hf_mirroring_pastel-mix.README.md": "f15bd47639ad1ef7427242e5120bc22a3b850fdfd114ee72b8eeaf6208e8ff1e",
+  "hf_nuigurumi_basil_mix.License.md": "6ec6d29ff3133618a9a2d4fe453347197f5e906451d8f0d44cc4fd1206d5b53d",
+  "hf_nuigurumi_basil_mix.README.md": "bef45cfc0a23aaf4c9aa8af05946c513a3de766edb80fec018db44847885837c",
+  "hf_stabilityai_sd-vae-ft-mse.README.md": "8ac69483c18a45d0fee531e08b6ede97ee9b4c79e875659c1b0e6a5903ca3400",
+  "hf_stabilityai_sd-vae-ft-mse.json": "68b56c40f14edf4477fad5122336002f009664bb980e8ae396c791cce3e6354d"
+ }
+}

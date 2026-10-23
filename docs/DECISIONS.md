@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-038 | DG-20 原始證據補完：三份 Civitai license 原文＋HF revision／sha256 入庫；MeinaMix 上游含 basil_mix（現行條款衍生物禁商用）＋NAI 無法排除 → commercial_cleared=false（已證實）；ACertainModel 排除（Anything-3.0 合成資料蒸餾）；CyberRealistic 作者層全開放但 merge 來源未公開 → false | 有效 | 可逆 |
 | D-037 | DG-20 第一輪裁示：**不核准下載**；先補授權／來源／血統證據；MeinaMix 第一候選但 NAI lineage 未排除不得 commercial_cleared；CyberRealistic 暫列第一；cinematic 共用寫實；DG-21 延後與專用 checkpoint 一起裁示 | 有效 | 可逆 |
 | D-036 | native A/B：picture_book scene／style PASS（H1 證實）；anime＋girl_city_night scene PASS／style FAIL；**停止以 Base SD1.5 調 Anime**；啟動 DG-20 現成專用模型研究（只研究、不下載） | 有效 | 可逆 |
 | D-035 | **E2-4 暫停於 RCA**：`technical_valid`≠scene／style 通過（分層驗收）；主要嫌疑＝生成解析度 512×288（pipeline）；診斷參數 opt-in、預設不變；DG-20 延後到真機 A/B 之後 | 有效 | 可逆 |
@@ -279,3 +280,10 @@
 - Cinematic：共用 Realistic checkpoint＋cinematic style／後製，不加第三套模型。
 - DG-21：native 已證明改善，但**不直接改全產品預設**；待專用 checkpoint 真機測試後與最終生成 policy 一起裁示。
 - 結果（Batch 26）：公開可達來源無法取得原文／revision／sha256 → 需開放 `huggingface.co`、`civitai.com`（只讀）；新增乾淨軌候選 ACertainModel。詳 `DG20_IMAGE_MODEL_RESEARCH.md` §8。
+
+## D-038 2026-10-23 DG-20 原始證據補完（客戶開放 huggingface.co／civitai.com）
+- 直接讀取 HF API／raw README 與 Civitai API／license 頁；快照存 `docs/evidence/dg20/`（含 MANIFEST sha256）；未下載權重。
+- 已證實：MeinaMix V12 Final Attachment B＝須署名、禁營利生成服務、禁售模型／merge；生成圖片作者層允許。CyberRealistic Final＝無附加限制（Civitai），HF 卡片要求署名（矛盾，保守署名）；FP16 檔 HF／Civitai sha256 一致。Realistic Vision V6.0 B1＝須署名、禁售模型／merge。
+- 已證實的血統問題：MeinaMix 自述含 PastelMix；PastelMix 公開 recipe 含 `nuigurumi/basil_mix`；basil_mix 自 2023-04-17 起條款為「衍生物（含生成物、merge）僅限非營利」→ MeinaMix `commercial_cleared=false`。ACertainModel 卡片自述以 Anything-3.0 生成圖訓練（OpenRAIL-M 定義下屬衍生物）→ 排除。
+- 規則：`commercial_cleared` 需作者授權＋上游鏈＋NAI 三項皆通過；目前全部 false。
+- 結論：SD 1.5 級無「P1 品質＋商用乾淨」動畫模型；寫實以 CyberRealistic 為第一（作者授權最寬、hash 交叉驗證），但上游未證實。

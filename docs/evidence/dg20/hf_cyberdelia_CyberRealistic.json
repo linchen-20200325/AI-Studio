@@ -1,0 +1,155 @@
+{
+ "id": "cyberdelia/CyberRealistic",
+ "revision_sha": "99827f96edd717dacb28c68560680c201c55df05",
+ "license_yaml": "creativeml-openrail-m",
+ "createdAt": "2023-05-28T11:25:45.000Z",
+ "lastModified": "2026-04-22T08:10:21.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "CyberRealistic_FINAL_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "2209c07b331a06cb28cf7c830ec758ae5b49eb97fab21f5de6b18c7be8b41554"
+  },
+  {
+   "name": "CyberRealistic_FINAL_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "f4d3a85a811fdff4b9541d19bd64244458098ba5c8176ca9b9a5657bcd5c1e87"
+  },
+  {
+   "name": "CyberRealistic_V1.1.safetensors",
+   "bytes": 2132651194,
+   "sha256": "7b3a4bb19e9b8c710edc4824b1f35036d0b4fb4fe5bee3711ec5e5168f6e4894"
+  },
+  {
+   "name": "CyberRealistic_V1.2.safetensors",
+   "bytes": 2132651194,
+   "sha256": "7f668f12f815bb1ef56af0a478ebfb266211ba94561200a300e542a80b537f7a"
+  },
+  {
+   "name": "CyberRealistic_V1.3 [FP16 pruned].safetensors",
+   "bytes": 4244124028,
+   "sha256": "23e4391b10b2220be759e77f4402a4002330c5ad2e9ef1db59494d22d4f64df0"
+  },
+  {
+   "name": "CyberRealistic_V1.3.safetensors",
+   "bytes": 5672770504,
+   "sha256": "981e132c3672fcf7a0cee160038333288575fce673521b30b995c3c598ad7883"
+  },
+  {
+   "name": "CyberRealistic_V1.4.safetensors",
+   "bytes": 4265122332,
+   "sha256": "040b5f8ddafeefdb39fc552402efbabb90d27dced9764f0d43899a918259fb9d"
+  },
+  {
+   "name": "CyberRealistic_V3.0-FP32.safetensors",
+   "bytes": 4265097180,
+   "sha256": "8914c7f7905bd59de1dd5165d926e777301296e3850172e3a4bd7378342f5dfe"
+  },
+  {
+   "name": "CyberRealistic_V3.2-FP16.safetensors",
+   "bytes": 2132626066,
+   "sha256": "9584e2c050bf081141f470689d303a1239246eda12bc21894f8907f053ef595a"
+  },
+  {
+   "name": "CyberRealistic_V3.2-FP32.safetensors",
+   "bytes": 4265097180,
+   "sha256": "64287541717ab0be0bab32e1a0b811f9382963bc6cc7681e278d7a12fc9d3ce3"
+  },
+  {
+   "name": "CyberRealistic_V3.3_FP16.safetensors",
+   "bytes": 2132626066,
+   "sha256": "3c8530cb2239b686d23a94627e29883fe44a1605f31a777727b6709f80d11679"
+  },
+  {
+   "name": "CyberRealistic_V3.3_FP32.safetensors",
+   "bytes": 4265097180,
+   "sha256": "560fc437c58bd28958a9f2c6128fdf3c5a8c9a50445fd9f81b2802f11ae49fdb"
+  },
+  {
+   "name": "CyberRealistic_V3.4_FP16.safetensors",
+   "bytes": 2378802770,
+   "sha256": "0000767fd3ce0c3cdc25400b47468c017ec54db54475b9ecf7b18d6f6c70fd31"
+  },
+  {
+   "name": "CyberRealistic_V3.4_FP32.safetensors",
+   "bytes": 5918922656,
+   "sha256": "ba1792dd77eb4bcad78d22fb50f6e39347e7eac40c881146c9666248b73703d8"
+  },
+  {
+   "name": "CyberRealistic_V4.0_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "481d75ae9d6c6a8df1b5c2a163a0ca68d5503cf456b1ce5d50a0632717d18ec9"
+  },
+  {
+   "name": "CyberRealistic_V4.1_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "41b6846108bfa99783b58b68f9e89b5c398e78304fbb129e83e1a4a5d39f5c5c"
+  },
+  {
+   "name": "CyberRealistic_V4.1_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "925bd947d73de2167c24d02c39362553da0f87b34b9acc396fd03c5e4e026cfc"
+  },
+  {
+   "name": "CyberRealistic_V4.2_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "ea1b665634ffa52d27ab90528616d32c26af014ea4e50eaa7571bbe3a81efab9"
+  },
+  {
+   "name": "CyberRealistic_V4.2_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "93ed864a2245c0ec0338fd4681595ba5fa7c397764798de8ef0a9bdbc4946216"
+  },
+  {
+   "name": "CyberRealistic_V5_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "32baa6e5273b13d849525fd845896ccb2990614f4ef5dc8fbd4ce2840009f5e5"
+  },
+  {
+   "name": "CyberRealistic_V5_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "0b20a3f2cdc5fde427b739184c160c297ed65060d6bcc6de385b9bec9c798ca9"
+  },
+  {
+   "name": "CyberRealistic_V6.0_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "a7d05988ca8f2630c1efb76c9ca1a6dcbeaeca8e33becf2dcb5b73a4ec5137df"
+  },
+  {
+   "name": "CyberRealistic_V6.0_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "65ce427e4358b8ce659e05c1a0ee4b9a31edacb296613b4b5fca6a6c61551ab9"
+  },
+  {
+   "name": "CyberRealistic_V7.0_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "fe6a316f1872769438bd136391b23ffa5966cdbcbbe47db36207b5e53a1a5d17"
+  },
+  {
+   "name": "CyberRealistic_V7.0_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "c519426ba544982d81df9dc5f670d7c66e254f8c1069e886b9cbf7d683c735e5"
+  },
+  {
+   "name": "CyberRealistic_V8_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "4a74f783f5d57e93ce86eb2a791c4a2d79fc6d281b4fca4f028255a067186a2a"
+  },
+  {
+   "name": "CyberRealistic_V8_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "90389105e4986e0608db7335f02aeeb71aca26961ae55a20794913409b088ad1"
+  },
+  {
+   "name": "CyberRealistic_V9_FP16.safetensors",
+   "bytes": 2132651162,
+   "sha256": "22c789604729ed346f745497b99eb62df116e7b50f671e4edf4058d382b0a235"
+  },
+  {
+   "name": "CyberRealistic_V9_FP32.safetensors",
+   "bytes": 4265146268,
+   "sha256": "c8d35d5795ba650a62a511d0310101645e9ce15c827e472e3f8ad5cfc09b1b5e"
+  }
+ ]
+}

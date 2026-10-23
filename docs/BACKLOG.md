@@ -20,7 +20,9 @@
 - [ ] **E2-4 Style 真機驗收**（順序 D-034）：~~picture_book~~（技術 PASS／主觀 FAIL，不再處理）→ **anime → realistic → cinematic** →（次要）3d（`style-test --style <id>`，一次一條）。🖥️
 - [x] **E2-4 RCA（D-035／D-036）**：native A/B 證實 H1；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5。
 - [x] **DG-20 研究（D-036）**：`DG20_IMAGE_MODEL_RESEARCH.md`（anime：MeinaMix／WD 1.4；realistic：CyberRealistic／Realistic Vision V6 B1；cinematic 共用真人模型；Model Router 提案）。
-- [ ] **DG-20 證據補完（D-037）**：需客戶開放 `huggingface.co`、`civitai.com`（只讀）→ 取 HF YAML／README／commit SHA／sha256、Civitai Addendum／權限開關／版本 hash；MeinaMix 血統、ACertainModel（乾淨軌）、CyberRealistic 授權不一致。🚦
+- [x] **DG-20 原始證據（D-038）**：`docs/evidence/dg20/`。
+- [ ] **DG-22 動畫商用路線**：SD 1.5 級無「品質＋血統乾淨」候選 → 選項：內部用 MeinaMix、商用延後｜評估 WD 1.4（pickle、品質未證實）｜自訓動畫 LoRA（授權資料）｜換算力走 SDXL 級乾淨模型。🚦
+- [ ] ~~DG-20 證據補完（D-037）~~（已由 D-038 完成）：需客戶開放 `huggingface.co`、`civitai.com`（只讀）→ 取 HF YAML／README／commit SHA／sha256、Civitai Addendum／權限開關／版本 hash；MeinaMix 血統、ACertainModel（乾淨軌）、CyberRealistic 授權不一致。🚦
 - [ ] **DG-20 下載裁示**（證據完整後）→ 核准後：授權原文核對（需開放 huggingface.co／civitai.com 或 Windows 端核對）→ 下載器＋provenance → ModelRouter＋preset（license_status／commercial_cleared）→ 真機 anime／realistic／cinematic 驗收。🚦📦🖥️
 - [ ] **DG-21**（native A/B 後）：`gen_policy=native` 是否成為產品預設（fingerprint 失效重生、耗時增加）。🚦
 - [ ] Mock LLM `build_image_prompt_en` 關鍵詞依詞長排序、無主體—動作—地點結構（H3）；正式解法＝真 LLM（DG-10）。

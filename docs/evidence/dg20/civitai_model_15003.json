@@ -1,0 +1,137 @@
+{
+ "id": 15003,
+ "name": "CyberRealistic",
+ "type": "Checkpoint",
+ "allowNoCredit": true,
+ "allowCommercialUse": [
+  "Image",
+  "RentCivit",
+  "Rent",
+  "Sell",
+  "SellMerge"
+ ],
+ "allowDerivatives": true,
+ "allowDifferentLicense": true,
+ "poi": false,
+ "minor": false,
+ "creator": "Cyberdelia",
+ "description_text": " Join The Tinkerer on Whop. Membership gets you early releases, private tools and a bunch of extra stuff. 👉 Join on Whop 💬 Join the community for support, free tools and early news on Discord CyberRealistic is a flexible, easy-to-use photorealistic model built from nonstop testing, custom blends, and just the right amount of chaos. The backstory? It’s honestly a wild mashup of different checkpoints, but what really counts is what you get in the end: sharp, expressive, clean renders that just work. It’s tuned for both textual inversion and LoRA, so it’s great for anyone from total beginners to hardcore prompt wizards. If you’re making portraits, messing around with new styles, or just want a model that steps aside and does its job, CyberRealistic won’t let you down. ⚙️ Suggested Settings Sampling method: DPM++ SDE Karras / DPM++ 2M Karras VAE: is already Baked In Sampling steps: 30 Steps Resolution: 512x768 CFG: 5 Upscale: 2x Upscaler: 4x_NickelbackFS_72000_G Denoising strength: 0.3 🧠 Prompting Negative prompt examples lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry 💾 Backup &amp; Resources backup location: huggingface ☕ Support the Project If this model helped you hit your vision faster, cleaner, or just plain better — consider [ buying me a coffee ]. It keeps the updates coming and the experiments wild. 💡 Need Better Prompts? This custom ChatGPT was made to top-tier prompts just for this model: 🔗 [ Try it now on ChatGPT ] ⚠️ Friendly Warning This model can generate mature content. Use responsibly. Respect laws, platforms, and people. ",
+ "versions": [
+  {
+   "id": 2681234,
+   "name": "Final",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2026-02-11T21:15:48.459Z",
+   "files": [
+    {
+     "name": "cyberrealistic_final_2567879.safetensors",
+     "bytes": 4265146268,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "full",
+      "fp": "fp32"
+     },
+     "sha256": "F4D3A85A811FDFF4B9541D19BD64244458098BA5C8176CA9B9A5657BCD5C1E87",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    },
+    {
+     "name": "cyberrealistic_final_2567874.safetensors",
+     "bytes": 2132651162,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "2209C07B331A06CB28CF7C830EC758AE5B49EB97FAB21F5DE6B18C7BE8B41554",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 1941849,
+   "name": "v9.0",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2025-06-25T13:39:19.500Z",
+   "files": [
+    {
+     "name": "cyberrealistic_v90_1839485.safetensors",
+     "bytes": 4265146268,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "full",
+      "fp": "fp32"
+     },
+     "sha256": "C8D35D5795BA650A62A511D0310101645E9CE15C827E472E3F8AD5CFC09B1B5E",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    },
+    {
+     "name": "cyberrealistic_v90_1839464.safetensors",
+     "bytes": 2132651162,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "22C789604729ED346F745497B99EB62DF116E7B50F671E4EDF4058D382B0A235",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 1460987,
+   "name": "v8.0",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2025-02-25T16:21:38.005Z",
+   "files": [
+    {
+     "name": "cyberrealistic_v80_1362422.safetensors",
+     "bytes": 4265146268,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp32"
+     },
+     "sha256": "90389105E4986E0608DB7335F02AEEB71ACA26961AE55A20794913409B088AD1",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    },
+    {
+     "name": "cyberrealistic_v80_1362148.safetensors",
+     "bytes": 2132651162,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "4A74F783F5D57E93CE86EB2A791C4A2D79FC6D281B4FCA4F028255A067186A2A",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 1464918,
+   "name": "v8.0-Inpainting",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2025-02-26T14:47:31.470Z",
+   "files": [
+    {
+     "name": "cyberrealistic_v80Inpainting.safetensors",
+     "bytes": 2132679962,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "0EE757321F40A95029C4FF7E4AE78352ED9EE67A3DDAA8D14B6B1A48161901F2",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  }
+ ]
+}

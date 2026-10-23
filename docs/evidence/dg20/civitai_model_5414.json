@@ -1,0 +1,111 @@
+{
+ "id": 5414,
+ "name": "Pastel-Mix [Stylized Anime Model]",
+ "type": "Checkpoint",
+ "allowNoCredit": true,
+ "allowCommercialUse": [
+  "Image",
+  "RentCivit",
+  "Rent"
+ ],
+ "allowDerivatives": true,
+ "allowDifferentLicense": false,
+ "poi": false,
+ "minor": false,
+ "creator": "andite",
+ "description_text": " Interested in supporting me? Buy me a coffee. A stylized anime model. This model is made with the thought of imitating pastel-like art while introducing the potential of merging LORAs into a model altogether to create a fantastic mix. Guide For the settings or parameters, I recommend using these settings. Sampler: DPM++ 2M Karras Steps: 20 CFG Scale: 7 Hires. Fix: On Upscaler: Latent (MUST!) Hires Steps: 20 Denoising Strength: 0. I prefer using 0.6 since it's the sweet spot of this model. If you can find a better setting for this model, then good for you lol. Latent upscaler is the best setting for me since it retains or enhances the pastel style. Other upscalers like Lanczos or Anime6B tends to smoothen them out, removing the pastel-like brushwork. Please use the VAE that I uploaded in this repository. It is from the Waifu Diffusion team. Credits to haru for letting me rename and upload it. Tip (Optional) Putting mksks style in the beginning of the prompt can further influence the pastel-like style and make the output better. It is optional though, so it's up to you. You don't really need it. Recipe for the mix can be found inside the HF repository. ",
+ "versions": [
+  {
+   "id": 6297,
+   "name": "Pastel-Mix [Pruned FP16]",
+   "baseModel": "Other",
+   "publishedAt": "2023-01-27T11:14:04.385Z",
+   "files": [
+    {
+     "name": "pastelMixStylizedAnime_pastelMixPrunedFP16.safetensors",
+     "bytes": 2132626102,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "full",
+      "fp": "fp16"
+     },
+     "sha256": "D01A68AE76F97506363F387F5F28BB564AD9E20924844FD5945E600B72D39E79",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 7397,
+   "name": "Pastel-Mix [LoRA Version]",
+   "baseModel": "Other",
+   "publishedAt": "2023-02-02T13:26:26.921Z",
+   "files": [
+    {
+     "name": "pastelMixStylizedAnime_pastelMixLoraVersion.safetensors",
+     "bytes": 151073137,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "full",
+      "fp": "fp16"
+     },
+     "sha256": "59A342F468DD3C3E02200E175535BA3FDA1C414D2D272F97E4CE95F88078BCED",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 6223,
+   "name": "Pastel-Mix [Full]",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2023-01-26T18:22:05.782Z",
+   "files": [
+    {
+     "name": "pastelMixStylizedAnime_pastelMixFull.ckpt",
+     "bytes": 5984634903,
+     "meta": {
+      "format": "PickleTensor",
+      "size": "full",
+      "fp": "fp16"
+     },
+     "sha256": "F17F6CD6953B5E012416E762676D139246511D64137A4A05530630BCC01D4180",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    },
+    {
+     "name": "pastelMixStylizedAnime_pastelMixFull.safetensors",
+     "bytes": 5984232961,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "full",
+      "fp": "fp16"
+     },
+     "sha256": "FA818FCF2C6707083D27259EC7382A293D40201D65242E36F52773B159441D61",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 6245,
+   "name": "Pastel-Mix [Pruned FP16 CKPT]",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2023-01-26T22:09:06.358Z",
+   "files": [
+    {
+     "name": "pastelMixStylizedAnime_pastelMixPrunedFP16.ckpt",
+     "bytes": 2132866293,
+     "meta": {
+      "format": "PickleTensor",
+      "size": "full",
+      "fp": "fp16"
+     },
+     "sha256": "84637D4980ABDC8841204F458E3FAC34B269EC7CA516942EA4D1A5BCED8277DF",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  }
+ ]
+}

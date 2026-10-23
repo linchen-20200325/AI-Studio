@@ -1,0 +1,40 @@
+{
+ "id": "JosephusCheung/ACertainModel",
+ "revision_sha": "02fc9a2dccf7ebce834fb17f53a304dc77d679ba",
+ "license_yaml": "creativeml-openrail-m",
+ "createdAt": "2022-12-12T17:40:00.000Z",
+ "lastModified": "2022-12-20T03:16:49.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "ACertainModel-half.ckpt",
+   "bytes": 2132865129,
+   "sha256": "57ca9c40280a8fd1fd58e844c41fdbac1b08099df5777e4062bb6fb46c1b6374"
+  },
+  {
+   "name": "ACertainModel.ckpt",
+   "bytes": 4265330568,
+   "sha256": "c40e679337c4131fb243f4adc66c3272d897e50218b9c3154e09454cd51b884d"
+  },
+  {
+   "name": "safety_checker/pytorch_model.bin",
+   "bytes": 1216064769,
+   "sha256": "16d28f2b37109f222cdc33620fdd262102ac32112be0352a7f77e9614b35a394"
+  },
+  {
+   "name": "text_encoder/pytorch_model.bin",
+   "bytes": 492307041,
+   "sha256": "2897ecbaeb496d389732c62a3105e588920f2d7e99071a072572e08f388e51f1"
+  },
+  {
+   "name": "unet/diffusion_pytorch_model.bin",
+   "bytes": 3438366373,
+   "sha256": "7f18c4fa7f5c8228a9926ce7800177751206db30eb890eb69c7f7a4053a0828f"
+  },
+  {
+   "name": "vae/diffusion_pytorch_model.bin",
+   "bytes": 334711857,
+   "sha256": "876a906810a8b2470c3092f307742f6ad8b9dbf759fb7c0ff020d0c610c996da"
+  }
+ ]
+}

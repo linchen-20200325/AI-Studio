@@ -271,3 +271,13 @@
 - Tests: 138 passed、1 skipped（僅文件）
 - Decision: D-037
 - Next: 客戶開放 huggingface.co、civitai.com（只讀）後補證據
+
+---
+- Date: 2026-10-23
+- Start SHA: c3bdc53
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 27 — DG-20 原始證據補完（客戶開放 huggingface.co／civitai.com）
+- Result: D-038；`docs/evidence/dg20/`（24 檔、MANIFEST）；三份 Civitai license 原文（Attachment B）；HF revision／sha256；MeinaMix→PastelMix→basil_mix（2023-04 起衍生物禁商用）＋NAI 無法排除 → false；ACertainModel 排除（Anything-3.0 合成資料）；CyberRealistic hash 交叉一致、作者層全開放、上游未證實；未下載
+- Tests: 138 passed、1 skipped（僅文件）
+- Decision: D-038；DG-20 下載／DG-22 待裁示
+- Next: 客戶裁示

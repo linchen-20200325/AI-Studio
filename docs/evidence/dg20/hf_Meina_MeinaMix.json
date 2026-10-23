@@ -1,0 +1,115 @@
+{
+ "id": "Meina/MeinaMix",
+ "revision_sha": "ff1db1369784ead73c86d91c7d2b2d66fc5e7361",
+ "license_yaml": "creativeml-openrail-m",
+ "createdAt": "2023-02-08T08:52:00.000Z",
+ "lastModified": "2023-05-25T11:18:03.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "Meina V10 - baked VAE.safetensors",
+   "bytes": 3526112242,
+   "sha256": "77b7dc4ef0fca64ed8c3c38e80efa3e559488ee377f4138ec4bce488ef6c8412"
+  },
+  {
+   "name": "Meina V4- Baked Vae.safetensors",
+   "bytes": 3851810793,
+   "sha256": "5814c183934e6587bfee34c337f7be2289ad7e47ba02c601d0606bfddc05685e"
+  },
+  {
+   "name": "Meina V4.1 - Baked VAE.safetensors",
+   "bytes": 3851786791,
+   "sha256": "b4201c7c37218806eb19c46b55ba8ebc919eb450c956c2b7a3faa1a20eaf5ded"
+  },
+  {
+   "name": "Meina V4.safetensors",
+   "bytes": 3851810793,
+   "sha256": "a416f5ff7b228916d66e4503df0d3f899ff2c9dcc9b4f618f85fd7c2ec2fb883"
+  },
+  {
+   "name": "Meina V5 - Baked VAE.safetensors",
+   "bytes": 3851786791,
+   "sha256": "4be9f574c4b4a4fc788d7853e82357e7f01d8c50f2f05eaee578bdae12a99f4b"
+  },
+  {
+   "name": "Meina V5.1 - Baked VAE.safetensors",
+   "bytes": 2132651194,
+   "sha256": "b4cca998e3be0c9c757527d77691d335cd194998aa845a798a68923f9a2d92ba"
+  },
+  {
+   "name": "Meina V5.1.safetensors",
+   "bytes": 2132651163,
+   "sha256": "785d7a264f383890784672b85873ebe285121bc3af46f71629b2b7cadddeff43"
+  },
+  {
+   "name": "Meina V5.safetensors",
+   "bytes": 3851810793,
+   "sha256": "214d011854ed368920282c9313fd27c5f63440faafc4f54264be2edbbf766690"
+  },
+  {
+   "name": "Meina V6 - Baked VAE.safetensors",
+   "bytes": 3106843852,
+   "sha256": "fc0a97435d48ace33cba9796fbb0bc600cbe5fc0e49a032b1c2a72cbf3b25776"
+  },
+  {
+   "name": "Meina V6.safetensors",
+   "bytes": 3106843821,
+   "sha256": "9441cfe8b2a174186b3e8bb8a2f7f6538dbd972ec835ba4d208c561c96cef728"
+  },
+  {
+   "name": "Meina V7 - Baked VAE ckpt.ckpt",
+   "bytes": 3456078662,
+   "sha256": "ad1d03a6dd85f9cdc02350b2bcf962b26d16c92699c6e7333f206502775e1760"
+  },
+  {
+   "name": "Meina V7 - pruned.safetensors",
+   "bytes": 3455823145,
+   "sha256": "9d77664fea68004dde4e7776d8ae2e6ece95f41ec6e5bf3cc4029f30c7153488"
+  },
+  {
+   "name": "Meina V8 baked VAE.safetensors",
+   "bytes": 3455823176,
+   "sha256": "30953ab0def62b5d0e90b8f84bd40f0af6048426c5f851535563e28fdee0684a"
+  },
+  {
+   "name": "Meina V8 baked ckpt.ckpt",
+   "bytes": 3456071716,
+   "sha256": "3c1ecabbc4e8e717e8451b465541c26e67b66108984eeb714231ec68f162fa7d"
+  },
+  {
+   "name": "Meina V8 pruned.safetensors",
+   "bytes": 3455823145,
+   "sha256": "6b312d67f0aaa6578b0ff2a478e1158760bcd360570ec34ce8e536b1baacbe3d"
+  },
+  {
+   "name": "Meina V9 - baked VAE.safetensors",
+   "bytes": 4020482458,
+   "sha256": "eac6c08a199c4953f80ae5b4ea5f9b2d88c7f3c6f2546e14a57851e3e4a1c5cb"
+  },
+  {
+   "name": "Meina Version 2.1 .safetensors",
+   "bytes": 3851810793,
+   "sha256": "f594866fc88d367e97e84fc23c2a42197ac766e1e1b1dfbaf56a2b7e7808fa6a"
+  },
+  {
+   "name": "Meina Version 3.0 - baked VAE.safetensors",
+   "bytes": 3851810793,
+   "sha256": "2dc286eff16618784761888abfe55e9947de2aa7606bfbc290a3168d01bd3f25"
+  },
+  {
+   "name": "MeinaHentai - baked VAE.safetensors",
+   "bytes": 2132651163,
+   "sha256": "bb81be7c6f006b2511fb548d18912f759c659cd82d88040fc78bbe4cc65b965c"
+  },
+  {
+   "name": "MeinaPastel - baked VAE.safetensors",
+   "bytes": 2132651194,
+   "sha256": "68233200e9c8ac8add2a221f52d9b6ae514eaead5fb49e5cabd636ccb7836c55"
+  },
+  {
+   "name": "MeinaPastelV2 - baked VAE- pruned.safetensors",
+   "bytes": 2132651163,
+   "sha256": "78e31334ea9953dc5b49001f24f2eaa7627e45041730b50c2d9325fbba30aa02"
+  }
+ ]
+}

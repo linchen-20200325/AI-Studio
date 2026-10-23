@@ -1,0 +1,108 @@
+{
+ "id": 7240,
+ "name": "MeinaMix",
+ "type": "Checkpoint",
+ "allowNoCredit": false,
+ "allowCommercialUse": [
+  "Image",
+  "RentCivit"
+ ],
+ "allowDerivatives": true,
+ "allowDifferentLicense": true,
+ "poi": false,
+ "minor": false,
+ "creator": "Meina",
+ "description_text": " MeinaMix objective is to be able to do good art with little prompting. I have a discord where you can share images , discuss prompt and ask for help . https://discord.gg/meinaverse 我有个可以让你分享图片和参与讨论与询问问题的discord群。 I also have a ko-fi and Patreon page where you can support me or buy me a coffee &lt;3 , it will be very much appreciated: https://ko-fi.com/meina and https://www.patreon.com/MeinaMix MeinaMix is officially hosted for online generation in: - SeaArt - Mage.space ( with animate feature ) MeinaMix and the other of Meinas will ALWAYS be FREE. Cover image lora made by: FallenIncursio | Civitai Recommendations of use: -------------------------------------------------------------------------------- Enable Quantization in K samplers. Hires.fix is needed for prompts where the character is far away in order to make decent images, it drastically improve the quality of face and eyes! --------------------------------------------- Recommended parameters: Sampler: DPM++ SDE Karras: 20 to 30 steps. Sampler: DPM++ 2M Karras: 20 to 60 steps. Sampler: Euler a: 40 to 60 steps. CFG Scale: 4 to 9. Resolutions: 512x768, 512x1024 for Portrait! Resolutions: 768x512, 1024x512, 1536x512 for Landscape! Hires.fix: R-ESRGAN 4x+Anime6b, with 10 steps at 0.3 up to 0.6 denoising. Clip Skip: 2. Negatives: ' (worst quality, low quality), (zombie, interlocked fingers) ' Negatives if you can't use Hires.fix: '(worst quality:1.6, low quality:1.6), (zombie, sketch, interlocked fingers, comic)' -------------------------------------------------------------------------------- In the merged models list: MeinaMix V1~11, MeinaPastel V3~6, MeinaHentai V2~5, Night Sky YOZORA Style Model, PastelMix, Facebomb, MeinaAlterV3 i do not have the exact recipe because i did multiple mixings using block weighted merges with multiple settings and kept the better version of each merge. ",
+ "versions": [
+  {
+   "id": 948574,
+   "name": "V12 - Final",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2024-10-14T11:10:00.000Z",
+   "files": [
+    {
+     "name": "meinamix_v12Final.safetensors",
+     "bytes": 2132651786,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "A5E5A941A3217247DBCECEEE5B67F8D6B1EF2514260E08A5757436BEC7035F93",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    },
+    {
+     "name": "kl-f8-anime2.safetensors",
+     "bytes": 404581567,
+     "meta": {
+      "format": "SafeTensor"
+     },
+     "sha256": "B8821A5D58746D1A6306ECC99EDA3B0268FF3DA84C40D18CE68698E3BD402635",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 119057,
+   "name": "Meina V11",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2023-07-16T17:11:12.591Z",
+   "files": [
+    {
+     "name": "meinamix_meinaV11.safetensors",
+     "bytes": 2132651818,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "54EF3E3610EEE7F0F6C9F9B82EEE26AA404598512D800494D1DB344E3BC560B1",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 120702,
+   "name": "V11-inpainting",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2023-07-18T23:35:11.303Z",
+   "files": [
+    {
+     "name": "meinamix_v11-inpainting.safetensors",
+     "bytes": 2132705610,
+     "meta": {
+      "format": "SafeTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "E1D224FCA30B52B7B43438F8F03FF2BD57E9CB83854DE057CF691990B2481EDD",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  },
+  {
+   "id": 119951,
+   "name": "V11 - CKPT",
+   "baseModel": "SD 1.5",
+   "publishedAt": "2023-07-17T22:47:18.726Z",
+   "files": [
+    {
+     "name": "meinamix_v11CKPT.ckpt",
+     "bytes": 2132895923,
+     "meta": {
+      "format": "PickleTensor",
+      "size": "pruned",
+      "fp": "fp16"
+     },
+     "sha256": "ECEE21617E79C1E69B2DA24A15901CD2AD37E29C788CE426CE944402959CF796",
+     "pickleScan": "Success",
+     "virusScan": "Success"
+    }
+   ]
+  }
+ ]
+}

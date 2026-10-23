@@ -1,0 +1,20 @@
+{
+ "id": "stabilityai/sd-vae-ft-mse",
+ "revision_sha": "31f26fdeee1355a5c34592e401dd41e45d25a493",
+ "license_yaml": "mit",
+ "createdAt": "2022-10-13T12:50:55.000Z",
+ "lastModified": "2023-06-06T11:39:15.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "diffusion_pytorch_model.bin",
+   "bytes": 334707217,
+   "sha256": "1b4889b6b1d4ce7ae320a02dedaeff1780ad77d415ea0d744b476155c6377ddc"
+  },
+  {
+   "name": "diffusion_pytorch_model.safetensors",
+   "bytes": 334643276,
+   "sha256": "a1d993488569e928462932c8c38a0760b874d166399b14414135bd9c42df5815"
+  }
+ ]
+}

@@ -119,3 +119,45 @@ attribution：OpenRAIL-M 本身**無強制署名條款**（只要求傳遞授權
 - 依公開可達來源，**無任一候選能取得 revision、檔案 sha256、授權全文與 Civitai 權限開關** → 證據不完整，維持不下載。
 - 需客戶開放網域（環境設定 → Network access → Allowed domains）：`huggingface.co`、`civitai.com`（只讀 API／頁面，不下載權重）。開放後可在一個 Batch 內取得並存檔：HF YAML／README 原文、commit SHA、檔案大小與 sha256；Civitai Addendum 全文、權限開關、版本 id、檔案 hash。
 - Anime 建議改為雙軌：**品質軌 MeinaMix**（內部驗證，`commercial_cleared=false`）＋**乾淨軌 ACertainModel**（商用候選，待原文與真機品質驗證）。
+
+## 9. 原始證據補完（Batch 27；客戶已開放 huggingface.co／civitai.com；**取代 §2、§3、§8 的摘錄結論**）
+快照：`docs/evidence/dg20/`（HF API metadata＋raw README、Civitai API＋license 頁全文；`MANIFEST.json` 含擷取時間與各檔 sha256）。**未下載任何權重。**
+
+### 9.1 已證實（原始頁面）
+| 項目 | MeinaMix V12 Final | CyberRealistic Final | Realistic Vision V6.0 B1 |
+|---|---|---|---|
+| 正式來源／作者 | Civitai model 7240 v948574（作者 `Meina`）；HF `Meina/*`（V12 不在 HF） | Civitai 15003 v2681234（`Cyberdelia`）；HF `cyberdelia/CyberRealistic` rev `99827f96edd7…` | Civitai 4201 v245598（`SG_161222`）；HF `SG161222/Realistic_Vision_V6.0_B1_noVAE` rev `9a857a696b9a…` |
+| 發布日 | 2024-10-14（Final；作者轉 SDXL） | 2026-02-11（Final；不再更新） | 2023-12-01（B1；B2 重訓中） |
+| 授權基底（Civitai license 頁） | CreativeML Open RAIL-M 2022-08-22 全文＋Attachment B | 同左 | 同左 |
+| Attachment B（作者權限） | **須署名**（指定格式）；**禁止用於任何營利的生成服務**（訂閱／按張／廣告支撐）；**禁止販售模型與 merge** | **無任何附加限制**（只列 Changing Permissions） | **須署名**；**禁止販售模型與 merge**；生成服務未限制 |
+| API 權限旗標 | allowNoCredit=false；allowCommercialUse=[Image, RentCivit]；derivatives=true | allowNoCredit=true；[Image, RentCivit, Rent, Sell, SellMerge] | allowNoCredit=false；[Image, RentCivit, Rent]；allowDifferentLicense=false |
+| 生成圖片商用（作者層） | 允許（Image） | 允許 | 允許 |
+| HF 卡片 | YAML `creativeml-openrail-m` | YAML `creativeml-openrail-m`；內文寫「CreativeML Open RAIL++-M」但連結指向 CompVis OpenRAIL-M 原文；內文「允許商用與非商用，需適當署名」→ **與 Civitai 的 allowNoCredit=true 矛盾，保守採「需署名」** | YAML `creativeml-openrail-m`；建議外接 `sd-vae-ft-mse`（MIT） |
+| 權重檔（建議版） | `meinamix_v12Final.safetensors` fp16 pruned，**2,132,651,786 bytes**，SHA256 `A5E5A941A3217247DBCECEEE5B67F8D6B1EF2514260E08A5757436BEC7035F93`，pickle／virus scan Success | `CyberRealistic_FINAL_FP16.safetensors`，**2,132,651,162 bytes**，SHA256 `2209c07b331a06cb28cf7c830ec758ae5b49eb97fab21f5de6b18c7be8b41554`（**HF 與 Civitai hash 一致**），VAE 內建 | Civitai `realisticVisionV60B1_v60B1VAE_192715.safetensors`（含 VAE）fp16 pruned ≈2,132,625,894 bytes，SHA256 `FE7578CB…0C30`；或 HF noVAE fp16 2,132,625,894 bytes `c48bfd15…6cc7`＋VAE 334,643,276 bytes `a1d99348…5815` |
+| 選配 | `kl-f8-anime2.safetensors` VAE 404,581,567 bytes（WD 團隊 VAE；是否已內建未證實） | — | — |
+| 建議設定 | clip skip 2；DPM++ 2M／SDE Karras 或 Euler a；CFG 4–9；landscape 768×512 | DPM++ SDE／2M Karras；30 步；CFG 5 | DPM++ SDE Karras 25+ 步 |
+
+### 9.2 MeinaMix 血統（已證實的部分）
+1. Civitai 作者自述 merge 清單：MeinaMix V1～11、MeinaPastel V3～6、MeinaHentai V2～5、Night Sky YOZORA、**PastelMix**、Facebomb、MeinaAlterV3；「**沒有確切 recipe**」（多次 block-weighted merge）。
+2. PastelMix（andite；原 HF repo 已下架，鏡像 `mirroring/pastel-mix`＝duplicated_from `JamesFlare/pastel-mix`）公開 recipe：`dpepmkmp` × `Tea(andite/desserts)` → ×**`nuigurumi/basil_mix`** → 再合入多個 LoRA。`dpepmkmp`、`andite/desserts` 已不可存取。
+3. **basil_mix 現行授權**（`License.md`，Modified CreativeML Open RAIL-M dated 2023-04-17）：「**本模型及其衍生物（生成物、merge 模型）僅限完全非營利使用**；不得用於可產生收入或捐款的網站／App／服務」；第 13、14 條授權方保留隨時變更與禁止使用的權利。commit 歷史：2023-01 初版 YAML 為 `openrail`，**2023-04-16／17 改為非商用**；PastelMix 發布於 2023-01（改條款前）。溯及效力屬法律判斷，無法由技術證據排除。
+4. basil_mix 卡片自述「merged model、對 danbooru prompt 反應良好」；merge 來源未公開 → NovelAI 血統**無法排除**。
+→ **MeinaMix：上游鏈含現行條款「衍生物禁止商用」的模型，且 NAI lineage 無法合理排除 → `commercial_cleared=false`（已證實的理由，非推測）。**
+
+### 9.3 乾淨替代候選（原始頁面複核）
+| 候選 | 已證實 | 判定 |
+|---|---|---|
+| ACertainModel（rev `02fc9a2d…`） | 卡片自述訓練資料含「**以社群熱門模型（如 Anything-3.0）自動生成的大量圖片**」＋ danbooru 圖；OpenRAIL-M 的 Derivatives 定義明確涵蓋「以模型產生的合成資料訓練他模型」（蒸餾）；權重只有 `.ckpt`／`.bin`（pickle） | **排除**：透過 Anything-3.0（NAI 衍生）蒸餾，並非乾淨；pickle |
+| Waifu Diffusion 1.4（rev `6b239e9a…`） | OpenRAIL-M，卡片明文允許商用／作為服務／再散布；fine-tune（非 merge）；致謝 NovelAI（未說明內容）；**只有 `.ckpt`（pickle）**；e1 自述為「測試模型」；檔案 5,16 GB | 技術最弱、pickle、SD 2.x 生態薄；僅可作「乾淨度較高但品質未證實」的後備 |
+| Mitsua 系 | 見 §8（資料最乾淨但畫質自述很低） | 排除（品質） |
+→ **目前沒有任何 SD 1.5 級動畫模型可同時滿足「P1 品質」與「商用血統乾淨」。**
+
+### 9.4 Realistic 血統
+- CyberRealistic：作者自述「different checkpoints 的 wild mashup」，**無 recipe** → 上游鏈未證實（早期寫實 merge 常混入 basil_mix 類模型，但本模型無證據顯示有或無）。作者層權限最寬。
+- Realistic Vision V6.0 B1：版本說明為訓練（B1：3000 張、664k steps；B2 full re-train 進行中）；起始權重未說明 → 上游鏈未證實。
+
+### 9.5 commercial_cleared 規則（本專案）
+`commercial_cleared=true` 需同時：① 作者層授權允許產品用途（含生成圖片商用）② 上游鏈可證實無「衍生物禁商用」條款 ③ 無 NAI 洩漏血統證據或已合理排除。目前**所有候選皆 false**：MeinaMix（②③失敗，已證實）；CyberRealistic、Realistic Vision（①通過、②③未證實）。
+
+### 9.6 仍無法證實
+MeinaMix 精確 recipe 與 V1 起源；YOZORA／Facebomb／MeinaAlter 來源；dpepmkmp、desserts（已下架）；CyberRealistic merge 來源；Realistic Vision 起始權重；MeinaMix V12 是否內建 VAE；basil_mix 條款變更對 2023-01 前衍生物的法律效力。

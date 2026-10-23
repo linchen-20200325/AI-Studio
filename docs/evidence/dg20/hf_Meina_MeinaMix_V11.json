@@ -1,0 +1,30 @@
+{
+ "id": "Meina/MeinaMix_V11",
+ "revision_sha": "2db85a2712983313dfe3e251f81e0023d775ee0a",
+ "license_yaml": "creativeml-openrail-m",
+ "createdAt": "2023-07-16T19:11:15.000Z",
+ "lastModified": "2023-07-16T19:53:46.000Z",
+ "gated": false,
+ "files": [
+  {
+   "name": "safety_checker/model.safetensors",
+   "bytes": 1215981832,
+   "sha256": "11cfe53105625af8c00faac32a430626641cce686454f3c39d837f14397d858b"
+  },
+  {
+   "name": "text_encoder/model.safetensors",
+   "bytes": 492265880,
+   "sha256": "a53845aa301c59ac6d7dedbbf0dd88a6fb8bd98f9f4985c75dce1fa4cb1c10b3"
+  },
+  {
+   "name": "unet/diffusion_pytorch_model.safetensors",
+   "bytes": 3438167536,
+   "sha256": "10f30df94a7fee3eb148da326ddeeb2ce6e19294ad9aa1e7adaa6dda40c3c1d6"
+  },
+  {
+   "name": "vae/diffusion_pytorch_model.safetensors",
+   "bytes": 334643276,
+   "sha256": "e79eb8637c1f8637384ab325d188af4034c948323a17f21f3fa3bcf23cc85668"
+  }
+ ]
+}

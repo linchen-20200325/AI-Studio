@@ -9,7 +9,7 @@
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-2968bce1-ym4kkc`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
 | Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
-| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**DG-20 證據補完受阻**：公開可達來源無法取得授權全文／revision／sha256／Civitai 開關 → 需開放 `huggingface.co`、`civitai.com`（只讀）；仍不下載（`DG20_IMAGE_MODEL_RESEARCH.md` §8）；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**DG-20 原始證據已補完（D-038，`DG20_IMAGE_MODEL_RESEARCH.md` §9、`docs/evidence/dg20/`）**：全部候選 commercial_cleared=false；等待下載／商用路線裁示；仍未下載；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
@@ -58,7 +58,7 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-**等待客戶開放網域 `huggingface.co`、`civitai.com`（只讀）**→ 補齊授權原文／revision／sha256／權限開關／血統證據 → 再提下載裁示。現況：MeinaMix 品質軌（commercial_cleared=false，NAI lineage 無法排除）、ACertainModel 乾淨軌（新增）、CyberRealistic 授權標籤確認不一致。DG-21 延後到專用 checkpoint 真機測試後與生成 policy 一起裁示。不下載、不安裝、不改 default、不實作 Router。
+**等待客戶裁示**：① DG-20 下載（內部品質驗證用、非商用）：MeinaMix V12 Final 2,132,651,786 bytes＋CyberRealistic FINAL FP16 2,132,651,162 bytes；② DG-22 動畫商用路線（SD 1.5 級無乾淨候選）。DG-21 延後。不下載、不安裝、不改 default、不實作 Router。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。
