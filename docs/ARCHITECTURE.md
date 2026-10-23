@@ -104,7 +104,7 @@ class LipSyncProvider: lipsync(req, out_path) -> LipSyncResult
 | Image | `FallbackImageProvider`（`auto`） | LOCAL_FREE | diffusers → placeholder；不跨 PAID |
 | Image | `PaidImageProviderStub` | PAID | 占位，永不連線；證明 ApprovalGate 接線 |
 | Video | `KenBurnsVideoProvider` | LOCAL_FREE | FFmpeg zoompan；camera_motion → 鏡頭運動 |
-| TTS | `KokoroTTSProvider` | LOCAL_FREE | Kokoro-82M v1.1-zh（Apache-2.0，≈330 MB，CPU）；D-027 候選驗證中；權重僅由 `tts-download --yes` 取得 |
+| TTS | `KokoroTTSProvider` | LOCAL_FREE | Kokoro-82M v1.1-zh（Apache-2.0，≈330 MB，CPU）；D-029 正式採用（目前）；權重僅由 `tts-download --yes` 取得 |
 | TTS | `EspeakTTSProvider` | LOCAL_FREE | espeak-ng `cmn`；品質低但離線可用 |
 | TTS | `SilentTTSProvider` | LOCAL_FREE | 靜音 + 以字數估算時長；測試與無 TTS 環境 fallback |
 | TTS | `EdgeTTSProvider` | FREE_TIER | 需網路、不需 key；本環境無法連線，未啟用 |

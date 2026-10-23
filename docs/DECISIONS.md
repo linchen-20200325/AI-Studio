@@ -21,6 +21,7 @@
 | D-026 | DG-9 TTS 候選研究結論（Project AI 建議 Kokoro；待客戶裁示） | 研究紀錄，裁示未下 | 可逆 |
 | D-027 | DG-9 裁示：Kokoro-82M v1.1-zh **Candidate Validation Approval**（非 Final Provider Approval）；授權下載 ≈330 MB 權重做 Windows 真機驗證 | 有效 | 可逆 |
 | D-028 | Kokoro E2-1 真機技術驗證成功（候選仍非最終）；zm_010 為 Kokoro 內部首選候選（不鎖死）；zf_001 口音＝已知限制；Voice Selection 產品需求入規格；DG-14 預設 voice 裁示 | 有效 | 可逆 |
+| D-029 | DG-13 裁示 A：正式採用 Kokoro 為「目前 Phase 2 LOCAL_FREE 中文 TTS provider」；Provider Agnostic 保留；zm_010 非永久預設；DG-14／DG-15 獨立 | 有效 | 可逆（換 provider 需新 DG） |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -201,3 +202,8 @@
 - `zm_010`：依使用者主觀聽感作為 **Kokoro 內部首選候選**，可用 `--voice zm_010`／`SEE_TTS_DEFAULT_VOICE` 指定；**不鎖死、不寫成程式永久預設**（程式未設定時仍為既有行為：第一個 zf_*）。永久預設 voice 屬產品語意 → **DG-14**。
 - `zf_001` 明顯大陸口音＝已知使用者體驗限制，記入 voice 型錄 `accent_note`（標明為使用者聽感，非客觀排名）。
 - 產品需求（入 BACKLOG 規格）：使用者必須能「角色 → 選 voice → 試聽 → 調語速 → 確認 → 才進正式生成」。約束：provider-agnostic（`VoiceInfo` + `TTSProvider.list_voices()` 介面已加，Batch 16）；未來其他 LOCAL_FREE／台灣中文 provider 可進同一 Voice Selector；UI 顯示可讀名稱／性別／聲線 metadata 而非只 id；voice 選擇依角色保存；保留 fallback／fail-closed／evidence；不得影響 SD 1.5 Phase 1 路徑。UI 形式屬產品決策 → **DG-15**。
+
+## D-029 2026-10-23 DG-13 裁示：A — 正式採用 Kokoro 為目前 Phase 2 LOCAL_FREE 中文 TTS provider
+- 依據：`PHASE2_EVIDENCE.md` E2-1／E2-2（五景 kokoro-tts、CPU、無 fallback、與 SD 1.5 GTX 1650 共存、NT$0）。D-027 的 Candidate Validation 至此升級為 **Provider Approval（目前）**。
+- 嚴格保留：(1) Provider Agnostic，核心不得綁死 Kokoro（仍經 `TTSProvider`／`ProviderRegistry`，`auto` 鏈 kokoro→espeak→silent）；(2) 未來可新增／替換更適合台灣中文的 TTS provider（需新 DG）；(3) `zm_010` 僅為目前人耳偏好 voice candidate，**不**因本裁示成為永久產品預設；(4) DG-14 永久預設 voice 獨立裁示；(5) DG-15 Voice Selector UI 獨立裁示。
+- 效果：BACKLOG「自然中文 TTS provider（LOCAL_FREE）」關閉；Phase 2 第一目標達成；下一目標依 BACKLOG Phase 2 排序（BGM/SFX、Voice Selection 非 UI 部分、LLM 規劃）由後續 Batch 評估，涉及模型下載／素材授權者需新 DG。
