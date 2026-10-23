@@ -337,3 +337,11 @@
 - 根因：MeinaMix 近景那次未帶 `--gen-policy native`（D-042 誤記為 native，已更正）；D-043「model_preset_level」判定係依程式推論、未經實機 JSON 驗證 → 撤回。
 - 處置：舊人工評語（base「眼睛很怪異」、MeinaMix「比較像日本漫畫的角色」「這樣算 OK」）僅保留為 **single-user subjective observation**，不得作為受控比較結論。DG-23 暫停；先重跑 MeinaMix native（現有 CLI 已支援，免改程式），再 style-compare。
 - 不變：MeinaMix 未正式採用、未鎖畫風、commercial_cleared=false；CyberRealistic 暫停（不下載、不驗證）直到此比較完成。
+
+## D-045 2026-10-23 MeinaMix native 受控比較完成＋DG-23 裁示
+- 真機（客戶回報）：MeinaMix V12 × `girl_portrait_closeup`、seed 1234、native 768×512、crop [0,40,768,472]、steps 25、CFG 7、DPM++ 2M Karras、clip skip 2、float32、technical_valid=true、無 OOM、無 fallback、NT$0。
+- `style-compare` vs Base SD1.5 native：**model_preset_level**、unexpected_differences=[]；唯一差異 model＋clip_skip_a1111（1 vs 2）。
+- 人工（single-user subjective）：「這樣 OK」；scene PASS、style PASS。
+- **客戶裁示 DG-23**：接受 model_preset_level 比較；無須 Base clip skip 2 隔離測試。
+- 結論範圍：MeinaMix＝目前 P1 日系動畫**品質驗證通過**。不永久鎖定模型或畫風（PROJECT_RULES §15：人物／風格／色彩／構圖／鏡頭／背景仍可事後調整）；`commercial_cleared=false` 不變、不得宣稱商用通過；production default 未變。
+- 下一 Decision Gate：CyberRealistic 真人／電影感品質驗證（D-039 已核准下載＋內部驗證）。

@@ -348,3 +348,11 @@
 - Result: D-044；舊 MeinaMix 近景為 fit 512×288 → 與 Base native 不可比；D-042 誤記更正；D-043 推論撤回；免改程式（現有 CLI 支援 native＋checkpoint＋scheduler）
 - Tests: 未改程式
 - Next: Windows MeinaMix native 重跑 → style-compare → DG-23
+
+---
+- Date: 2026-10-23
+- Start SHA: e09fce0
+- Batch: Batch 35 — MeinaMix native 受控比較＋DG-23 裁示入庫
+- Result: D-045；model_preset_level、客戶 OK（scene／style PASS，主觀）；DG-23 接受；commercial_cleared=false
+- Tests: 未改程式
+- Next: Decision Gate CyberRealistic

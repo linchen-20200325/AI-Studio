@@ -1,14 +1,14 @@
 # PROJECT_STATE.md — 目前仍有效的專案狀態（ChatGPT + Project AI 共用快照）
 
 ## ⛳ 最終交接 checkpoint（2026-10-23 封存；以 GitHub main HEAD 為準）
-- 最後驗證 main：`c716b5d`（CI success；159 passed、1 skipped）＋本封存文件 commit。開發分支 `ccr-297bf146-zrrlk1`。
+- 最後驗證 main：以 GitHub main HEAD 為準（D-045 文件 commit；CI 見 Actions）。開發分支 `ccr-297bf146-zrrlk1`。
 - 已完成：Phase 0／0.5／1；Phase 2 進行中：Kokoro TTS（D-027／D-029，真機 validated）、Voice Selection／Character Voice（`zm_010`＝目前使用者偏好候選，非永久鎖定，DG-14）、BGM/SFX＋ducking（SFX 人工聽感未驗）、Style Profile、Character Consistency foundation（僅 prompt 錨點，無 IP-Adapter/LoRA）、Lip-sync 介面（無實際模型）、checkpoint 型錄／下載驗證／single-file 載入／clip-skip 相容（D-039／D-040；**不是** Model Router，Router 未實作）。
-- E2-5：MeinaMix V12 已下載驗證、真機成功；近景（fit 512×288）主觀 OK。Base SD1.5 native 近景：「眼睛很怪異」；與舊 MeinaMix 那張生成條件不同（not_comparable，D-044）→ **尚無受控比較結論**；MeinaMix native 重跑待做。**未正式採用、未鎖畫風、commercial_cleared=false（所有 checkpoint）**。
-- `fair_comparison=false`：metadata 定義問題（已更名 `baseline_condition`）。**實機 `style-compare`（D-044）＝not_comparable**：舊 MeinaMix 近景 evidence 實為 **fit 512×288**（無 crop），Base 為 native 768×512 → 舊比較不是受控比較；人工評語僅保留為 single-user subjective observation。
+- E2-5：MeinaMix V12 native 近景真機成功；`style-compare` vs Base native＝**model_preset_level**（只差 model＋clip skip 2 vs 1，unexpected=[]）；客戶「這樣 OK」scene PASS／style PASS（single-user subjective）；DG-23 已裁示接受（D-045）→ MeinaMix＝目前 P1 日系動畫**品質驗證通過**；**不永久鎖定模型／畫風**（§15 Preference Layer）、**commercial_cleared=false**、不得商用。
+- `fair_comparison`：已更名 `baseline_condition`；跨次比較一律 `style-compare`（D-043／D-044）。
 - CyberRealistic：**尚未下載、尚未真機驗證**；upstream lineage 未釐清。
 - production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
 - 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
-- **下一唯一安全接手點**：Verification Gate →（Windows 一次一條）`python -m see.app.cli style-test --style anime --case girl_portrait_closeup --gen-policy native --checkpoint meinamix_v12 --scheduler dpmpp_2m_karras`（產出 `anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12_sched-dpmpp_2m_karras`）→ 再 `style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12_sched-dpmpp_2m_karras`，預期只差 model＋clip_skip（model_preset_level）→ 才重新判斷 DG-23。CyberRealistic 暫停直到此比較完成。
+- **下一唯一安全接手點**：Decision Gate — CyberRealistic 真人／電影感品質驗證（D-039 已核准下載＋內部驗證；客戶需確認啟動）→ Windows 一次一條：`checkpoint-download cyberrealistic_final --check` → `--yes` → realistic × girl_portrait_closeup native（CyberRealistic）＋ Base 對照 → style-compare。
 - 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
 
 
@@ -21,7 +21,7 @@
 | Project | `see`（repo `linchen-20200325/AI-Studio`；預設分支 `main`；開發分支 `ccr-297bf146-zrrlk1`，`main` 只以 fast-forward 指向已驗證 SHA） |
 | Current Phase | Phase 1 COMPLETE（D-024）。**Phase 2 進行中**：第一目標（自然中文 TTS）**完成**＝Kokoro-82M v1.1-zh 正式採用為目前 LOCAL_FREE provider（D-029）；第二目標待裁示 |
 | Product visual direction | **P1＝日系動畫＋AI 真人／寫實＋電影感；P2＝3D；P3＝兒童繪本等（D-034；README canonical）。兒童繪本不是主要方向** |
-| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-043）**：MeinaMix 人物近景主觀 OK（不鎖定、非商用許可）；正式需求「事後可調整風格」入 PROJECT_RULES §15；base SD1.5 native 近景完成；與舊 MeinaMix（fit）not_comparable（D-044）→ MeinaMix native 重跑待做；CyberRealistic 等客戶下一步；SAFE_TO_HANDOFF = **YES** |
+| Current Status | Batch 24：native A/B 完成（D-036）——H1 證實；anime 在 Base SD1.5 style FAIL → 停止調 Base SD1.5；**E2-5 進行中（D-039～D-043）**：MeinaMix 人物近景主觀 OK（不鎖定、非商用許可）；正式需求「事後可調整風格」入 PROJECT_RULES §15；MeinaMix native vs Base native＝model_preset_level，客戶 OK，DG-23 接受（D-045）；下一步 CyberRealistic；CyberRealistic 等客戶下一步；SAFE_TO_HANDOFF = **YES** |
 | Cost Used | NT$0（全部 LOCAL_FREE；budget = 0；無 PAID 核准） |
 | Last Updated | 2026-10-23（Batch 21：D-032 foundation） |
 
@@ -65,13 +65,14 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-16 **已裁示 A（D-031）**：Audio Layer。
 - DG-17：真機聽感 OK（D-032）；**BGM 預設開啟延後**到完整產品流程／UI（維持 null）。
 - DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4；順序 D-034）。
-- **DG-23（D-043／D-044，暫停）**：舊比較 not_comparable（gen_policy fit vs native）→ 先跑 MeinaMix native 重跑＋style-compare，結果為 model_preset_level 後才請客戶裁示是否接受整包比較。
+- **DG-23 已裁示（D-045）**：接受 model_preset_level 比較；不需 Base clip skip 2 隔離。
+- **下一 Decision Gate**：CyberRealistic 真人／電影感品質驗證（D-039 授權下載；待客戶確認啟動）。
 - DG-21（待 native A/B）：`gen_policy=native` 是否成為預設（既有 image fingerprint 全失效重生、每張耗時增加）。
 - **DG-20（已提出，等待裁示）**：見 `DG20_IMAGE_MODEL_RESEARCH.md`。舊選項描述：：A SD1.5 足夠→角色一致性驗證｜B 明顯不足→研究更適合 anime／AI 真人的 LOCAL_FREE 模型｜C 依視覺路線分模型／provider。裁示前不下載、不導 IP-Adapter／LoRA、不付費、不做 Lip-sync 模型、不做 DG-19 UI。
 - DG-7（殘留，使用者手動 GitHub 設定）：預設分支改 `main`（實況已是 main 與 ccr 同步）、repo 改 Private。
 
 ## Current next action
-Windows（一次一條）：① `python -m see.app.cli style-test --style anime --case girl_portrait_closeup --gen-policy native --checkpoint meinamix_v12 --scheduler dpmpp_2m_karras` ② `style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12_sched-dpmpp_2m_karras` → 重新判斷 DG-23。CyberRealistic 暫停（不下載、不驗證）。
+客戶確認啟動 CyberRealistic 後，Windows（一次一條）：① `checkpoint-download cyberrealistic_final --check` ② `--yes` ③ realistic × girl_portrait_closeup native（CyberRealistic）④ Base 對照 ⑤ style-compare。之後提 DG-21。
 
 ## Current external / manual setup（已由使用者完成且仍有效；不含 secret）
 - Windows：`.venv`、torch cu126、diffusers/transformers/accelerate/safetensors/huggingface_hub 已安裝（validated）。

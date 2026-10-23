@@ -95,7 +95,7 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 | anime × MeinaMix V12（修復後，girl_city_night） | meinamix_v12 | ✅ | fp16 NaN → float32 ✅；無 OOM；無 fallback；technical_valid=true（D-040 修復驗證） | （未回報） | （未回報） | 城市夜景／人物存在 PASS（主觀） | 日系動畫感 PASS；臉部**無法判定**（背面遠景）；黑色比例偏重＝觀察項（single-user subjective） |
 | anime × MeinaMix V12（girl_portrait_closeup，D-041；**fit 512×288**，D-044 實機 JSON 確認） | meinamix_v12 | ✅ | （客戶未回報 JSON） | （未回報） | （未回報） | 正面近景 PASS（主觀） | 「這樣算 OK」：臉部／眼睛／五官／頭髮／日系動畫呈現＝目前可接受（single-user subjective；不鎖模型／畫風、非商用許可，D-042） |
 | anime × base SD1.5（girl_portrait_closeup，同 scheduler 對照，D-043） | —（sd15-base） | — | fp16 NaN/black → float32 ✅；oom_downgrade=false；fallback=null；technical_valid=true；768×512→裁切→1920×1080 | （未回報） | ≈646.6 s；NT$0 | 正面近景（主觀，未逐項審） | 「第一張眼睛很怪異」：眼睛／五官品質較差（single-user subjective） |
-| anime × MeinaMix V12（girl_portrait_closeup，**native 重跑**，D-044） | meinamix_v12 | ✅ | ⏳ | | | | |
+| anime × MeinaMix V12（girl_portrait_closeup，**native 重跑**，D-045） | meinamix_v12 | ✅ | fp16→float32；無 OOM；無 fallback；technical_valid=true；768×512 crop [0,40,768,472]；clip skip 2；NT$0 | （未回報） | （未回報） | PASS（single-user subjective） | PASS：「這樣 OK」（single-user subjective） |
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic | cyberrealistic_final | ⏳ | | | | | |
 
@@ -104,4 +104,5 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 - （D-043 原推論，已被 D-044 推翻其完整性）比較層級＝model_preset_level：除權重（含 checkpoint 內嵌 VAE）外，clip skip 也不同——MeinaMix 依作者建議 A1111 clip skip 2（型錄 preset，D-039／D-040），base 為 1（不跳層）。程式路徑確定（`DiffusersImageProvider._run_pipe`），非推測。
 - 證據 `fair_comparison=false` 的原因：舊旗標只表示「fit 基準條件、無診斷覆寫」，native 一律 false（MeinaMix 那張同樣是 false），**不是**跨次比較的判定 → 已更名 `baseline_condition`，跨次比較改用 `style-compare`（D-043）。
 - 實機 JSON 已逐欄比對（D-044）：not_comparable，見上。
+- **D-045 受控比較**：`style-compare anime_seed1234_girl_portrait_closeup_native_sched-dpmpp_2m_karras anime_seed1234_girl_portrait_closeup_native_ckpt-meinamix_v12_sched-dpmpp_2m_karras` → **model_preset_level**、unexpected_differences=[]；唯一差異 model（sd15-base vs meinamix_v12）＋clip_skip_a1111（1 vs 2）；其餘 14 項一致；兩張 technical_valid=true。客戶看 MeinaMix native：「這樣 OK」scene PASS／style PASS（single-user subjective）。DG-23 客戶裁示接受此比較層級。
 - 限定：不鎖定 MeinaMix、不鎖定人物畫風、`commercial_cleared=false`、僅內部品質驗證。
