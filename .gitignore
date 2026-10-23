@@ -35,8 +35,8 @@ renders/
 !docs/evidence/*.jpg
 
 # --- Model weights / caches (never commit) ---
-models/
-models/weights/
+# 只擋根目錄的 models/（SEE_MODELS_DIR 預設）；不可寫成 models/，否則會誤擋 see/models/ 原始碼
+/models/
 *.bin
 huggingface/
 .hf_cache/
