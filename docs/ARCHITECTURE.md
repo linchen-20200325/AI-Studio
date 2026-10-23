@@ -219,3 +219,10 @@ workspace/projects/<project_id>/
 | 自然語言偏好 | 無 | 需真 LLM（DG-10）把描述轉成結構化設定；轉換結果需人工確認 |
 | 換模型不重建偏好 | 偏好層與 provider 已分離（style terms 由 `apply_style` 附加；checkpoint 參數在 `CheckpointSpec`） | ModelRouter（style.family → preset）未實作 |
 | 偏好版本／比較 | 無 | 偏好快照（每次再生成記錄使用的偏好版本，供 A/B 與回復） |
+
+## 14. Character Identity／Reference Image（D-046；規格入口，未實作）
+目標流程：參考照片 →（本機）擷取／維持辨識特徵 → 選風格 → 角色預覽 → 人工確認 → 跨場景保持同一角色。
+- 偏好層：`CharacterAppearance`（現有：description_en／outfit_en／features_en／reference_images／seed／adapter）。缺口：結構化欄位（gender_presentation、age_range、appearance_region、hair、facial_features、outfit、body_type、distinctive_marks）→ 由確定性組裝成 prompt 錨點；舊欄位相容。
+- 模型層：prompt 型 provider 用文字錨點；Identity 型 provider（未來 IP-Adapter／FaceID 類）讀 `reference_images`＋`adapter`（model-specific）。核心不依賴任何特定 adapter。
+- 隱私：參考照片只在本機 workspace，不進 Git／fixture／第三方（PROJECT_RULES §16）。
+- 驗證案例：`east_asian_female_portrait`、`east_asian_male_portrait`（與 `girl_portrait_closeup` 只差人物描述）。

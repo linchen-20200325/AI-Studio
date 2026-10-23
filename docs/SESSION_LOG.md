@@ -356,3 +356,11 @@
 - Result: D-045；model_preset_level、客戶 OK（scene／style PASS，主觀）；DG-23 接受；commercial_cleared=false
 - Tests: 未改程式
 - Next: Decision Gate CyberRealistic
+
+---
+- Date: 2026-10-23
+- Start SHA: bff6f82
+- Batch: Batch 36 — 角色多樣性＋Reference Image 規格收斂
+- Result: D-046；PROJECT_RULES §16；ARCHITECTURE §14；案例 east_asian_female_portrait／east_asian_male_portrait；未下載、未實作 Reference Image
+- Tests: 160 passed、1 skipped
+- Next: Windows `git pull` → CyberRealistic 東亞女性

@@ -6,7 +6,7 @@
 | Base SD1.5 native 人物近景入庫（D-043） | DONE |
 | MeinaMix native 重跑＋style-compare＝model_preset_level（D-045） | DONE |
 | DG-23：接受 model_preset_level（D-045） | DONE |
-| CyberRealistic 下載＋真人／電影感品質驗證（含 base 對照） | NEEDS HUMAN DECISION（D-039 已授權；待客戶確認啟動）→ NEXT |
+| CyberRealistic 真人／電影感品質驗證：已下載並出西方女性近景（主觀：真人感佳但偏西方臉孔，D-046）；人物控制未通過判定 | NEXT：東亞女性／男性案例 |
 | CyberRealistic upstream lineage 釐清 | RESEARCH |
 | cinematic 驗證（共用 realistic 模型） | BLOCKED（CyberRealistic 之後） |
 | DG-21 native 是否成為預設 | NEEDS HUMAN DECISION（比較完成後） |
@@ -154,3 +154,8 @@
 - **A. Project AI 可自行完成**：provider 程式碼與介面、deterministic／mock 測試、CI、文件、UI 欄位（`image_prompt_en`、進度顯示）、QA 規則（LUFS／黑幀）、fingerprint／evidence 擴充到 TTS/clip、fp32 直起／floor 持久化邏輯。
 - **B. 必須 Windows 真機驗證**：任何 GPU 推理（SD、未來 video/LLM）、TTS 真實聽感與時長、BGM/SFX 混音最終播放、lipsync、Windows 字型／ffmpeg 行為、效能（每景秒數）。
 - **C. 必須客戶先裁示**：下載任何新模型（TTS／LLM／video）、新 API key／OAuth／付費 provider、授權不明素材或模型、大量磁碟需求、QueueExecutor 等需硬體資訊的架構變更、repo visibility（DG-7）。
+
+- [ ] **CyberRealistic × east_asian_female_portrait／east_asian_male_portrait（D-046）**：NEXT（Windows 真機；native、seed 1234、25 步、CFG 7、DPM++ 2M Karras）。
+- [ ] **結構化 Character 設定（D-046，ARCHITECTURE §14）**：NEXT（非 UI 可自主；性別／年齡區間／外貌地區／髮／五官／服裝／體型／辨識特徵，舊欄位相容）。
+- [ ] **Reference Image／Character Identity（IP-Adapter／FaceID 類）**：RESEARCH（授權、GTX 1650 可行性、品質；不下載、不實作）→ NEEDS HUMAN DECISION。
+- [ ] **CyberRealistic 西方女性近景 JSON 未回傳**：補紀錄（可選）。

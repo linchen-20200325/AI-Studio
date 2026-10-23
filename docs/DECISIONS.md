@@ -345,3 +345,10 @@
 - **客戶裁示 DG-23**：接受 model_preset_level 比較；無須 Base clip skip 2 隔離測試。
 - 結論範圍：MeinaMix＝目前 P1 日系動畫**品質驗證通過**。不永久鎖定模型或畫風（PROJECT_RULES §15：人物／風格／色彩／構圖／鏡頭／背景仍可事後調整）；`commercial_cleared=false` 不變、不得宣稱商用通過；production default 未變。
 - 下一 Decision Gate：CyberRealistic 真人／電影感品質驗證（D-039 已核准下載＋內部驗證）。
+
+## D-046 2026-10-23 角色多樣性＋Reference Image 路線（規格收斂）
+- 客戶正式需求：`girl_portrait_closeup` 只是固定比較案例，不代表產品以女性為預設；Character／Persona 不得寫死性別、族群外貌、年齡；須支援結構化人物設定（性別、年齡區間、東亞／西方等外貌特徵但避免刻板臉型、髮型髮色、五官、服裝、體型、辨識特徵）→ PROJECT_RULES §16、ARCHITECTURE §14。
+- 觀察（**single-user subjective observation**）：CyberRealistic 西方女性近景 technical PASS、真人感良好，但人物偏西方臉孔 → **不可據此判定 CyberRealistic 人物控制能力通過**（該次 JSON 未回傳）。
+- 新增受控案例：`east_asian_female_portrait`、`east_asian_male_portrait`（與 girl_portrait_closeup 同構圖詞，只換人物描述）。下一真機：CyberRealistic × 這兩案例。
+- 正式後續能力：Reference Image／Character Identity（Provider Agnostic；換模型沿用偏好；model-specific 放模型層）。IP-Adapter／FaceID 類只列研究，不下載、不實作。
+- 真人照片＝敏感素材：不進 GitHub／fixture／第三方，Local First。

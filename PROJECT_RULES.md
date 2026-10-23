@@ -222,3 +222,10 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - 偏好表達方向：同時支援「選項式調整」與「自然語言描述偏好」（自然語言 → 經 LLM／規則轉成同一份結構化設定，而非另一套路徑）。
 - **更換底層模型時，使用者偏好原則上不需重建**：偏好描述「要什麼」，模型路由／provider 決定「怎麼產生」；模型特有參數（clip skip、scheduler 等）屬於模型 preset，不寫進使用者偏好。
 - 任何測試參數（seed、測試 prompt、測試人物外觀、MeinaMix 等）不得成為產品唯一預設；真機「品質 OK」只代表目前可接受，不等於鎖定模型或畫風。
+
+## 16. Character Diversity & Reference Image Privacy（D-046，永久）
+- 產品**不以任何性別、族群外貌或年齡為預設**。固定比較案例（如 `girl_portrait_closeup`）只是受控測試，不代表產品預設人物。
+- Character／Persona 以**結構化設定**表達且全部可改：性別呈現、年齡／年齡區間、地區外貌特徵（東亞／西方等，只作可描述外觀，**不得寫成固定刻板臉型**）、髮型／髮色、五官與可描述外觀、服裝、體型、其他辨識特徵。
+- Character Preference／Identity 屬偏好層（§15），**Provider Agnostic**：換 image model 原則上沿用；model-specific 參數（adapter 權重、clip skip 等）放模型層。
+- **使用者真人照片＝敏感素材**：不得提交 GitHub、不得做測試 fixture、不得上傳第三方 provider（除非使用者另行明確同意）；Local First，只存本機 workspace（不進 Git）。
+- Reference Image 技術（IP-Adapter／FaceID 類）下載、導入前須另做授權、硬體可行性、品質研究並經 Decision Gate。

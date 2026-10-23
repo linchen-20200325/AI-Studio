@@ -406,3 +406,14 @@ def test_style_test_evidence_records_comparison_conditions(tmp_path, monkeypatch
     ev = _json.loads((tmp_path / "ws" / "style_tests" / "anime_seed1234_girl_portrait_closeup.json").read_text(encoding="utf-8"))
     assert "fair_comparison" not in ev and ev["baseline_condition"] is True
     assert ev["comparison_conditions"]["model"] == "sd15-base" and ev["comparison_conditions"]["seed"] == 1234
+
+
+def test_diversity_portrait_cases_only_change_subject():
+    """D-046：東亞女性／男性案例與 girl_portrait_closeup 構圖詞完全相同，只換人物描述（受控變因）。"""
+    from see.core.style_tests import get_case
+
+    ref = get_case("girl_portrait_closeup").base_prompt_en.split(", ", 1)[1]
+    for cid, subj in (("east_asian_female_portrait", "an East Asian adult woman"), ("east_asian_male_portrait", "an East Asian adult man")):
+        c = get_case(cid)
+        head, tail = c.base_prompt_en.split(", ", 1)
+        assert head == subj and tail == ref and c.seed == 1234 and subj in c.expected_subjects_en

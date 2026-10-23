@@ -47,6 +47,22 @@ STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
         review_checklist=("正面人物（非背面）", "半身或胸像，臉部佔畫面足夠比例", "眼睛（對稱、瞳孔、高光）",
                           "五官（鼻、嘴、臉型）", "頭髮（髮絲、輪廓）", "手部（若入鏡）", "背景未搶過人物",
                           "整體明暗（黑色比例觀察）")),
+    # D-046：人物多樣性受控案例——與 girl_portrait_closeup 只差「人物描述」一詞組（構圖／鏡頭／背景詞完全相同），
+    # 避免把族群寫成固定臉型：只寫可觀察的地區外貌描述＋成人，不加刻板五官詞。產品不以任何性別／族群為預設（§16）。
+    *[StyleTestCase(
+        cid, zh, (subj, "upper body", "front view", "looking at viewer", "face"),
+        notes=f"人物多樣性（D-046）：{label}；與 girl_portrait_closeup 同構圖，只換人物描述",
+        tags=("human", "portrait", "face_quality", "diversity"),
+        base_prompt_en=(f"{subj}, upper body portrait, front view, facing the camera, looking at viewer, "
+                        "clear detailed face, detailed eyes, hair, city at night in the background, "
+                        "blurred background, shallow depth of field"),
+        review_checklist=("人物描述是否符合（性別呈現／東亞外貌，非西方臉孔）", "正面人物、半身或胸像", "眼睛（對稱、瞳孔、高光）",
+                          "五官（鼻、嘴、臉型）", "頭髮", "手部（若入鏡）", "背景未搶過人物", "整體明暗"))
+      for cid, zh, subj, label in (
+          ("east_asian_female_portrait", "一位東亞成年女性的正面半身近景，看著鏡頭，臉部清楚，背景是模糊的城市夜景",
+           "an East Asian adult woman", "東亞女性"),
+          ("east_asian_male_portrait", "一位東亞成年男性的正面半身近景，看著鏡頭，臉部清楚，背景是模糊的城市夜景",
+           "an East Asian adult man", "東亞男性"))],
 ]}
 DEFAULT_CASE = "kitten_butterfly"
 
