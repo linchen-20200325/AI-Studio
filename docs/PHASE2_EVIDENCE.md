@@ -99,6 +99,7 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic（girl_portrait_closeup） | cyberrealistic_final | （客戶未回報 JSON） | technical PASS | | | — | 真人感良好、但人物偏西方臉孔 → 人物控制未判定（single-user subjective observation，D-046） |
 | realistic × CyberRealistic（east_asian_female_portrait，D-046／D-047） | cyberrealistic_final | ✅ | technical PASS（其餘數值客戶未回報） | | | — | 「是東方女性沒錯」（single-user subjective） |
+| realistic × CyberRealistic（two_characters_ab，D-049） | cyberrealistic_final | | ⏳ | | | | A／B 互換檢查待人工 |
 | realistic × CyberRealistic（east_asian_male_portrait，D-046／D-047） | cyberrealistic_final | ✅ | **technical JSON 未入庫（不補造）** | | | — | 外觀確為東亞成年男性（single-user subjective，客戶提供圖） |
 
 **E2-5 人物近景觀察（D-043；single-user subjective；D-044：非受控比較）**：原以為同 case／seed 1234／native 768×512／steps 25／CFG 7／DPM++ 2M Karras／同 prompt 與 negative（同 style、同 base_prompt_en）／fp16→float32 同路徑。客戶判斷：Base SD1.5「眼睛很怪異」；MeinaMix「比較像日本漫畫的角色」（先前已判「這樣算 OK」）→ 對 P1 日系動畫人物呈現有**明顯主觀改善**。

@@ -245,3 +245,8 @@ workspace/projects/<project_id>/
 - `reference_images` 只收本機路徑（拒絕 URL，§16）；仍無 provider 使用。
 - 入口：CLI `appearance <pid> <cid> --gender --age --age-range --region --hair-style --hair-color --facial-feature --body-type --mark`；API `POST /api/projects/{pid}/characters/{cid}/appearance`（`traits` 物件，驗證失敗 422）。
 - 限制（誠實）：SD 1.5 prompt 型 provider 對同框多角色屬性綁定能力弱（可能互換臉／衣服），文字錨點**不保證** Identity → 需 Multi-character controlled test 與 Identity provider 研究。
+
+### 14.2 Multi-character controlled test（D-049）
+- 案例 `two_characters_ab`（`see/core/style_tests.py`）：`CaseCharacter` 以產品同一條路徑（`CharacterAppearance`／`CharacterTraits` → `anchor_text`）產生 A／B 錨點；`multi_character_prompt` 確定性組裝「人數 → 錨點＋位置 → 共用構圖」。
+- A／B 屬性刻意互斥（女／男、黑長直髮／灰短髮、紅大衣／灰西裝、圓眼鏡只在 B）→ 人工審圖可判斷互換或混合；evidence 記 `case_characters`（anchor＋swap_checks）。是否互換**只由人工判定**，不做自動評分。
+- 構圖詞為 portrait 系列精簡子集，以守 CLIP 77 token（測試粗估 P1 各風格 ≤75；真機 evidence 另記實測 `prompt_tokens／prompt_truncated`）。

@@ -380,3 +380,11 @@
 - Result: D-048；CharacterTraits、traits 欄位、anchor 組裝、reference_images 本機路徑檢查、CLI／API；舊 fingerprint 不變
 - Tests: 164 passed、1 skipped
 - Next: Multi-character controlled test 設計
+
+---
+- Date: 2026-10-23
+- Start SHA: 39af70b
+- Batch: Batch 39 — A／B 多角色同框受控測試設計
+- Result: D-049；two_characters_ab、CaseCharacter、multi_character_prompt、evidence case_characters、77 token 守門測試
+- Tests: 167 passed、1 skipped
+- Next: Windows `git pull` → CyberRealistic × two_characters_ab

@@ -480,6 +480,9 @@ def cmd_style_test(args: argparse.Namespace) -> int:
           "prompt_subject_check": prompt_subject_check(prompt, case.expected_subjects_en),
           "scene_validated": None, "style_validated": None,
           "prompt_source": prompt_source,
+          # D-049：多角色案例的角色錨點與「不得互換」屬性（人工審圖用；不是自動判定）
+          **({"case_characters": [{"character_id": c.character_id, "position": c.position, "anchor": c.anchor,
+                                   "swap_checks": list(c.swap_checks)} for c in case.characters]} if case.characters else {}),
           "human_review": {"status": "pending", "checklist": list(case.review_checklist or case.expected_subjects_en),
                            "subjective": "single-user subjective",
                            "how": f"python -m see.app.cli style-review {out.stem} --scene pass|fail --style pass|fail --note \"...\""},

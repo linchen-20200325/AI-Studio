@@ -17,6 +17,29 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class CaseCharacter:
+    """多角色受控案例中的一個角色（D-049）。外觀走產品同一條路徑（CharacterAppearance／CharacterTraits → anchor_text），
+    測試的就是產品實際送進模型的錨點，不另寫一套 prompt。`swap_checks`＝只屬於此角色、不得出現在另一角色身上的屬性。"""
+
+    character_id: str
+    position: str  # 構圖位置描述（英文），例 "on the left"
+    appearance: dict[str, Any]  # CharacterAppearance kwargs；traits 以 dict 給
+    swap_checks: tuple[str, ...]
+
+    @property
+    def anchor(self) -> str:
+        from see.models.project import CharacterAppearance
+
+        return CharacterAppearance(**self.appearance).anchor_text
+
+
+def multi_character_prompt(chars: tuple[CaseCharacter, ...], composition: str) -> str:
+    """確定性組裝：人數 → 每個角色「錨點 + 位置」→ 共用構圖詞。"""
+    count = {2: "two people", 3: "three people"}.get(len(chars), f"{len(chars)} people")
+    return ", ".join([f"{count} side by side"] + [f"{c.anchor} {c.position}" for c in chars] + [composition])
+
+
+@dataclass(frozen=True)
 class StyleTestCase:
     case_id: str
     scene_zh: str
@@ -28,6 +51,7 @@ class StyleTestCase:
     # 屬於「案例定義」而非臨時覆寫 → 仍算 baseline_condition；風格詞仍由 Style Profile 附加，模型由 --checkpoint 決定。
     base_prompt_en: str | None = None
     review_checklist: tuple[str, ...] = field(default_factory=tuple)  # 人工審圖項目（主觀驗收清單）
+    characters: tuple[CaseCharacter, ...] = field(default_factory=tuple)  # D-049：多角色受控案例
 
 
 STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
@@ -64,6 +88,35 @@ STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
           ("east_asian_male_portrait", "一位東亞成年男性的正面半身近景，看著鏡頭，臉部清楚，背景是模糊的城市夜景",
            "an East Asian adult man", "東亞男性"))],
 ]}
+
+# D-049：A／B 雙人同框受控案例。兩人屬性刻意「互斥」（性別呈現、髮長、髮色、服裝顏色與款式、眼鏡只在 B），
+# 人工審圖才判斷得出是否互換／混合；構圖詞取 portrait 系列子集（正面、半身、看鏡頭、模糊城市夜景）以減少變因。
+# 只是受控測試設定：不代表產品預設角色、性別、族群或外觀（PROJECT_RULES §16）。
+_AB_CHARS = (
+    CaseCharacter("char_a", "on the left",
+                  {"outfit_en": "red coat", "traits": {"gender_presentation": "woman", "appearance_region": "East Asian",
+                                                       "hair_style": "long straight", "hair_color": "black"}},
+                  ("woman", "long straight black hair", "red coat")),
+    CaseCharacter("char_b", "on the right",
+                  {"outfit_en": "grey suit", "traits": {"gender_presentation": "man", "appearance_region": "East Asian",
+                                                        "hair_style": "short", "hair_color": "grey",
+                                                        "distinctive_marks": ["round glasses"]}},
+                  ("man", "short grey hair", "grey suit", "round glasses")),
+)
+_AB = StyleTestCase(
+    "two_characters_ab", "兩位東亞成年人並肩站立的正面半身近景：左邊黑長直髮紅大衣的女性、右邊灰短髮戴圓眼鏡穿灰西裝的男性，背景模糊城市夜景",
+    ("two people", "woman", "man", "red coat", "grey suit", "round glasses"),
+    notes="Multi-character 受控案例（D-049）：驗證 A／B 是否互換臉／髮／衣服／配件；構圖詞為 portrait 系列精簡子集（77 token 限制）",
+    tags=("human", "multi_character", "identity_binding"),
+    # CLIP 上限 77 token：兩組錨點較長 → 構圖詞取 portrait 系列的精簡子集，確保 Style Profile 詞不被截斷（真機 evidence 另記實測 token）
+    base_prompt_en=multi_character_prompt(_AB_CHARS, "upper body, front view, looking at viewer, "
+                                          "city at night in the background, blurred background"),
+    review_checklist=("畫面恰為兩人（無多出人物、無融合肢體）", "左＝A 女性、右＝B 男性（位置是否對調）",
+                      "A：黑色長直髮；B：灰色短髮（髮色／髮長是否互換或混合）",
+                      "A：紅大衣；B：灰西裝（服裝是否互換或混合）", "圓眼鏡只在 B（是否出現在 A 或兩人都有／都沒有）",
+                      "兩人臉部品質（眼睛、五官）", "兩人皆為東亞外貌（主觀）", "背景未搶過人物"),
+    characters=_AB_CHARS)
+STYLE_TEST_CASES[_AB.case_id] = _AB
 DEFAULT_CASE = "kitten_butterfly"
 
 

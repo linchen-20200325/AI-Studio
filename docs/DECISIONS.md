@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-049 | A／B 多角色同框受控案例 `two_characters_ab`（產品錨點路徑、互斥屬性、人工互換檢查；77 token 守門） | 有效（待真機） | 可逆 |
 | D-048 | 結構化 Character 設定 `CharacterTraits`（角色 A／B；舊欄位／fingerprint 相容；reference_images 只收本機路徑） | 有效 | 可逆 |
 | D-047 | **長期產品目標：連續劇情 AI 短劇**（三條視覺路線：真人／電影感、日系動畫、半寫實 3D 動畫短劇）；Roadmap P1＝Character Identity、Multi-character、Image-to-Video、Dialogue Performance、Audio／Editing；CyberRealistic 東亞女性主觀確認、男性 JSON 未入庫 | 有效（規格） | 可逆 |
 | D-046 | 角色多樣性＋Reference Image 規格（PROJECT_RULES §16、ARCHITECTURE §14）；東亞女性／男性受控案例 | 有效 | 可逆 |
@@ -369,3 +370,7 @@
 ## D-048 2026-10-23 角色 A／B 結構化 Character 設定（非 UI，已實作）
 - 依 D-046／D-047 自主實作：`CharacterTraits`＋`CharacterAppearance.traits`；舊欄位與 fingerprint 相容；無性別／族群／年齡預設；`reference_images` 只收本機路徑；CLI／API 入口（ARCHITECTURE §14.1）。
 - 未做：Reference Image provider、IP-Adapter／FaceID、Image-to-Video、Lip-sync、UI；未下載、production default 不變。
+
+## D-049 2026-10-23 A／B 多角色同框受控測試設計（自主，未真機）
+- 新增 `two_characters_ab` 案例、`CaseCharacter`、`multi_character_prompt`；style-test evidence 增 `case_characters`；人工檢查清單含位置、髮、服裝、眼鏡互換、人數／肢體融合、臉部品質。
+- 受控測試設定，不代表產品預設角色／性別／族群（§16）。下一步：Windows 真機 CyberRealistic × two_characters_ab（native、dpmpp_2m_karras）。

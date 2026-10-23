@@ -166,7 +166,7 @@
 | Character Identity／Reference Image | 角色 A／B 定義（結構化設定，ARCHITECTURE §14.1，D-048） | DONE（非 UI） |
 | | 跨鏡頭／背景／服裝維持 Identity；Identity provider 研究（IP-Adapter／FaceID 類：授權、4 GB 可行性） | RESEARCH → NEEDS HUMAN DECISION |
 | | 真人照片 Local First／不進 Git（§16） | 規則已生效 |
-| Multi-character Scene | ≥2 角色同框、不交換臉／衣服／設定；controlled test 案例 | NEXT（設計 style-test 雙人案例，可自主）→ 真機 |
+| Multi-character Scene | ≥2 角色同框、不交換臉／衣服／設定；controlled test 案例 `two_characters_ab`（D-049 設計 DONE） | NEXT：Windows 真機（CyberRealistic）→ 人工互換判定 |
 | Image-to-Video | 人物動作／表情／鏡頭動態（超越 Ken Burns）；LOCAL_FREE＋GTX 1650 4 GB 可行性研究，不足須明說 | RESEARCH（不下載、不用付費 API）→ NEEDS HUMAN DECISION |
 | Dialogue Performance | 角色聲音接 TTS（已有基礎）；真 Lip-sync provider；多角色台詞對應；字幕／timeline 對齊 | Lip-sync：BLOCKED（未核准模型）；其餘 NEXT |
 | Audio／Editing | BGM ✅／ducking ✅；SFX 聽感未驗；ambience、轉場、自動剪輯 | NEXT |

@@ -475,3 +475,47 @@ def test_appearance_api_traits(settings):
                json={"traits": {"gender_presentation": "man", "appearance_region": "East Asian", "age": 30}}).json()
     assert v["characters"]["hero"]["appearance"]["traits"]["appearance_region"] == "East Asian"
     assert c.post(f"/api/projects/{pid}/characters/hero/appearance", json={"traits": {"age": 999}}).status_code == 422
+
+
+# ---------------------------------------------------------------- D-049 A／B 多角色同框受控案例
+def test_two_characters_case_uses_product_anchor_path_and_disjoint_attributes():
+    from see.core.style_tests import get_case
+
+    c = get_case("two_characters_ab")
+    a, b = c.characters
+    # 錨點走產品同一條路徑（CharacterTraits → anchor_text）
+    assert a.anchor == "East Asian woman, long straight black hair, wearing red coat"
+    assert b.anchor == "East Asian man, short grey hair, round glasses, wearing grey suit"
+    assert c.base_prompt_en.startswith(f"two people side by side, {a.anchor} on the left, {b.anchor} on the right, ")
+    assert c.base_prompt_en.endswith("upper body, front view, looking at viewer, city at night in the background, blurred background")
+    assert c.seed == 1234
+    # 互斥屬性：只屬於 B 的配件／顏色不得出現在 A 的錨點，反之亦然（否則人工審圖無法判斷互換）
+    assert "glasses" not in a.anchor and "red" not in b.anchor and "black" not in b.anchor and "grey" not in a.anchor
+
+
+def test_two_characters_style_test_evidence(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    monkeypatch.setenv("SEE_IMAGE_PROVIDER", "placeholder")
+    monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
+    main(["style-test", "--style", "realistic", "--case", "two_characters_ab", "--gen-policy", "native"])
+    capsys.readouterr()
+    ev = _json.loads((tmp_path / "ws" / "style_tests" / "realistic_seed1234_two_characters_ab_native.json").read_text(encoding="utf-8"))
+    assert [x["character_id"] for x in ev["case_characters"]] == ["char_a", "char_b"]
+    assert ev["prompt_subject_check"]["passed"] and ev["prompt_source"] == "case_base_prompt_en"
+    assert "圓眼鏡只在 B" in " ".join(ev["human_review"]["checklist"])
+
+
+def test_two_characters_prompt_fits_clip_limit_for_p1_styles():
+    """容器無 tokenizer：以「詞＋標點」粗估（CLIP BPE 對常見英文詞多為 1 token），留 BOS/EOS 後須 ≤ 75。"""
+    import re
+
+    from see.core.style_tests import get_case
+    from see.core.styles import apply_style, get_style
+
+    for sid in ("anime", "realistic", "cinematic", "3d"):
+        prompt, _, _ = apply_style(get_case("two_characters_ab").base_prompt_en, "", get_style(sid))
+        assert len(re.findall(r"\w+|[^\w\s]", prompt)) <= 75, sid
