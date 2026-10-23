@@ -99,12 +99,15 @@ Provider 必須標記 `cost_tier ∈ {LOCAL_FREE, FREE_TIER, PAID}`。
 - 需要付費
 - 需要 API Key / OAuth
 - 需要新增外部帳號
-- 需要下載大型模型
+- 需要下載**任何新模型**（含小型 TTS／LLM 模型；大型模型更是）
 - License 不清楚
+- 需要大量磁碟空間
 - 架構需要不可逆重大改動
-- 必須選擇特定 AI Provider 才能繼續
+- 必須選擇特定 AI Provider 才能繼續（forced provider choice）
+- 需要新硬體
 - 需要客戶提供 NAS / GPU 硬體資訊
 - Spec 有重大缺口
+- 產品方向必須由客戶裁示（例如下一個 Phase 的目標）
 
 其餘安全、免費、可逆的工作可自主完成。
 
@@ -115,7 +118,7 @@ Provider 必須標記 `cost_tier ∈ {LOCAL_FREE, FREE_TIER, PAID}`。
 ### 11.1 Source of Truth 優先順序
 1. GitHub 實際 commit / tree / code
 2. PR / CI / tests
-3. `docs/STATE.md`
+3. `docs/PROJECT_STATE.md`（`docs/STATE.md` 僅為相容指標）
 4. `docs/DECISIONS.md`
 5. `docs/BACKLOG.md`
 6. `docs/HANDOFF_PROJECT_AI.md` / `docs/HANDOFF_CHATGPT.md`
@@ -126,18 +129,19 @@ HANDOFF 不得單獨作為事實證據。新 AI 對話接手時必須重新驗�
 ### 11.2 文件職責（各司其職，不重複）
 | 文件 | 職責 | 長度 |
 |---|---|---|
-| `docs/STATE.md` | 目前狀態快照（唯一的「現在在哪」） | 極短，不寫歷史 |
+| `docs/PROJECT_STATE.md` | 目前狀態快照（唯一的「現在在哪」；`STATE.md` 僅相容指標） | 極短，不寫歷史 |
 | `docs/DECISIONS.md` | 為什麼這樣做（含使用者裁示） | append |
 | `docs/BACKLOG.md` | 還沒做的事與 Decision Gates | 持續整理 |
 | `docs/HANDOFF_PROJECT_AI.md` | 給 Coding Agent 的恢復手冊 | 穩定，少改 |
 | `docs/HANDOFF_CHATGPT.md` | 給治理／協作 AI 的恢復手冊 | 穩定，少改 |
 | `docs/SESSION_LOG.md` | 每個工作階段一筆 append-only 紀錄 | 每筆 ≤ 8 行 |
-| `docs/HANDOFF.md` | 只是索引，指向以上文件 | 不放狀態 |
+| `docs/HANDOFF.md` | 新 AI 對話導航入口（讀什麼、驗什麼、指向現況） | 不放狀態 |
+| `docs/*_EVIDENCE.md` | Phase／真機／測試驗收證據 | 歷史證據，不複製到 STATE |
 
 ### 11.3 Checkpoint Rule
 超過一個小型 Batch 的工作不得長時間只存在 working tree。切分原則是「可獨立恢復」：
 implementation → tests → commit → 更新 STATE → 再進下一批。不為極小修改製造無意義 commit。
-SHA 慣例：`STATE.md` 的 Last Verified Commit 與 `SESSION_LOG.md` 的 End SHA 指向「已跑過測試的功能 commit」；更新這兩個檔案本身的 `chore(state)` checkpoint commit 緊跟其後，不再回填自己的 SHA。
+SHA 慣例：`PROJECT_STATE.md` 的 checkpoint 欄位 與 `SESSION_LOG.md` 的 End SHA 指向「已跑過測試的功能 commit」；更新這兩個檔案本身的 `chore(state)` checkpoint commit 緊跟其後，不再回填自己的 SHA。
 
 ### 11.4 Conversation End Protocol
 出現以下任一：context 接近上限、token／額度接近上限、準備換對話、客戶要求結束、長工作階段完成 → 必須依序：
@@ -145,7 +149,7 @@ SHA 慣例：`STATE.md` 的 Last Verified Commit 與 `SESSION_LOG.md` 的 End SH
 2. 完成目前可安全完成的 checkpoint。
 3. 跑必要測試。
 4. commit / push。
-5. 更新 `STATE.md`。
+5. 更新 `PROJECT_STATE.md`。
 6. 更新相關 HANDOFF（只在規則／架構／Phase 改變時）。
 7. 在 `SESSION_LOG.md` append 一筆。
 8. 確認 secrets / 生成影片 / 模型權重未進 Git（`git ls-files | grep -E '\.(mp4|wav|safetensors|key)$|\.env$'` 應為空）。
@@ -156,7 +160,7 @@ SHA 慣例：`STATE.md` 的 Last Verified Commit 與 `SESSION_LOG.md` 的 End SH
 ### 11.5 New Conversation Recovery Protocol（Project AI）
 1. 讀 `PROJECT_RULES.md`。
 2. 重新取得：remote、branches、main HEAD、open/draft PR、CI、working tree（同一環境時）、最近 commits。
-3. 讀 `STATE.md` → `DECISIONS.md` → `BACKLOG.md` → `HANDOFF_PROJECT_AI.md`。
+3. 讀 `PROJECT_STATE.md` → `BACKLOG.md` → `DECISIONS.md` → `HANDOFF.md`（及角色專用 handoff）。
 4. 比對文件與 GitHub；不一致以 GitHub 為準，先修正文件。
 5. 才開始功能工作。
 
@@ -165,3 +169,45 @@ SHA 慣例：`STATE.md` 的 Last Verified Commit 與 `SESSION_LOG.md` 的 End SH
 
 ### 11.7 Silent Autonomous Cruise
 安全、免費、可逆且規格明確的工作靜默自主完成；只有需要客戶裁示、遇到停手條件、整批完成時才回報。checkpoint commit 不逐次通知。
+
+## 12. GitHub Memory Rule（長期記憶 SSOT；D-025）
+
+**GitHub repository is the long-term project memory and Source of Truth. ChatGPT Memory, Claude Memory, and conversation history are not project storage. Any information required by a future AI session must be persisted to the appropriate canonical GitHub document.**
+
+角色：GitHub＝長期記憶／正式事實；ChatGPT＝獨立協作、研究、驗證、裁示輔助；Claude／Project AI＝實作者；AI Memory＝非正式、不可依賴；對話 context＝暫時工作記憶。只存在聊天或 AI Memory 的資訊一律視為**尚未正式保存**。禁止「AI 記得，所以不用寫」。
+
+### 12.1 Knowledge Persistence Check
+每個 Batch 結束、Phase 結束、對話結束、重大裁示、真機驗證完成，必須檢查並寫入：
+永久規則 → `PROJECT_RULES.md`｜現況 → `docs/PROJECT_STATE.md`｜未完成 → `docs/BACKLOG.md`｜裁示 → `docs/DECISIONS.md`｜歷史 → `docs/SESSION_LOG.md`｜驗收證據 → `docs/*_EVIDENCE.md`｜導航 → `docs/HANDOFF.md`。
+
+### 12.2 文件責任與防漂移
+PROJECT_STATE 只寫現在；BACKLOG 只管未完成；DECISIONS 只管裁示；SESSION_LOG 只管歷史；EVIDENCE 只管驗收；HANDOFF 只管導航；PROJECT_RULES 只管永久治理。同一資訊需出現兩處時：一處 canonical detail，另一處只摘要＋連結。新 AI 不應掃完整 SESSION_LOG 才能知道現況。
+
+### 12.3 GitHub Verification Gate（擴充 §11.5／§11.6）
+任何 completion judgment、next step、merge、PR、branch cleanup、Phase／Batch 變更、handoff、backlog closure 之前，先重新驗證 GitHub（main、PR、CI、tests、code、working tree）。事實優先順序：commit/tree/code → PR/CI/tests → canonical docs → 對話／AI memory。
+
+### 12.4 完成度判斷（永久）
+Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；Mock＝僅 deterministic 開發用；Null＝無能力；Silent＝無真正音訊；Placeholder＝fallback 非生成能力。`MockLLMProvider`≠LLM 規劃完成、`silent-tts`≠TTS 完成、`null-audio`≠BGM/SFX 完成、`null-lipsync`≠lipsync 完成、placeholder 圖≠生圖完成。Skeleton／interface ≠ user-usable capability。關閉 BACKLOG 需 GitHub／code／test／真機證據。
+
+## 13. Model / Reasoning / Token Efficiency Gate（D-025）
+
+目標：**Minimum Sufficient Intelligence + Minimum Sufficient Context + Minimum Sufficient Effort**，不是 Minimum Token At Any Cost。Project AI 不得固定用同一模型或同一 Effort 處理所有工作；每個新的完整工作階段／Batch 開始前自行評估：工作複雜度、目前模型是否足夠、所需最低 Effort、是否值得更高理解力、能否降級而不影響正確性與安全。
+
+### 13.1 Effort 原則
+- **Low**：GitHub status、文件同步、BACKLOG／STATE／HANDOFF 更新、機械性修改、小型低風險修正、規格完全明確的工作、簡單測試／CI 檢查。
+- **Medium**：一般功能實作、provider wiring、一般 UI/UX、單模組 bug、一般測試、低風險跨檔修改、需推理但不涉核心架構。
+- **High**（僅必要時）：核心 architecture、跨模組重大修改、高風險 migration、不可逆變更、核心 pipeline semantics、複雜 concurrency／queue、重大模型／provider 選型、難定位的系統性 bug、影響大量既有功能的修改。不得因「High 比較聰明」而預設 High。
+
+### 13.2 Model Gate／Effort Gate
+目前模型與 Effort 足夠 → 以最低足夠 Effort 靜默執行，**不要為了詢問而打斷客戶**。判斷不足以可靠完成下一階段 → 停下，不得硬做；只回報 `MODEL CHANGE REQUIRED`（Current model、Recommended model、原因、用於哪段工作、完成後可否降回）或 `EFFORT CHANGE REQUIRED`（Current／Recommended Effort、原因、哪段需要、完成後可否降回），等客戶調整。不得先用不足的理解力大量修改再要求升級。
+
+### 13.3 Downshift Rule
+高難度工作完成後若只剩 tests／docs／GitHub status／checkpoint／BACKLOG／HANDOFF／CI monitoring，應主動降級；若切換需客戶操作，回報 `DOWNSHIFT RECOMMENDED` 並給建議設定。
+
+### 13.4 Token Efficiency Rule
+禁止：重複讀取已確認且本 Batch 未變更的大型文件、重複輸出相同狀態、每步回報、長篇重述 GitHub 已有內容、無必要重跑大型分析、用 High 做機械工作、派重複 agent 做相同檢查、無新資訊時反覆回報「等待 CI」、把完整 BACKLOG／STATE 複製進聊天。應：先讀 canonical files、只讀本工作需要的 code／docs、diff／targeted inspection、安全工作靜默執行、整批結束才摘要、Decision Gate 只給真正需要決定的資訊。
+**優先級**：correctness > safety > GitHub verification > tests／evidence > stop conditions > token efficiency。不得為省 token 跳過測試、Verification Gate、evidence，或猜測 code 狀態、把 missing 當成功。
+
+## 14. Windows Customer Interaction（D-025）
+
+客戶不是工程師。Windows 操作**一次只能給一個 action／command**，必須等客戶回傳結果後才給下一個；不得一次給一串指令。回報精簡：Decision Gate 才需要客戶處理；安全、免費、可逆、規格明確的工作靜默自主完成，整批完成後一次回報；每個 Batch 標示 Model／Mode／Effort；全程繁體中文（台灣）。對話切換前必須完成 §11.4 與 §12.1（GitHub 化）。

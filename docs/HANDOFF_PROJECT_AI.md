@@ -1,6 +1,6 @@
 # HANDOFF_PROJECT_AI.md — 給 Coding Agent（Claude Code 等）的恢復手冊
 
-> 新的 Project AI 對話只靠 GitHub + 本文件即可恢復工作。本文件描述「規則與做法」，不描述「現在在哪」——現況一律看 `STATE.md` 並與 GitHub 比對。
+> 入口是 `docs/HANDOFF.md`；本文件是 Coding Agent 專用補充（工作方式、慣例、快速啟動）。本文件描述「規則與做法」，不描述「現在在哪」——現況一律看 `PROJECT_STATE.md` 並與 GitHub 比對。
 
 ## 0. 開工第一件事：Recovery Protocol（PROJECT_RULES §11.5）
 ```bash
@@ -9,7 +9,7 @@ git log --oneline -10 origin/main; git log --oneline -10            # main 與�
 # open/draft PR 與 CI：用 GitHub 工具查 Actions workflow `ci.yml` 最近一次 run 的 conclusion
 python -m pytest -q                                                   # 必須全綠才算「已驗證」
 ```
-然後讀：`PROJECT_RULES.md` → `docs/STATE.md` → `docs/DECISIONS.md` → `docs/BACKLOG.md` → 本文件 → `docs/ARCHITECTURE.md`。
+然後讀：`PROJECT_RULES.md` → `docs/PROJECT_STATE.md` → `docs/DECISIONS.md` → `docs/BACKLOG.md` → 本文件 → `docs/ARCHITECTURE.md`。
 文件與 GitHub 不一致 → GitHub 為準，先修文件再動功能。
 
 ## 1. 專案目標
@@ -30,10 +30,10 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 **PAID provider 無 Approval 一律拒絕執行；Local 失敗不得自動切 PAID。**
 
 ## 4. 目前 Phase、已完成、未完成
-以 `STATE.md` 為準。摘要：Phase 0 pipeline（CLI）與最小 Web UI 已完成並有證據（`PHASE0_EVIDENCE.md`）；Phase 1 SD 1.5 本機生圖已於 GTX 1650 真機完成（`PHASE1_EVIDENCE.md`，D-024）；真正 Video、自然 TTS、Ollama、BGM/SFX、lipsync、QA、NAS/GPU、登入皆未做（BACKLOG「Phase 1 收尾盤點」表）。Phase 2 方向待使用者裁示。
+以 `PROJECT_STATE.md` 為準。摘要：Phase 0 pipeline（CLI）與最小 Web UI 已完成並有證據（`PHASE0_EVIDENCE.md`）；Phase 1 SD 1.5 本機生圖已於 GTX 1650 真機完成（`PHASE1_EVIDENCE.md`，D-024）；真正 Video、自然 TTS、Ollama、BGM/SFX、lipsync、QA、NAS/GPU、登入皆未做（BACKLOG「Phase 1 收尾盤點」表）。Phase 2 方向待使用者裁示。
 
 ## 5. Current Task 與下一個安全動作
-- Current Task：看 `STATE.md`。
+- Current Task：看 `PROJECT_STATE.md`。
 - 若 STATE 顯示在等裁示：只能做 BACKLOG 標示「可自主」的安全、免費、可逆項目，或修文件／測試；不得自行選 Provider、不得開新功能線。
 
 ## 6. 停手條件（停止並詢問）
@@ -54,7 +54,7 @@ Free First／Provider Agnostic／Compute Agnostic／Local First AI／Human Appro
 - Web UI 只綁 127.0.0.1 或可信任區網（`--lan`）；不得開到 Internet（D-011）。
 
 ## 8. 必讀文件順序
-1. `PROJECT_RULES.md` 2. `docs/STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`、`docs/AI_IMAGE_SD15_WINDOWS.md`、`docs/PHASE1_EVIDENCE.md`（AI Image Phase）
+1. `PROJECT_RULES.md` 2. `docs/PROJECT_STATE.md` 3. `docs/DECISIONS.md` 4. `docs/BACKLOG.md` 5. 本文件 6. `docs/ARCHITECTURE.md` 7. `docs/PHASE0_EVIDENCE.md`（需要證據時） 8. `docs/AI_IMAGE_PROVIDER_PLAN.md`、`docs/AI_IMAGE_SD15_WINDOWS.md`、`docs/PHASE1_EVIDENCE.md`（AI Image Phase）
 
 ## 9. 快速啟動
 ```bash

@@ -1,6 +1,6 @@
 # PHASE1_EVIDENCE.md — Phase 1（AI Image Provider：SD 1.5 本機生圖）真機證據
 
-日期：2026-10-23。實機：Windows、Python 3.12.10、NVIDIA GeForce GTX 1650（4095 MB）、torch 2.14.1+cu126、CUDA 12.6、diffusers、SD 1.5 fp16 權重於 `D:\ai-models\sd15`（2.13 GB）。全程 LOCAL_FREE，實際成本 NT$0。程式版本：checkpoint `ec8ff77`（functional `ada08f9`）。
+日期：2026-10-23。實機：Windows、Python 3.12.10、NVIDIA GeForce GTX 1650（4095 MB）、torch 2.14.1+cu126、CUDA 12.6、diffusers 0.41.0、transformers 5.20.2（版本為使用者回報值）、RAM ≈ 65 GB、SD 1.5 fp16 權重於 `D:\ai-models\sd15`（2.13 GB）。全程 LOCAL_FREE，實際成本 NT$0。程式版本：checkpoint `ec8ff77`（functional `ada08f9`）。
 
 ## 1. 命令（使用者執行，未 regen、未手動刪任何檔案）
 ```

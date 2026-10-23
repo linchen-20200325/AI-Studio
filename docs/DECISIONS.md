@@ -1,4 +1,26 @@
-# DECISIONS.md — 決策紀錄
+# DECISIONS.md — 已裁示事項（append-only；每筆：ID、日期、決策、理由、範圍；superseded 不刪除）
+
+## 狀態索引（仍有效／已取代）
+| ID | 主題 | 狀態 | 可逆 |
+|---|---|---|---|
+| D-001～D-008 | 專案名、授權、Phase 0 TTS=espeak、LLM=Mock、ffmpeg 合成、字幕、影像規格 | 有效（Phase 0 基線） | 可逆 |
+| D-009 | 使用者裁示紀錄（Free First／架構） | 有效 | — |
+| D-010/D-011 | Web UI 最小設計；DG-5 限可信任區網無登入 | 有效 | 可逆 |
+| D-012 | edge-tts 連網驗證嘗試 | **superseded by D-014** | — |
+| D-013 | main 快進與 repo 實況 | 有效 | — |
+| D-014 | DG-6 不採用 edge-tts（adapter 保留） | 有效 | 可逆 |
+| D-015 | DG-7 預設分支 main、建議 Private | 有效，使用者手動部分未完成 | 可逆 |
+| D-016/D-019 | 最小 CI；setup-ffmpeg | 有效 | 可逆 |
+| D-017/D-018 | AI Image 盤點；DG-8 採 SD 1.5 | 有效 | 可逆（換模型需新 DG） |
+| D-020 | cp950 subprocess、NaN 偵測、fp32 VAE | 有效 | 可逆 |
+| D-021 | 黑圖快取／內容驗證／evidence／version 3 | 有效 | 可逆 |
+| D-022 | fp32 升級用 fp16 檔 upcast（不下載 fp32） | 有效 | 可逆 |
+| D-023 | 降級 fallback 快取自動重試；Fallback info 穩定 | 有效 | 可逆 |
+| D-024 | Phase 1 COMPLETE；Phase 2 待裁示 | 有效 | — |
+| D-025 | GitHub＝長期記憶 SSOT；canonical 文件；Model/Effort/Token Gate；Windows 互動規則 | 有效 | 治理，可修訂（需裁示） |
+| DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
+
+# DECISIONS.md（原文） — 決策紀錄
 
 格式：日期 / 決策 / 理由 / 替代方案 / 影響。
 
@@ -150,3 +172,10 @@
 ## D-024 2026-10-23 Phase 1 正式 COMPLETE；Phase 2 方向待裁示
 - 完成條件（STATE／BACKLOG 定義：五景 `generated_by=diffusers-sd15`、無黑圖、無 placeholder、NT$0）於 GTX 1650 真機以 `ec8ff77` 程式達成，證據見 `PHASE1_EVIDENCE.md`。本輪無 production 行為變更，只有文件同步。
 - Phase 2 建議排序見 BACKLOG「Phase 2 建議」；第一目標建議為自然中文 TTS（LOCAL_FREE）。涉及新模型下載／方向選擇 → 停手條件，等使用者裁示後開工。
+
+## D-025 2026-10-23 客戶裁示：GitHub 為唯一長期專案記憶 SSOT；canonical 文件架構；Model／Effort／Token Gate；Windows 互動規則（Batch 13）
+- 裁示原文要旨：«從現在開始，AI-Studio 的長期專案記憶以 GitHub 為唯一 SSOT。ChatGPT Memory、Claude Memory、舊對話都不是正式專案儲存層。新的 ChatGPT 與 Project AI 對話必須能只讀 GitHub 就重建足夠完整的專案狀態並繼續工作。»
+- 落實：`PROJECT_RULES.md` §10 停手條件補齊（任何新模型下載、大量磁碟、新硬體、forced provider、產品方向）；新增 §12 GitHub Memory Rule／Knowledge Persistence Check／文件責任／完成度定義、§13 Model-Reasoning-Token Efficiency Gate、§14 Windows Customer Interaction。新增 `docs/PROJECT_STATE.md`（現況快照）；`docs/STATE.md` 降為相容指標；`docs/HANDOFF.md` 改為導航頁；角色專用 handoff 保留為補充。
+- 客戶協作偏好（會影響專案協作者）：繁體中文；極簡回報；Decision Gate 才打擾客戶；Windows 一次一個指令；安全工作靜默自主巡航、整批完成再回報；每批標示 Model／Mode／Effort；Minimum Sufficient Effort；對話切換前 GitHub 化；不依賴 AI Memory。
+- 範圍：治理層；可逆（修訂需新裁示並記錄）。不涉及 production 行為。
+- Phase 2：**未開始**。待裁示 DG-9（第一目標＝自然中文 TTS 候選研究；任何模型下載需同意）。

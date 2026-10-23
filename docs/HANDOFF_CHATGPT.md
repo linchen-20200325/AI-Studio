@@ -1,6 +1,6 @@
 # HANDOFF_CHATGPT.md — 給治理／協作 AI（ChatGPT 等）的恢復手冊
 
-> 讓新的治理 AI 對話重新查 GitHub 後直接接手，不需要使用者重新解釋專案。本文件不描述「現在在哪」——現況看 `STATE.md` 並與 GitHub 比對。
+> 入口是 `docs/HANDOFF.md`；本文件是治理 AI 專用補充（治理方式、審核清單）。GitHub 是唯一長期記憶（PROJECT_RULES §12）。本文件不描述「現在在哪」——現況看 `PROJECT_STATE.md` 並與 GitHub 比對。
 
 ## 1. 專案目的
 `see`：使用者貼入中文文章／故事 → 自動產生影片（劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效 → 字幕 → 剪輯 → QA → Preview → 人工核准 → Final）。採階段性 MVP，目前完成 Phase 0（pipeline）與 Phase 0.5（最小 Web UI）。Repo：`linchen-20200325/AI-Studio`（GitHub 上為 public；`main` 為已驗證版本，開發分支 `ccr-2968bce1-ym4kkc`）。
@@ -10,7 +10,8 @@
 - 「AI 總管」模式：複雜工作由總管拆解、指派虛擬專家；需裁示時主動提供「推薦選項 + 評估理由」。
 - 靜默自主巡航：安全、免費、可逆、規格明確的工作不逐步回報；只在需裁示、停手條件、整批完成時回報。
 - 回報精簡：SHA、測試、產出、成本、已完成、未完成、下一個 Decision Gate。
-- 每批標示 Model / Mode / Minimum Sufficient Effort。
+- 每批標示 Model / Mode / Minimum Sufficient Effort；Project AI 自行評估模型與 Effort，只在需客戶切換時回報 `MODEL/EFFORT CHANGE REQUIRED`（PROJECT_RULES §13）。
+- Windows 指令一次一個（§14）。
 - 程式碼需防禦性設計、向量化；附內部審核（邏輯／邊界／效能）。
 - SSOT 原則；每次先讀規則與紀錄。
 
@@ -26,19 +27,19 @@
 - Phase 0：中文文字 → 劇本 → 分鏡 → placeholder 圖 + Ken Burns + espeak 旁白 + 字幕 → FFmpeg → `preview.mp4`（證據：`docs/PHASE0_EVIDENCE.md`）。
 - Phase 0.5：FastAPI 手機友善 Web UI（貼故事 → Preview → 播放 → 單景修改／重做 → 核准 → Final）。
 - 治理：Conversation Handoff & Crash Recovery 制度（PROJECT_RULES §11）；最小 CI。
-- AI Image Phase：盤點 + 硬體偵測 + Provider 骨架（D-017）；DG-8 採 SD 1.5，低 VRAM 策略與 image_prompt_en 已實作（D-018）；使用者已在 Windows（GTX 1650 4 GB）安裝 torch/diffusers 並下載模型；第一次真機執行因 Windows cp950 subprocess 解碼失敗，已修（D-020），等使用者重跑驗證。
+- Phase 1（AI Image）：SD 1.5 於 Windows GTX 1650 真機五景成功（D-018～D-024，`PHASE1_EVIDENCE.md`）。Phase 2 未開始，待 DG-9。
 
 ## 5. Current Phase
-看 `docs/STATE.md`。
+看 `docs/PROJECT_STATE.md`。
 
 ## 6. 尚待客戶裁示
-看 `docs/STATE.md`「待裁示」與 `docs/BACKLOG.md` Decision Gates。已裁示的項目記錄在 `docs/DECISIONS.md`（D-009 起）。
+看 `docs/PROJECT_STATE.md`「待裁示」與 `docs/BACKLOG.md` Decision Gates。已裁示的項目記錄在 `docs/DECISIONS.md`（D-009 起）。
 
 ## 7. GitHub 驗證規則（Verification Gate）
 在提供「下一步、Project AI 提示語、完成度判斷、PR 合併建議、架構重大裁示」之前，**必須先獨立重新查 GitHub 最新實況**：
 1. `main` HEAD 與開發分支 HEAD 的 SHA、最近 commits。
 2. open/draft PR 與 CI 狀態：Actions workflow `ci.yml` 在該 SHA 的 conclusion 必須為 success。
-3. `docs/STATE.md` 內容是否與上述一致；`docs/SESSION_LOG.md` 最後一筆的 End SHA。
+3. `docs/PROJECT_STATE.md` 內容是否與上述一致；`docs/SESSION_LOG.md` 最後一筆的 End SHA。
 4. 測試數與結果以 commit 內 `tests/` 與最近回報為準；有疑慮要求 Project AI 重跑。
 不得只依 Claude 的回報或 HANDOFF 文件下判斷。文件與 GitHub 不一致 → GitHub 為準，先要求修正文件。
 
@@ -50,4 +51,4 @@
 - 需要裁示時，要求 Project AI 給「推薦選項 + 評估理由」，由使用者裁示後記入 DECISIONS。
 
 ## 9. 下一個 Decision Gate
-看 `docs/STATE.md`「待裁示」。
+看 `docs/PROJECT_STATE.md`「待裁示」。

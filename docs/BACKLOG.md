@@ -1,6 +1,8 @@
 # BACKLOG.md
 
-優先順序：P0（下一步）> P1 > P2。每項都受 PROJECT_RULES 約束（Free First、需核准才可接 PAID）。
+優先順序：P0（下一步）> P1 > P2。每項都受 PROJECT_RULES 約束（Free First、需核准才可接 PAID）。本檔是**所有未完成工作的唯一正式主清單**（PROJECT_RULES §12）。
+標籤：🖥️＝需 Windows 真機驗證｜📦＝可能需下載模型（開工前需裁示）｜💰＝可能產生成本（需核准）｜🚦＝需客戶裁示（Decision Gate）｜🤖＝Project AI 可自行完成。
+關閉條件：需 GitHub／code／test／真機證據；Null／Silent／Mock／Placeholder／skeleton 不算完成（§12.4）。
 
 ## Decision Gate（需使用者裁示）
 - [x] DG-1：以 `026206c` 建立 `main`。
@@ -9,7 +11,11 @@
 - [x] DG-4：FastAPI + 手機友善單頁（已完成）。
 - [x] DG-5：第一版限可信任區網，無登入（D-011）。未來 NAS／遠端部署再開 Access Control DG。
 - [x] DG-6：不採用 edge-tts，adapter 保留（D-014）。
-- [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。
+- [ ] DG-7：裁示已下（D-015），待使用者在 GitHub 設定手動把預設分支改 main、改 Private。🚦（使用者手動）
+- [ ] **DG-9（現在等待）**：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
+- [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
+- [ ] DG-11：真正 VideoProvider（image-to-video）模型／provider：本機模型下載或 API 皆需裁示。🚦📦💰🖥️
+- [ ] DG-12：`QueueExecutor`／NAS worker：需客戶提供 NAS／GPU 硬體資訊（停手條件）。🚦
 
 ## P0
 - [x] DG-8：採 B（SD 1.5），D-018。
@@ -20,29 +26,34 @@
 - [ ] 備案（D-022 C）：fp16 UNet + upcast_attention／部分層 fp32，僅在 fp32 全程太慢時評估（目前不需要）。
 - [ ] 效能：GTX 16xx 直接以 fp32 起跑（跳過每個程序一次的 fp16 失敗嘗試），或把已證明的 floor 持久化到 workspace（可自主；需真機量時間）。
 - [x] UI 顯示實際使用的 image provider 與 fallback 原因（D-021：Scene 卡 `image_meta`）。
-- [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。
+- [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。🤖
+- [ ] Scene 編輯 UX：編輯欄位完整度（visual_description／video_prompt／voice／duration 已有 API）、編輯後只重做必要資產的提示。🤖🖥️（最終體驗）
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
-- [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3）。
-- [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。
+- [ ] `EdgeTTSProvider` 在有網路環境實測（DG-3；D-014 已決定不採用，僅保留 adapter；低優先）。🖥️
+- [ ] 自然中文 TTS provider（LOCAL_FREE）— Phase 2 候選第一目標，先過 DG-9。🚦📦🖥️
+- [ ] 角色語音（character voices）：`scene.voice` 對應多角色／多音色；依 TTS provider 能力。🖥️
+- [ ] Evidence／provenance 擴充到 TTS 與 clip（manifest meta、CLI、UI；目前只有 image）。🤖
+- [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
+- [ ] Retry／resume：中斷後續跑（per-scene fingerprint 已可續跑）；明確 retry policy 與失敗景標記。🤖
 - [ ] `OllamaLLMProvider`（LOCAL_FREE）：暫緩（DG-2）。
-- [ ] BGM / SFX：`AudioProvider` 實作（免費素材庫或程序化生成），含 ducking。
-- [ ] QA 階段：自動檢查（音量 LUFS、黑幀、字幕超長、總長度區間）。圖片黑圖／平面檢查已有（`see/core/image_qa.py`，D-021），可擴充到影片黑幀。
+- [ ] BGM / SFX：`AudioProvider` 實作（免費素材庫或程序化生成），含 audio mixing 與 ducking；素材授權需確認。🖥️（🚦若素材授權不明）
+- [ ] QA 階段：自動檢查（video QA：黑幀／凍結；audio QA：LUFS／靜音；subtitle QA：超長／重疊；總長度區間）。圖片黑圖／平面檢查已有（`see/core/image_qa.py`，D-021）。🤖
 
 ## P1
 - [x] 真正 ImageProvider 骨架（D-017）；SD 1.5 真機驗證完成（D-018～D-023，`PHASE1_EVIDENCE.md`）。
-- [ ] 真正 VideoProvider（image-to-video；本機或 API，皆需核准）。
-- [ ] Character 一致性（角色參考圖、seed 管理）。
-- [ ] `QueueExecutor`：NAS 排隊 + GPU PC worker 領取（需硬體資訊 → 停手條件）。
-- [ ] Final render 與 Preview 分離的品質設定（解析度 / bitrate / 多平台輸出）。
-- [ ] 多語系（英文旁白 / 雙語字幕）。
+- [ ] 真正 VideoProvider（image-to-video；本機或 API，皆需核准 DG-11）。🚦📦💰🖥️
+- [ ] Character 一致性（角色參考圖、seed 管理）。🖥️
+- [ ] `QueueExecutor`：NAS 排隊 + GPU PC worker 領取（DG-12）。🚦
+- [ ] Final render 與 Preview 分離的品質設定（解析度 / bitrate / 多平台輸出）＝ final production workflow。🤖🖥️
+- [ ] 多語系（英文旁白 / 雙語字幕）。🤖
 
 ## P2
-- [ ] Lip Sync Provider。
-- [ ] 登入 / 多使用者。
-- [ ] 成本儀表板（每 project 實際花費）。
-- [ ] 字幕樣式主題。
-- [ ] `cut` 轉場改為真正的硬切（目前以 0.08s fade 模擬）。
+- [ ] Lip Sync Provider（必要時才做；模型需裁示）。🚦📦🖥️
+- [ ] 登入 / 多使用者（NAS／遠端部署時開 Access Control DG）。🚦
+- [ ] 成本儀表板（每 project 實際花費）。🤖
+- [ ] 字幕樣式主題。🤖
+- [ ] `cut` 轉場改為真正的硬切（目前以 0.08s fade 模擬）＝ transition correctness。🤖
 
 ---
 
@@ -80,7 +91,7 @@
 統計（上表 25 項）：✅ 13　🟡 8　⬜ 5（character voices、BGM、SFX、mixing、lipsync）　🔴 1（DG-7，待使用者手動）。
 未完成 BACKLOG 條目：P0 7、P1 5、P2 5（全部保留於上方清單，無刪除）。
 
-## Phase 2 建議（排序，尚未開工；需使用者選擇方向 → 停手條件）
+## Phase 2 建議（排序，尚未開工；對應 DG-9；需使用者選擇方向 → 停手條件）
 **第一目標建議：自然中文旁白（真正可聽的 TTS，LOCAL_FREE）。** 理由：目前成品「畫面是 AI、聲音是 espeak」是離可看短片最遠的一環；不需新 GPU 模型即可大幅提升；Provider 介面與 fallback 已就緒；可獨立驗收（聽得出中文、時長量測正確、字幕對齊）。候選須先盤點授權與體積（例如 Piper／其他 open TTS），**任何新模型下載前先裁示**。
 
 | 優先 | 項目 | 為什麼現在做 | Windows 真機 | 可能下載模型 | 可能成本 | Effort |

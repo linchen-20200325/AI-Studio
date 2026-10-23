@@ -4,7 +4,12 @@
 
 > 文字理解 → 劇本 → 分鏡 → 圖片 → 動畫 → 配音 → 音效/BGM → 字幕 → 剪輯 → QA → Preview → 人工修改/核准 → Final Video
 
-目前階段：**Phase 0（最小可驗證 MVP）**。
+目前階段：**Phase 1 COMPLETE**（SD 1.5 本機 AI 生圖已於 GTX 1650 真機驗收，`docs/PHASE1_EVIDENCE.md`）；Phase 2 方向待裁示。現況一律看 `docs/PROJECT_STATE.md`。
+
+## 產品願景（canonical）
+AI-Studio 不是「讓 AI 幫忙生成一支影片」，而是**可長時間自主運作、可恢復、可追溯、有人類 Decision Gate 的 AI 短片生產系統**：
+文字描述／故事 → story understanding → scene planning → structured scenes → visual prompt → AI image → motion/video → narration → character voices → BGM → SFX → audio mixing → lipsync（必要時）→ subtitles → editing → PREVIEW → human review／scene regeneration → APPROVED → FINAL。
+架構原則（詳 `PROJECT_RULES.md`）：Free First（LOCAL_FREE → FREE_TIER → PAID 需核准）、Local First、Provider Agnostic（LLM/Image/Video/TTS/Audio/LipSync）、Compute Agnostic、Human Approval（DRAFT→PREVIEW→APPROVED→FINAL）、Structured Output（schema 驗證）、Fail Closed（missing/fallback 不得偽裝成功）、Provenance（provider/model/fallback/runtime evidence）、Resume/Cache（per-scene fingerprint）、Cost（預設 NT$0 並可追蹤）、GitHub＝長期記憶 SSOT。
 
 ```
 中文文字 → 結構化劇本 → Storyboard → Timeline → 免費 TTS → 字幕 → FFmpeg 合成 → preview.mp4
@@ -18,8 +23,9 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 架構與資料模型
 - [docs/DECISIONS.md](docs/DECISIONS.md) — 決策紀錄
 - [docs/BACKLOG.md](docs/BACKLOG.md) — 待辦
-- [docs/STATE.md](docs/STATE.md) — 目前狀態快照
-- [docs/HANDOFF.md](docs/HANDOFF.md) — 交接文件索引（Project AI / ChatGPT / SESSION_LOG）
+- [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) — 目前狀態快照（ChatGPT + Project AI 共用）
+- [docs/HANDOFF.md](docs/HANDOFF.md) — 新 AI 對話入口（先讀什麼、驗什麼）
+- [docs/PHASE1_EVIDENCE.md](docs/PHASE1_EVIDENCE.md) — Phase 1 真機證據；[docs/SESSION_LOG.md](docs/SESSION_LOG.md) — 歷史
 
 ## 快速開始
 
