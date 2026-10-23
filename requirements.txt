@@ -1,5 +1,6 @@
 pydantic>=2.5
 pillow>=10
+numpy>=1.26
 pytest>=8
 fastapi>=0.110
 uvicorn>=0.27
