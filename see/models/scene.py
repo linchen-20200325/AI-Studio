@@ -55,6 +55,7 @@ class Scene(SceneDraft):
     voice: str = Field(default="default", description="TTS voice id（provider 自行解讀）；非 default 時優先於角色設定")
     narrator_id: str | None = Field(default=None, description="旁白角色（Project.characters 的 key）；None = 不用角色設定")
     speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0, description="本景語速覆寫；None = 角色或專案語速")
+    lipsync: bool = Field(default=False, description="本景是否做嘴型同步（需有效 LipSyncProvider；預設 False）")
     measured_narration_duration: float | None = Field(default=None, ge=0)
 
     @property

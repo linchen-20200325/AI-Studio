@@ -15,7 +15,9 @@
 - [x] DG-9：裁示 D-027 — Kokoro-82M v1.1-zh 候選驗證核准（非最終採用）。原題：Phase 2 第一目標＝自然中文 TTS（LOCAL_FREE）候選研究與選型。比較面向：中文自然度、台灣國語適用、Windows、CPU／GTX 1650 4 GB／RAM、模型大小、license、離線、下載量、推理速度、角色語音擴充性、未來 lipsync 適配、provider 介面契合。**研究不下載；任何模型下載 → STOP 裁示。** 🚦📦🖥️
 - [x] DG-13：裁示 A（D-029）— Kokoro 正式採用為目前 Phase 2 LOCAL_FREE 中文 TTS provider；Provider Agnostic、DG-14／DG-15 獨立。
 - [x] DG-16：裁示 A（D-031）— Audio Layer（BGM／SFX／ducking），程序生成、NT$0。
-- [ ] **DG-17**：Audio Layer 聽感裁示（Windows 真機）＋是否預設開啟 BGM（目前預設 null）＋是否引入 CC0／使用者素材來源（需另核准）。🚦🖥️
+- [x] DG-17（部分）：Audio 真機聽感「OK」（D-032）。**BGM 預設開啟與否：延後到完整產品流程／UI 一起決定（維持 null）**；CC0／使用者素材仍需另核准。
+- [ ] **DG-18（下一個）**：Phase 2 下一步優先順序——A Style 真機視覺驗收（無下載）／B Character Consistency 模型研究（IP-Adapter／LoRA 等，任何下載需裁示）／C Lip-sync 模型研究（授權風險高，需裁示）。🚦
+- [ ] DG-19（之後）：BGM 預設開啟、Voice Selector／Style／角色 UI 一併的產品流程 UI 裁示（合併 DG-14／DG-15）。🚦
 - [ ] **DG-14**：產品永久預設 voice（目前候選 zm_010 僅為內部首選，未鎖死；D-028）。🚦
 - [ ] **DG-15**：Voice Selector UI 形式（角色→選 voice→試聽→語速→確認）；屬產品 UI 決策。🚦
 - [ ] DG-10：真 LLM 規劃（Ollama 等 LOCAL_FREE；DG-2 暫緩之重開）：模型選擇與下載需裁示。🚦📦🖥️
@@ -43,8 +45,12 @@
 - [ ] Web UI：處理中顯示每景進度（目前只到 stage 層級）；專案刪除。🤖
 - [ ] Retry／resume：中斷後續跑（per-scene fingerprint 已可續跑）；明確 retry policy 與失敗景標記。🤖
 - [ ] `OllamaLLMProvider`（LOCAL_FREE）：暫緩（DG-2）。
-- [ ] BGM / SFX：**第一版完成（D-031，Batch 20）**：程序化 BGM／SFX、ducking、limiter、mux、evidence。待做：Windows 真機聽感（DG-17）；ambience；多段 BGM；CC0／使用者上傳來源（新 AudioProvider，素材授權需核准）；UI 調整 cue（DG-15 相關）。🖥️🚦
+- [ ] BGM / SFX：**第一版完成（D-031，Batch 20）**：程序化 BGM／SFX、ducking、limiter、mux、evidence。待做：SFX 真機聽感（E2-3 未涵蓋）；ambience；多段 BGM；CC0／使用者上傳來源（新 AudioProvider，素材授權需核准）；UI 調整 cue（DG-15 相關）。🖥️🚦
 - [ ] QA 階段：自動檢查（video QA：黑幀／凍結；audio QA：LUFS／靜音；subtitle QA：超長／重疊；總長度區間）。圖片黑圖／平面檢查已有（`see/core/image_qa.py`，D-021）。🤖
+
+- [ ] **Style Profile**（D-032 foundation 完成）：待做——非 default 風格真機視覺驗收（DG-18 A，無下載）；自訂風格（使用者建立）；UI（DG-19）。🖥️
+- [ ] **Character Consistency**（D-032 foundation 完成：外觀錨點＋結構化 refs）：待做——Script.characters 自動建立角色設定（同 id）；真機一致性驗收；IP-Adapter／LoRA／參考圖 provider（DG-18 B，需下載裁示）。🖥️🚦
+- [ ] **Lip-sync**（D-032 foundation 完成：介面、opt-in stage、fallback、evidence）：待做——模型研究與授權（DG-18 C）；人臉偵測前置檢查；與角色/旁白對應。🚦📦🖥️
 
 ## P1
 - [x] 真正 ImageProvider 骨架（D-017）；SD 1.5 真機驗證完成（D-018～D-023，`PHASE1_EVIDENCE.md`）。
@@ -77,10 +83,10 @@
 | Narration / TTS | ✅ | Kokoro-82M v1.1-zh（D-029，CPU，LOCAL_FREE）→ espeak → silent fallback；台灣口音 provider 未有（可新增） |
 | Character voices | 🟡 | 角色 voice／語速／試聽／確認（D-030，CLI＋API）；UI 未做（DG-15） |
 | Subtitle | ✅ | 切句、SRT、燒錄、覆寫（Phase 0） |
-| Background music | 🟡 | 程序化 BGM（D-031；預設關閉，`--audio procedural`）；真機聽感未驗證（DG-17）；無外部素材來源 |
+| Background music | 🟡 | 程序化 BGM（D-031；預設關閉）；真機聽感 OK（D-032）；無外部素材來源；預設開啟待產品 UI |
 | Sound effects | 🟡 | 程序化 SFX（scene `sfx` cue；chime／whoosh／thud／pop）；真機聽感未驗證 |
-| Audio mixing / ducking | 🟡 | numpy 混音＋ducking＋limiter（13 tests）；真機聽感未驗證（DG-17） |
-| Lipsync | ⬜ | `null-lipsync` 介面而已 |
+| Audio mixing / ducking | ✅ | numpy 混音＋ducking＋limiter（13 tests）；真機 ducking OK（D-032） |
+| Lipsync | 🟡 | 介面＋pipeline stage（D-032，opt-in，null 預設）；**無真實模型**（DG-18 C） |
 | Preview rendering | ✅ | ffmpeg 組裝、轉場、字幕、1280×720（真機 42.4 s） |
 | Human approval | ✅ | PREVIEW→APPROVED→FINAL 狀態機，CLI/UI `approve` |
 | Scene-level regeneration | ✅ | `regen`／`set-scene`／UI 單景重做；D-023 語意驗證 |
@@ -94,7 +100,7 @@
 | Configuration / setup UX | 🟡 | env 變數＋`image-setup`／`image-download`／`hardware`；UI 無設定頁；`image_prompt_en` UI 欄未做 |
 | Access control / 部署 | 🔴 | 限可信任區網（D-011）；DG-7 repo Private 待使用者手動 |
 
-統計（上表 25 項，2026-10-23 Batch 20 重算）：✅ 15　🟡 8　⬜ 1（lipsync）　🔴 1（DG-7，待使用者手動）。
+統計（上表 25 項，Batch 21 重算）：✅ 16　🟡 8　⬜ 0　🔴 1（DG-7，待使用者手動）。
 未完成 BACKLOG 條目：P0 7、P1 5、P2 5（全部保留於上方清單，無刪除）。
 
 ## Phase 2 建議（排序；第 1 項已完成 D-029；第 2、3 項開工前需裁示 DG-16）

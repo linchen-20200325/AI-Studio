@@ -11,6 +11,11 @@ from see.providers.base import LipSyncProvider, LipSyncRequest, LipSyncResult
 
 
 class NullLipSyncProvider(LipSyncProvider):
+    """安全 fallback：永遠不改 clip（applied=False）。"""
+
+    applies = False
+    requires_face = False
+
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(name="null-lipsync", kind=ProviderKind.LIPSYNC, cost_tier=CostTier.LOCAL_FREE, model="none")
@@ -19,4 +24,4 @@ class NullLipSyncProvider(LipSyncProvider):
         return self._estimate(units=0, unit_name="seconds")
 
     def lipsync(self, request: LipSyncRequest, out_path: Path) -> LipSyncResult:
-        return LipSyncResult(path=None, provider=self.info.name, model=self.info.model, applied=False)
+        return LipSyncResult(path=None, provider=self.info.name, model=self.info.model, applied=False, meta={"reason": "null provider"})

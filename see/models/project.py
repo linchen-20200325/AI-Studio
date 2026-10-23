@@ -16,6 +16,26 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class CharacterAppearance(BaseModel):
+    """角色外觀錨點（Character Consistency，D-032）。provider-agnostic：
+    prompt 型 provider（SD 1.5）用 description／outfit／features 文字錨點；未來 IP-Adapter／LoRA 類 provider 可用 reference_images／lora。"""
+
+    description_en: str = Field(default="", max_length=300, description="外觀（英文，供 image prompt）例如 'a young monk boy with a shaved head'")
+    outfit_en: str = Field(default="", max_length=200, description="服裝，例如 'orange robe, straw sandals'")
+    features_en: list[str] = Field(default_factory=list, max_length=10, description="固定特徵，例如 ['round face', 'big eyes']")
+    reference_images: list[str] = Field(default_factory=list, max_length=8, description="參考圖路徑（使用者提供；目前 provider 不使用）")
+    seed: int | None = Field(default=None, description="角色固定 seed 提示（provider 自行決定是否採用）")
+    adapter: dict[str, str] = Field(default_factory=dict, description="未來 LoRA／embedding 名稱等（provider 專屬，未核准前不下載）")
+
+    @property
+    def anchor_text(self) -> str:
+        parts = [self.description_en.strip()]
+        if self.outfit_en.strip():
+            parts.append(f"wearing {self.outfit_en.strip()}")
+        parts += [f.strip() for f in self.features_en if f.strip()]
+        return ", ".join(p for p in parts if p)
+
+
 class CharacterVoice(BaseModel):
     """角色 → voice／語速設定（Voice Selection 規格，D-028）。provider-agnostic：voice_id 由當時的 TTS provider 解讀。
 
@@ -29,6 +49,11 @@ class CharacterVoice(BaseModel):
     speed: float | None = Field(default=None, gt=0.5, lt=2.0, description="None = 沿用 project.speech_speed")
     confirmed: bool = False
     confirmed_at: datetime | None = None
+    appearance: CharacterAppearance | None = Field(default=None, description="外觀錨點；None = 不做一致性處理")
+
+
+# 角色設定（voice + appearance）。保留 CharacterVoice 名稱以相容既有 project.json／程式。
+CharacterProfile = CharacterVoice
 
 
 class OutputSpec(BaseModel):
@@ -64,7 +89,8 @@ class Project(BaseModel):
     currency: str = "TWD"
     output: OutputSpec = Field(default_factory=OutputSpec)
     speech_speed: float = Field(default=1.0, gt=0.5, lt=2.0, description="TTS 語速倍率")
-    characters: dict[str, CharacterVoice] = Field(default_factory=dict, description="角色 voice 設定（依角色保存）")
+    characters: dict[str, CharacterVoice] = Field(default_factory=dict, description="角色設定：voice（D-030）＋ appearance（D-032）")
+    style_id: str = Field(default="default", description="Style Profile id（see/core/styles.py；default = Phase 1 既有風格）")
     script: Script | None = None
     scenes: list[Scene] = Field(default_factory=list)
     assets: list[Asset] = Field(default_factory=list)

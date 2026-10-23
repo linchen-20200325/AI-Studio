@@ -46,6 +46,8 @@ class SceneEditIn(BaseModel):
     narrator_id: str | None = None
     speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0)
     audio_cues: list[dict[str, Any]] | None = Field(default=None, max_length=20, description="AudioCue 清單（bgm/sfx）；由 Scene schema 驗證")
+    character_ids: list[str] | None = Field(default=None, max_length=10)
+    lipsync: bool | None = None
 
 
 class CharacterIn(BaseModel):
@@ -53,6 +55,17 @@ class CharacterIn(BaseModel):
     voice_id: str | None = Field(default=None, min_length=1, max_length=64)
     speed: float | None = Field(default=None, gt=0.5, lt=2.0)
     clear_speed: bool = False
+
+
+class StyleIn(BaseModel):
+    style_id: str = Field(min_length=1, max_length=64)
+
+
+class AppearanceIn(BaseModel):
+    description_en: str = Field(default="", max_length=300)
+    outfit_en: str = Field(default="", max_length=200)
+    features_en: list[str] = Field(default_factory=list, max_length=10)
+    seed: int | None = None
 
 
 class VoicePreviewIn(BaseModel):
@@ -120,6 +133,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
                 "image_meta": _image_meta(project.project_id, s.scene_id),
                 "narration_meta": _narration_meta(project.project_id, s.scene_id),
+                "character_ids": s.character_ids, "lipsync": s.lipsync,
             } for s in project.scenes],
             "render_jobs": [j.model_dump(mode="json") for j in project.render_jobs[-5:]],
             "approvals": [a.model_dump(mode="json") for a in project.approvals],
@@ -127,6 +141,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             "characters": {k: v.model_dump(mode="json") for k, v in project.characters.items()},
             "unconfirmed_characters": orch.unconfirmed_characters(project),
             "audio_evidence": _audio_evidence(project.project_id),
+            "style_id": project.style_id,
         }
 
     def _image_meta(pid: str, sid: str) -> dict[str, Any]:
@@ -286,6 +301,32 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                                speed=body.speed, clear_speed=body.clear_speed)
         except ValueError as e:
             raise HTTPException(422, str(e))
+        return _project_view(project)
+
+    @app.get("/api/styles")
+    def styles() -> list[dict[str, Any]]:
+        from see.core.styles import BUILTIN_STYLES
+
+        return [s.model_dump() for s in BUILTIN_STYLES.values()]
+
+    @app.post("/api/projects/{pid}/style")
+    def set_style(pid: str, body: StyleIn) -> dict[str, Any]:
+        _guard_idle(pid)
+        project = _load(pid)
+        try:
+            orch.set_style(project, body.style_id)
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+        return _project_view(project)
+
+    @app.post("/api/projects/{pid}/characters/{cid}/appearance")
+    def set_appearance(pid: str, cid: str, body: AppearanceIn) -> dict[str, Any]:
+        from see.models.project import CharacterAppearance
+
+        _guard_idle(pid)
+        _check_id(cid)
+        project = _load(pid)
+        orch.set_character_appearance(project, cid, CharacterAppearance(**body.model_dump()))
         return _project_view(project)
 
     @app.post("/api/projects/{pid}/characters/{cid}/confirm")

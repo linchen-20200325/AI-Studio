@@ -152,7 +152,8 @@ def cmd_set_scene(args: argparse.Namespace) -> int:
     orch.update_scene(project, args.scene_id, audio_cues=cues, narration=args.narration, subtitle_override=args.subtitle,
                       image_prompt=args.image_prompt, image_prompt_en=args.image_prompt_en,
                       camera_motion=args.camera, transition=args.transition,
-                      voice=args.voice, narrator_id=args.narrator, speech_speed=args.speed)
+                      voice=args.voice, narrator_id=args.narrator, speech_speed=args.speed,
+                      character_ids=args.characters, lipsync={"on": True, "off": False}.get(args.lipsync))
     report = orch.rebuild(project)
     for r in report.scene_reports:
         print(f"{r.scene_id}: rebuilt={r.rebuilt} reused={r.reused}")
@@ -342,6 +343,32 @@ def cmd_character(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_style(args: argparse.Namespace) -> int:
+    """列出 Style Profile；給 project_id + style_id 則設定該專案風格（D-032）。"""
+    from see.core.styles import BUILTIN_STYLES
+
+    if args.project_id and args.style_id:
+        _, orch = build()
+        project = orch.set_style(orch.store.load(args.project_id), args.style_id)
+        print(json.dumps({"project_id": project.project_id, "style_id": project.style_id, "status": project.status}, ensure_ascii=False))
+        return 0
+    print(json.dumps([s.model_dump() for s in BUILTIN_STYLES.values()], ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_appearance(args: argparse.Namespace) -> int:
+    """設定角色外觀錨點（Character Consistency；D-032）。--clear 移除。"""
+    from see.models.project import CharacterAppearance
+
+    _, orch = build()
+    project = orch.store.load(args.project_id)
+    app = None if args.clear else CharacterAppearance(description_en=args.description or "", outfit_en=args.outfit or "",
+                                                       features_en=args.feature or [], reference_images=args.ref or [], seed=args.seed)
+    ch = orch.set_character_appearance(project, args.character_id, app)
+    print(json.dumps(ch.model_dump(mode="json"), ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_voice_preview(args: argparse.Namespace) -> int:
     """試聽一句（不寫任何專案 manifest）；輸出 wav 路徑與 duration／rtf。"""
     settings = Settings()
@@ -412,6 +439,8 @@ def main(argv: list[str] | None = None) -> int:
     ss.add_argument("--speed", type=float, help="本景語速覆寫（0.5–2.0）")
     ss.add_argument("--sfx", action="append", help="本景音效「描述@秒數」（可重複；none = 清空）")
     ss.add_argument("--audio", choices=["null", "procedural"], default=None)
+    ss.add_argument("--characters", nargs="*", default=None, help="本景出現的角色 id（外觀錨點用）")
+    ss.add_argument("--lipsync", choices=["on", "off"], default=None, help="本景嘴型同步（需非 null 的 lipsync provider）")
     ss.set_defaults(fn=cmd_set_scene)
     rg = sub.add_parser("regen", help="強制重做單一 scene"); rg.add_argument("project_id"); rg.add_argument("scene_id"); rg.set_defaults(fn=cmd_regen)
     apv = sub.add_parser("approve", help="人工核准（PREVIEW → APPROVED）"); apv.add_argument("project_id")
@@ -435,6 +464,13 @@ def main(argv: list[str] | None = None) -> int:
     chp.add_argument("--name"); chp.add_argument("--voice"); chp.add_argument("--speed", type=float)
     chp.add_argument("--clear-speed", action="store_true"); chp.add_argument("--confirm", action="store_true")
     chp.add_argument("--list", action="store_true"); chp.set_defaults(fn=cmd_character)
+    sty = sub.add_parser("style", help="列出 Style Profile，或 `style <project_id> <style_id>` 設定專案風格")
+    sty.add_argument("project_id", nargs="?"); sty.add_argument("style_id", nargs="?"); sty.set_defaults(fn=cmd_style)
+    app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
+    app_.add_argument("project_id"); app_.add_argument("character_id")
+    app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")
+    app_.add_argument("--ref", action="append"); app_.add_argument("--seed", type=int); app_.add_argument("--clear", action="store_true")
+    app_.set_defaults(fn=cmd_appearance)
     vpp = sub.add_parser("voice-preview", help="試聽一句（不影響專案）")
     vpp.add_argument("--text", default="你好，這是角色試聽。"); vpp.add_argument("--voice", default="default")
     vpp.add_argument("--speed", type=float, default=1.0)

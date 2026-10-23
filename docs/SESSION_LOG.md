@@ -211,3 +211,13 @@
 - Tests: 119 passed、1 skipped
 - Decision: D-031（DG-16=A）；DG-17 待真機
 - Next: Windows E2-3：`run examples\story_short.txt --project-id audiotest --voice zm_010 --audio procedural`
+
+---
+- Date: 2026-10-23
+- Start SHA: 9acce55
+- End SHA: （本 Batch commit，見 GitHub）
+- Batch: Batch 21 — E2-3 真機入庫 ＋ Style Profile／Character Consistency／Lip-sync foundation
+- Result: PHASE2_EVIDENCE E2-3 真機（BGM／ducking OK、SFX 未驗證）；D-032（BGM 預設維持 null、產品流程、foundation）；StyleProfile＋6 內建、CharacterAppearance 錨點、LipSync 介面＋opt-in stage；CLI style／appearance／set-scene --characters/--lipsync；API styles／style／appearance；舊專案 fingerprint 不變
+- Tests: 130 passed、1 skipped
+- Decision: D-032；DG-18 待裁示
+- Next: 客戶裁示 DG-18；可安全換新對話

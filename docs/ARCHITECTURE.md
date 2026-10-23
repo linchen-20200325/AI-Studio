@@ -109,8 +109,8 @@ class LipSyncProvider: lipsync(req, out_path) -> LipSyncResult
 | TTS | `SilentTTSProvider` | LOCAL_FREE | 靜音 + 以字數估算時長；測試與無 TTS 環境 fallback |
 | TTS | `EdgeTTSProvider` | FREE_TIER | 需網路、不需 key；本環境無法連線，未啟用 |
 | Audio | `NullAudioProvider` | LOCAL_FREE | 不產生 BGM/SFX（預設；Audio Layer 停用） |
+| LipSync | `NullLipSyncProvider` | LOCAL_FREE | 安全 fallback（applies=False）；真實模型未選（DG-18） |
 | Audio | `ProceduralAudioProvider` | LOCAL_FREE | 程式生成確定性 BGM／SFX（D-031）；`see/audio/layer.py`＋`mixer.py` 在 render 階段混音（ducking、limiter），per-scene clip 不變 |
-| LipSync | `NullLipSyncProvider` | LOCAL_FREE | 介面預留 |
 
 ## 6. 成本與核准（`see/core/approval.py`）
 
@@ -183,3 +183,18 @@ workspace/projects/<project_id>/
 - 每個 Project 有 `OutputSpec`（16:9 / 9:16 / 1:1）與 `speech_speed`；兩者都進 fingerprint，改了才重做。
 - 幣別預設 TWD，UI 顯示 `NT$0`；成本區同時列出每個 Provider 的 cost_tier。
 - UI 的修改／重做／核准／Final 全部走 Orchestrator 的同一套方法，與 CLI 行為一致。
+
+## 12. 產品流程對照（D-032；客戶確立的目標流程）
+| 步驟 | 模組／資料 | 現況 |
+|---|---|---|
+| 故事 | `Project.input_text` → `write_script`（`LLMProvider`） | Mock（DG-10） |
+| Style Profile | `Project.style_id` → `see/core/styles.py` `apply_style` → `ImageRequest` | 6 個內建；default 已驗證 |
+| 角色設定 | `Project.characters[id]`（voice＋`appearance`）；`scene.character_ids` | 文字錨點＋結構化 refs |
+| Voice 選擇／試聽／語速 | `set_character`／`preview_voice`／`confirm_character`（D-030） | CLI＋API；UI 待 DG-19 |
+| 分鏡與影像 | `storyboard` → `image_request` → `ImageProvider`（SD 1.5） | Real |
+| narration | `resolve_voice` → `TTSProvider`（Kokoro） | Real |
+| BGM／SFX | render 階段 `AudioLayer`（`AudioProvider`） | Real（procedural；預設 null） |
+| Lip-sync | per-scene `_lipsync_stage`（`LipSyncProvider`，opt-in） | 介面＋stage；無模型 |
+| Preview → 人工微調 → Final | `render(PREVIEW)` → `update_scene`／`regen` → `approve` → `render(FINAL)`（需角色確認） | Real |
+
+相容性原則：每個新層都在「未設定」時與舊版逐位元相同（style=default、無 appearance、lipsync=False／null、audio=null）。

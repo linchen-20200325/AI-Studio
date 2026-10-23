@@ -185,8 +185,11 @@ class AudioProvider(BaseProvider):
 
 # ---------------------------------------------------------------- LipSync
 class LipSyncRequest(BaseModel):
-    video_path: str
-    audio_path: str
+    video_path: str = Field(description="已含 narration 的 scene clip")
+    audio_path: str = Field(description="實際 narration 音檔（嘴型依此同步）")
+    image_path: str | None = Field(default=None, description="原始靜態圖（image-driven 類模型可用）")
+    character_id: str | None = None
+    fps: int = 25
     params: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -195,9 +198,17 @@ class LipSyncResult(BaseModel):
     provider: str
     model: str
     applied: bool = False
+    meta: dict[str, Any] = Field(default_factory=dict, description="證據：face_detected、frames、device、reason …")
 
 
 class LipSyncProvider(BaseProvider):
+    #: False = 不做任何事（null）；pipeline 跳過整個 lipsync stage，clip 與 fingerprint 不變
+    applies: bool = True
+    #: 能力宣告（未來選型比較用）：需要偵測到臉、可吃靜態圖、需要 GPU
+    requires_face: bool = True
+    accepts_image_input: bool = False
+    requires_gpu: bool = False
+
     @abstractmethod
     def lipsync(self, request: LipSyncRequest, out_path: Path) -> LipSyncResult: ...
 

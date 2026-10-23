@@ -14,19 +14,20 @@ from pathlib import Path
 
 from see.audio.layer import AudioLayer
 from see.core.approval import ApprovalGate
+from see.core.styles import apply_style, get_style
 from see.core.config import Settings
-from see.core.errors import InvalidTransition, PaidProviderNotApproved, RenderError, SchemaViolation
+from see.core.errors import InvalidTransition, PaidProviderNotApproved, ProviderError, RenderError, SchemaViolation
 from see.core.hashing import file_sha256, fingerprint, short_id
 from see.core.image_qa import image_defect, image_stats
 from see.core.subtitles import build_cues, to_srt
 from see.models.approval import Approval
 from see.models.enums import ApprovalKind, CostTier, JobKind, JobStatus, Status
-from see.models.project import CharacterVoice, OutputSpec, Project
+from see.models.project import CharacterAppearance, CharacterVoice, OutputSpec, Project
 from see.models.render_job import RenderJob
 from see.models.scene import Scene
 from see.models.timeline import Timeline
 from see.pipeline.stages import make_storyboard, write_script
-from see.providers.base import ImageRequest, TTSRequest, TTSResult, VideoRequest
+from see.providers.base import ImageRequest, LipSyncRequest, TTSRequest, TTSResult, VideoRequest
 from see.providers.registry import Providers
 from see.render.renderer import FINAL_PROFILE, PREVIEW_PROFILE, ClipInput, EncodeProfile, Renderer, build_timeline
 from see.storage.project_store import AssetRecord, ProjectStore, SceneManifest
@@ -44,6 +45,7 @@ class SceneBuildReport:
     reasons: dict[str, str] = field(default_factory=dict)  # 為何重做（例如 image: "cached artifact rejected: black"）
     image_meta: dict[str, object] = field(default_factory=dict)  # 本次 image 的證據（manifest 同步保存）
     narration_meta: dict[str, object] = field(default_factory=dict)  # 本次 TTS 的證據（generated_by / voice / device / rtf）
+    lipsync_meta: dict[str, object] = field(default_factory=dict)  # 本次 lip-sync 的證據（disabled / applied / degraded）
 
 
 @dataclass
@@ -126,9 +128,7 @@ class Orchestrator:
 
         # ---- image
         out = project.output
-        img_req = ImageRequest(prompt=scene.effective_image_prompt, negative_prompt=scene.negative_prompt,
-                               width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
-                               seed=scene.index, caption=scene.visual_description)
+        img_req, img_ctx = self.image_request(project, scene)
         img_fp = fingerprint("image", img_req.model_dump(), self.p.image.info.fingerprint_key)
         img_path = sdir / "image.png"
         cached = manifest.valid("image", img_fp)
@@ -154,7 +154,7 @@ class Orchestrator:
                 manifest.entries.pop("image", None)
                 self.store.save_manifest(pid, manifest)
                 raise RenderError(f"scene {scene.scene_id}: image provider {res.provider} produced unusable image ({defect})")
-            meta = {"generated_by": res.meta.get("generated_by", res.provider), **res.meta, "regenerated": True,
+            meta = {"generated_by": res.meta.get("generated_by", res.provider), **res.meta, **img_ctx, "regenerated": True,
                     "reason": report.reasons.get("image", "no valid cache"),
                     "degraded": res.provider != preferred,  # True = 這次是 fallback 產物，下次 run 若首選可用會重試
                     "image_stats": res.meta.get("image_stats") or image_stats(Path(res.path)).to_dict()}
@@ -223,8 +223,69 @@ class Orchestrator:
                                                    provider=res.provider, model=res.model)
             report.rebuilt.append("clip")
 
+        # ---- lip-sync（D-032；null provider 或 scene.lipsync=False → 跳過，clip 與 fingerprint 不變）
+        report.lipsync_meta = self._lipsync_stage(project, scene, manifest, clip_fp, clip_path, wav_path, img_path, report)
+
         self.store.save_manifest(pid, manifest)
         return report
+
+    # ------------------------------------------------------------ image request（style + character consistency；D-032）
+    def image_request(self, project: Project, scene: Scene) -> tuple[ImageRequest, dict[str, object]]:
+        """組 ImageRequest。style=default 且沒有角色外觀 → 與 Phase 1 完全相同（fingerprint 不變）。"""
+        try:
+            style = get_style(project.style_id)
+        except ValueError as e:
+            raise SchemaViolation(str(e)) from e
+        prompt, negative, style_params = apply_style(scene.effective_image_prompt, scene.negative_prompt, style, self.p.image.info.name)
+        refs = []
+        for cid in scene.character_ids:
+            ch = project.characters.get(cid)
+            if ch is not None and ch.appearance is not None and ch.appearance.anchor_text:
+                a = ch.appearance
+                refs.append({"character_id": cid, "anchor": a.anchor_text, "reference_images": list(a.reference_images),
+                             "seed": a.seed, "adapter": dict(a.adapter)})
+        if refs:  # 文字錨點放最前（prompt 型 provider 權重較高）；結構化 refs 留給未來 IP-Adapter／LoRA 類 provider
+            prompt = ", ".join([r["anchor"] for r in refs] + [prompt])
+        params: dict[str, object] = {}
+        if style_params:
+            params["style"] = style_params
+        if refs:
+            params["characters"] = refs
+        out = project.output
+        req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
+                           seed=scene.index, caption=scene.visual_description, params=params)
+        return req, {"style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs]}
+
+    def _lipsync_stage(self, project: Project, scene: Scene, manifest, clip_fp: str, clip_path: Path, wav_path: Path,
+                       img_path: Path, report: SceneBuildReport) -> dict[str, object]:
+        lp = self.p.lipsync
+        base = {"provider": lp.info.name, "cost_tier": lp.info.cost_tier, "requested": scene.lipsync}
+        if not lp.applies or not scene.lipsync:
+            manifest.entries.pop("lipsync", None)
+            return {**base, "status": "disabled", "reason": "null provider" if not lp.applies else "scene.lipsync=False"}
+        req = LipSyncRequest(video_path=str(clip_path), audio_path=str(wav_path), image_path=str(img_path),
+                             character_id=scene.narrator_id, fps=project.output.fps)
+        lip_fp = fingerprint("lipsync", clip_fp, req.model_dump(exclude={"video_path", "audio_path", "image_path"}), lp.info.fingerprint_key)
+        rec = manifest.valid("lipsync", lip_fp)
+        if rec:
+            report.reused.append("lipsync")
+            return {**base, **rec.meta, "status": "applied", "regenerated": False}
+        self._gate(lp.estimate_cost, project, req)  # PAID lip-sync → 需核准（fail-closed）
+        out = clip_path.with_name("clip_lipsync.mp4")
+        try:
+            res = self.executor.run(Task(task_id=f"{scene.scene_id}:lipsync", kind="lipsync", fn=lp.lipsync,
+                                         kwargs={"request": req, "out_path": out}))
+        except (ProviderError, RuntimeError) as e:  # Executor 把 provider 例外包成 RuntimeError；失敗 → 保留原 clip、照實記錄
+            manifest.entries.pop("lipsync", None)
+            report.reasons["lipsync"] = f"lipsync failed: {e}"
+            return {**base, "status": "degraded", "error": str(e)}
+        if not res.applied or not res.path or not Path(res.path).exists():
+            manifest.entries.pop("lipsync", None)
+            return {**base, **res.meta, "status": "not_applied"}
+        meta = {**res.meta, "applied": True}
+        manifest.entries["lipsync"] = AssetRecord(fingerprint=lip_fp, path=res.path, provider=res.provider, model=res.model, meta=meta)
+        report.rebuilt.append("lipsync")
+        return {**base, **meta, "status": "applied", "regenerated": True}
 
     # ------------------------------------------------------------ timeline + render
     def build_timeline(self, project: Project) -> Timeline:
@@ -234,7 +295,9 @@ class Orchestrator:
             rec = m.entries.get("clip")
             if rec is None or not Path(rec.path).exists():
                 raise RenderError(f"scene {scene.scene_id} has no clip; run build_scene_assets first")
-            clips.append(ClipInput(scene_id=scene.scene_id, index=scene.index, path=Path(rec.path),
+            lip = m.entries.get("lipsync")
+            path = Path(lip.path) if lip is not None and Path(lip.path).exists() else Path(rec.path)
+            clips.append(ClipInput(scene_id=scene.scene_id, index=scene.index, path=path,
                                    duration=rec.duration or scene.duration, transition_in=scene.transition))
         out = project.output
         return build_timeline(clips, self.settings.transition_duration, out.fps, out.width, out.height)
@@ -320,7 +383,8 @@ class Orchestrator:
         """修改單一 Scene 的欄位（narration / subtitle_override / image_prompt / camera_motion / transition ...）。"""
         scene = project.scene(scene_id)
         allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
-                   "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues"}
+                   "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues",
+                   "character_ids", "lipsync"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")
@@ -388,7 +452,7 @@ class Orchestrator:
             ch = CharacterVoice.model_validate({**data, "confirmed": False, "confirmed_at": None})
         except ValidationError as e:
             raise ValueError(f"invalid character voice: {e}") from e
-        changed = old is None or old.model_dump(exclude={"confirmed", "confirmed_at", "provider"}) != ch.model_dump(exclude={"confirmed", "confirmed_at", "provider"})
+        changed = old is None or old.model_dump(exclude={"confirmed", "confirmed_at", "provider", "appearance"}) != ch.model_dump(exclude={"confirmed", "confirmed_at", "provider", "appearance"})
         if not changed and old is not None:
             return old  # 沒有實際變更：保留原確認狀態
         project.characters[character_id] = ch
@@ -397,6 +461,31 @@ class Orchestrator:
                 sc.status = Status.DRAFT
                 project.status = Status.DRAFT
         self.store.save(project)
+        return ch
+
+    def set_style(self, project: Project, style_id: str) -> Project:
+        """選擇 Style Profile。變更會使全部景回到 DRAFT（image fingerprint 會變 → 下次 build 只重做 image 與其下游）。"""
+        get_style(style_id)  # 未知 → ValueError
+        if project.style_id != style_id:
+            project.style_id = style_id
+            project.status = Status.DRAFT
+            for sc in project.scenes:
+                sc.status = Status.DRAFT
+            self.store.save(project)
+        return project
+
+    def set_character_appearance(self, project: Project, character_id: str, appearance: CharacterAppearance | None) -> CharacterVoice:
+        """設定角色外觀錨點；不影響 voice 確認狀態。角色出現（scene.character_ids）的景回到 DRAFT。"""
+        ch = project.characters.get(character_id)
+        if ch is None:
+            ch = self.set_character(project, character_id)
+        if ch.appearance != appearance:
+            ch.appearance = appearance
+            for sc in project.scenes:
+                if character_id in sc.character_ids:
+                    sc.status = Status.DRAFT
+                    project.status = Status.DRAFT
+            self.store.save(project)
         return ch
 
     def confirm_character(self, project: Project, character_id: str) -> CharacterVoice:

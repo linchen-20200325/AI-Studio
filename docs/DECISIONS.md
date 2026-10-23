@@ -24,6 +24,7 @@
 | D-029 | DG-13 裁示 A：正式採用 Kokoro 為「目前 Phase 2 LOCAL_FREE 中文 TTS provider」；Provider Agnostic 保留；zm_010 非永久預設；DG-14／DG-15 獨立 | 有效 | 可逆（換 provider 需新 DG） |
 | D-030 | Voice Selection 非 UI 實作：角色 voice／語速、優先序、試聽、確認閘門（使用角色時 Final 需確認） | 有效 | 可逆 |
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
+| D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | DG-2 | Ollama 暫緩 | 有效（Phase 2 候選重開需新裁示 DG-10） | — |
 
 # DECISIONS.md（原文） — 決策紀錄
@@ -224,3 +225,13 @@
 - Evidence：`renders/<kind>.audio.json`（CLI `audio_evidence`、Web view）：status（disabled／no_cues／mixed／mixed_degraded／unavailable）、BGM／SFX 的 provider／source_type／license／seed／cost_tier／status、ducking 統計、peak／limiter 衰減、skipped cue。來源失敗 → unavailable 照實寫、輸出 narration-only；PAID 來源 → ApprovalGate 拒絕（render 失敗，fail-closed）。
 - **預設 `SEE_AUDIO_PROVIDER=null`（舊行為）**：是否預設開啟 BGM 屬產品聲音體驗 → **DG-17**（需 Windows 真機聽感）。開啟：`run --audio procedural`／`SEE_AUDIO_PROVIDER=procedural`；SFX：`set-scene --sfx 描述@秒數`。
 - 第一版限制：ambience 未支援（記為 skipped）；僅一條 BGM；程序化音訊是測試等級，非產品級配樂。
+
+## D-032 2026-10-23 Audio 真機驗收＋產品流程確立＋Style／Character／Lip-sync foundation（Batch 21）
+- 客戶回報 E2-3：BGM、ducking、Kokoro zm_010 正常，degraded=false，聽感「OK」，NT$0；SFX 未真機驗證（本次 0 個）。
+- 客戶裁示：**DG-17 的「BGM 是否預設開啟」暫不改**，`SEE_AUDIO_PROVIDER` 預設維持 `null`，待完整產品流程／UI 一起決定。CC0／使用者素材來源仍需另核准。
+- 產品流程（客戶確立）：故事 → Style Profile → 角色設定 → Voice 選擇／試聽／語速 → 分鏡與影像 → narration → BGM／SFX → Lip-sync → Preview → 人工微調 → Final（對照表見 `ARCHITECTURE.md` §12）。
+- Foundation（Project AI 自主；無模型下載、無 PAID、無新素材）：
+  - **Style Profile**：`StyleProfile`（positive／negative terms、params、provider_overrides、family、validated）＋內建型錄 default／picture_book／anime／realistic／cinematic／3d；`Project.style_id`（預設 default＝Phase 1 行為，prompt 與 fingerprint 不變）。非 default 風格是 prompt 層 + 參數提示，**未經真機視覺驗收（validated=False）**，不是模型選型。
+  - **Character Consistency**：`CharacterAppearance`（description_en／outfit_en／features_en／reference_images／seed／adapter）掛在 `Project.characters`（與 voice 同一角色實體，`CharacterProfile` 別名）；`scene.character_ids` 中有外觀者 → 文字錨點前置到 image prompt，結構化 refs 進 `ImageRequest.params["characters"]` 供未來 IP-Adapter／LoRA 類 provider。SD 1.5 目前只吃文字錨點；不綁 SD 1.5。
+  - **Lip-sync**：`LipSyncRequest`（clip、實際 narration 音檔、靜態圖、character、fps）／`LipSyncResult.meta`、能力旗標（applies／requires_face／accepts_image_input／requires_gpu）；pipeline 新增 per-scene lipsync stage（`scene.lipsync` opt-in；null provider → 跳過，clip 與 fingerprint 不變；失敗 → 保留原 clip 記 degraded；PAID → ApprovalGate 拒絕）；timeline 有同步產物才使用。**未選定任何 lip-sync 模型**。
+- 下一個 Decision Gate：DG-18（見 BACKLOG）。
