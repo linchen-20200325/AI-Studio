@@ -213,6 +213,9 @@ def cmd_image_download(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from see.core.proc import ensure_utf8_stdio
+
+    ensure_utf8_stdio()
     ap = argparse.ArgumentParser(prog="see", description="文字 → 影片（Phase 0 MVP）")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="從文字檔跑完整 pipeline 產生 preview.mp4")

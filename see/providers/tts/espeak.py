@@ -8,6 +8,7 @@ from pathlib import Path
 
 from see.core.errors import ProviderError, ProviderUnavailable
 from see.core.ffmpeg import FFmpeg
+from see.core.proc import run_text
 from see.models.cost import CostEstimate
 from see.models.enums import CostTier, ProviderKind
 from see.models.provider import ProviderInfo
@@ -43,7 +44,7 @@ class EspeakTTSProvider(TTSProvider):
         out_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = [self.binary, "-v", voice, "-s", str(wpm), "-w", str(out_path), "--", request.text]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            proc = run_text(cmd, timeout=120)
         except (subprocess.SubprocessError, OSError) as e:
             raise ProviderError(f"espeak-ng failed: {e}") from e
         if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 100:

@@ -26,7 +26,7 @@
 - Phase 0：中文文字 → 劇本 → 分鏡 → placeholder 圖 + Ken Burns + espeak 旁白 + 字幕 → FFmpeg → `preview.mp4`（證據：`docs/PHASE0_EVIDENCE.md`）。
 - Phase 0.5：FastAPI 手機友善 Web UI（貼故事 → Preview → 播放 → 單景修改／重做 → 核准 → Final）。
 - 治理：Conversation Handoff & Crash Recovery 制度（PROJECT_RULES §11）；最小 CI。
-- AI Image Phase：盤點 + 硬體偵測 + Provider 骨架（D-017）；DG-8 採 SD 1.5，低 VRAM 策略與 image_prompt_en 已實作（D-018）；模型下載與真機驗證由使用者在 Windows 手動執行。
+- AI Image Phase：盤點 + 硬體偵測 + Provider 骨架（D-017）；DG-8 採 SD 1.5，低 VRAM 策略與 image_prompt_en 已實作（D-018）；使用者已在 Windows（GTX 1650 4 GB）安裝 torch/diffusers 並下載模型；第一次真機執行因 Windows cp950 subprocess 解碼失敗，已修（D-020），等使用者重跑驗證。
 
 ## 5. Current Phase
 看 `docs/STATE.md`。

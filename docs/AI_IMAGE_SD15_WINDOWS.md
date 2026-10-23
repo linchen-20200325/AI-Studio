@@ -28,6 +28,13 @@ python -m see.app.cli run examples\story_short.txt --project-id sd15test
 ```
 `python -m see.app.cli image-setup` 會依偵測結果印出同樣的步驟。`hardware` 必須顯示 `torch installed=True cuda=True diffusers=True`。
 
+## 4b. 第一次真機執行結果（2026-10-23）
+- 安裝與下載成功：torch 2.14.1+cu126、CUDA 12.6、diffusers；模型 2.13 GB 於 `D:\ai-models\sd15`，載入 100%。成本 NT$0。
+- 失敗：Windows cp950 解碼 subprocess 輸出 → `UnicodeDecodeError`（已修，D-020）。
+- 警告：`invalid value encountered in cast` = fp16 NaN → 黑圖風險；GTX 16xx 現在預設 VAE fp32，並自動偵測 NaN 升級到 fp32（D-020）。
+- 警告：torchvision 缺失 → 已改 `feature_extractor=None`，不需安裝 torchvision。
+- 下一步：`git pull` 後重跑同一命令；看 `run` 輸出 `providers.image.name=diffusers-sd15`，並檢查 `scenes/scene_001/image.png` 不是黑圖。
+
 ## 5. 驗收
 - `run` 輸出的 `providers.image.name` 為 `diffusers-sd15`（不是 placeholder）。
 - `workspace/projects/sd15test/scenes/scene_001/image.png` 為 AI 圖；preview.mp4 可播。

@@ -45,20 +45,53 @@ class RuntimePlan:
     vae_slicing: bool
     cpu_offload: bool
     max_side: int
+    vae_fp32: bool = False  # VAE 以 fp32 跑（GTX 16xx 等卡 fp16 VAE 會出 NaN → 黑圖）
 
-    def downgrade(self) -> "RuntimePlan":
+    def downgrade_memory(self) -> "RuntimePlan":
         """OOM 後的下一級：解析度減 128（下限 384），並強制全部省記憶體選項。"""
-        return RuntimePlan(self.device, self.dtype, True, True, True, True, max(self.max_side - 128, 384))
+        return RuntimePlan(self.device, self.dtype, True, True, True, True, max(self.max_side - 128, 384), self.vae_fp32)
+
+    def downgrade_numeric(self) -> "RuntimePlan | None":
+        """NaN／黑圖後的下一級：先 VAE fp32，再整個 pipeline fp32；都試過回 None。"""
+        if self.dtype == "float16" and not self.vae_fp32:
+            return RuntimePlan(self.device, "float16", self.low_vram, self.attention_slicing, self.vae_slicing,
+                               self.cpu_offload, self.max_side, vae_fp32=True)
+        if self.dtype == "float16":
+            return RuntimePlan(self.device, "float32", True, True, True, True, min(self.max_side, 512), vae_fp32=True)
+        return None
+
+    # 向後相容
+    def downgrade(self) -> "RuntimePlan":
+        return self.downgrade_memory()
 
 
-def make_runtime_plan(device: str, vram_mb: int | None, preset_max_side: int) -> RuntimePlan:
+_FP16_FRAGILE_GPUS = ("gtx 1650", "gtx 1660", "gtx 16")  # Turing 無 tensor core，fp16 VAE/UNet 常出 NaN
+
+
+def gpu_prefers_fp32_vae(gpu_name: str | None) -> bool:
+    n = (gpu_name or "").lower()
+    return any(k in n for k in _FP16_FRAGILE_GPUS)
+
+
+def make_runtime_plan(device: str, vram_mb: int | None, preset_max_side: int, gpu_name: str | None = None) -> RuntimePlan:
     if device == "cuda":
         low = vram_mb is None or vram_mb <= LOW_VRAM_MB
         return RuntimePlan(device="cuda", dtype="float16", low_vram=low, attention_slicing=low, vae_slicing=low,
-                           cpu_offload=low, max_side=min(preset_max_side, 512) if low else preset_max_side)
+                           cpu_offload=low, max_side=min(preset_max_side, 512) if low else preset_max_side,
+                           vae_fp32=gpu_prefers_fp32_vae(gpu_name))
     if device == "mps":
         return RuntimePlan("mps", "float32", False, True, True, False, preset_max_side)
     return RuntimePlan("cpu", "float32", True, True, True, False, min(preset_max_side, 512))
+
+
+def is_numeric_failure(arr: Any) -> bool:
+    """判斷生成結果是否為 NaN／全黑（fp16 溢位的典型症狀）。arr：numpy float 影像陣列 [0,1]。"""
+    import numpy as np
+
+    a = np.asarray(arr, dtype=np.float32)
+    if a.size == 0 or np.isnan(a).any() or np.isinf(a).any():
+        return True
+    return float(a.max()) < 0.02  # 幾乎全黑
 
 
 def gen_size(width: int, height: int, max_side: int, multiple: int) -> tuple[int, int]:
@@ -139,6 +172,7 @@ class DiffusersImageProvider(ImageProvider):
         else:
             dev = "cpu"
         vram = int(torch.cuda.get_device_properties(0).total_memory / 2**20) if dev == "cuda" else None
+        self.gpu_name = torch.cuda.get_device_name(0) if dev == "cuda" else None
         return dev, vram
 
     def _load(self, plan: RuntimePlan) -> Any:
@@ -154,6 +188,7 @@ class DiffusersImageProvider(ImageProvider):
             kwargs["variant"] = self.cfg["variant"]
         if self.preset == "sd15":
             kwargs["safety_checker"] = None  # 未下載 safety_checker；省 VRAM
+            kwargs["feature_extractor"] = None  # 只有 safety_checker 需要；避免 torchvision warning
         pipe = AutoPipelineForText2Image.from_pretrained(self.model_path or self.model_id, **kwargs)
         if plan.attention_slicing and hasattr(pipe, "enable_attention_slicing"):
             pipe.enable_attention_slicing()
@@ -161,6 +196,13 @@ class DiffusersImageProvider(ImageProvider):
             pipe.enable_vae_slicing()
             if hasattr(pipe, "enable_vae_tiling"):
                 pipe.enable_vae_tiling()
+        if plan.vae_fp32 and hasattr(pipe, "vae"):
+            pipe.vae.to(dtype=torch.float32)
+            if hasattr(pipe.vae, "config"):
+                try:
+                    pipe.vae.config.force_upcast = True
+                except Exception:  # noqa: BLE001
+                    pass
         if plan.cpu_offload and plan.device == "cuda" and hasattr(pipe, "enable_model_cpu_offload"):
             pipe.enable_model_cpu_offload()
         else:
@@ -186,32 +228,45 @@ class DiffusersImageProvider(ImageProvider):
         self.calls += 1
         import torch  # type: ignore
 
+        import numpy as np
+        from PIL import Image
+
         dev, vram = self._resolve_device()
-        plan = make_runtime_plan(dev, vram, int(self.cfg["max_side"]))
-        last_err: Exception | None = None
-        for attempt in range(2):
+        plan = make_runtime_plan(dev, vram, int(self.cfg["max_side"]), getattr(self, "gpu_name", None))
+        self.attempts: list[str] = []
+        img = None
+        for attempt in range(4):  # OOM 最多降一次、數值問題最多降兩次
             try:
                 pipe = self._load(plan)
                 gw, gh = gen_size(request.width, request.height, plan.max_side, int(self.cfg["multiple"]))
                 gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
                 with torch.inference_mode():
-                    img = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
-                               num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen).images[0]
+                    arr = pipe(prompt=request.prompt, negative_prompt=request.negative_prompt or None, width=gw, height=gh,
+                               num_inference_steps=self.steps, guidance_scale=self.guidance, generator=gen,
+                               output_type="np").images[0]
+                if is_numeric_failure(arr):
+                    nxt = plan.downgrade_numeric()
+                    self.attempts.append(f"numeric failure (NaN/black) with dtype={plan.dtype} vae_fp32={plan.vae_fp32}")
+                    if nxt is None:
+                        raise ProviderError("generation produced NaN/black image even in fp32: " + "; ".join(self.attempts))
+                    plan = nxt
+                    continue
+                img = Image.fromarray((np.clip(arr, 0, 1) * 255).round().astype("uint8"))
                 self.last_plan = plan
                 break
+            except ProviderError:
+                raise
             except Exception as e:  # noqa: BLE001
-                last_err = e
-                is_oom = "out of memory" in str(e).lower() or type(e).__name__ in ("OutOfMemoryError",)
-                if attempt == 0 and is_oom:
-                    plan = plan.downgrade()
+                is_oom = "out of memory" in str(e).lower() or type(e).__name__ == "OutOfMemoryError"
+                if is_oom and "oom" not in self.attempts:
+                    self.attempts.append("oom")
+                    plan = plan.downgrade_memory()
                     self._release()
                     continue
                 raise ProviderError(f"diffusers generation failed ({type(e).__name__}): {e}") from e
-        else:  # pragma: no cover
-            raise ProviderError(f"diffusers generation failed: {last_err}")
+        if img is None:
+            raise ProviderError("diffusers generation exhausted retries: " + "; ".join(self.attempts))
         if img.size != (request.width, request.height):
-            from PIL import Image
-
             img = img.resize((request.width, request.height), Image.LANCZOS)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(out_path, format="PNG")

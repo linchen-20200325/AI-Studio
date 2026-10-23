@@ -70,8 +70,10 @@ class HardwareProfile(BaseModel):
 def _run(cmd: list[str], timeout: float = 15) -> str | None:
     if shutil.which(cmd[0]) is None:
         return None
+    from see.core.proc import run_text
+
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        p = run_text(cmd, timeout=timeout)
     except (subprocess.SubprocessError, OSError):
         return None
     return p.stdout if p.returncode == 0 else None

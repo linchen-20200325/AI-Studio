@@ -20,7 +20,9 @@ def detect_cjk_font() -> str:
     if not fc_list:
         return ""
     try:
-        out = subprocess.run([fc_list, ":lang=zh", "family"], capture_output=True, text=True, timeout=10).stdout
+        from see.core.proc import run_text
+
+        out = run_text([fc_list, ":lang=zh", "family"], timeout=10).stdout
     except (subprocess.SubprocessError, OSError):
         return ""
     families: list[str] = []

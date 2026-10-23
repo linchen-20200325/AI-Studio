@@ -14,7 +14,9 @@
 ## P0
 - [x] DG-8：採 B（SD 1.5），D-018。
 - [x] `image_prompt_en` + negative prompt（D-018）。
-- [ ] **使用者手動**：依 `docs/AI_IMAGE_SD15_WINDOWS.md` §4 安裝 torch/diffusers、下載 SD 1.5（≈2.2 GB）、真機跑 auto；貼回結果後記證據。
+- [x] 使用者已安裝 torch/diffusers 並下載 SD 1.5（D-020）。
+- [ ] **使用者手動**：`git pull` 後重跑 `run`，貼回 `providers.image.name`、一張 image.png 縮圖、每景秒數 → 記入證據。
+- [ ] 若 GTX 1650 fp32 全程仍 OOM：改 `max_side` 448 或改 1:1 比例（可自主）。
 - [ ] UI 顯示實際使用的 image provider 與 fallback 原因（`/api/health` 已有 `image`/`image_skipped`；前端顯示待做）。
 - [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。

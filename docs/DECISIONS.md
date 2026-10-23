@@ -97,3 +97,11 @@
 - `16fd107`（分支 run）與 `ec669e7`（分支與 main 兩個 run）狀態為 cancelled，非 failed；同 SHA 的 main run 在 `16fd107` 成功。本 session 以 GitHub App 身分 re-run／dispatch 皆 403。
 - 根因（`bc5f568` 兩個 run 的 jobs API）：`System packages` 步驟 apt-get 卡住約 20 分鐘，被 job `timeout-minutes: 20` 取消 → GitHub 顯示 cancelled。成功的 run 該步驟只需 1 分鐘，屬 apt 鏡像偶發卡死。
 - 修正：該步驟加 `DEBIAN_FRONTEND=noninteractive`、`timeout` 包住 apt、`Acquire::Retries=3`、重試 3 次、`--no-install-recommends`、步驟 `timeout-minutes: 8`。不以空 commit 規避。
+
+## D-020 2026-10-23 Windows 真機第一次 SD 1.5 執行：root cause 與修正
+- 實機：Windows、Python 3.12.10、GTX 1650 4 GB、PyTorch 2.14.1+cu126、CUDA 12.6、diffusers 已裝、模型 `D:\ai-models\sd15`（2.13 GB）。模型載入 100% 成功 → 模型未損壞，不重新下載。
+- **真正 failure**：`UnicodeDecodeError: 'cp950' codec can't decode byte 0x89`——我們的 `subprocess.run(text=True)` 在 Windows 以 locale（cp950）解碼 ffmpeg／espeak 的 UTF-8 輸出，reader thread 丟例外，pipeline 中斷。修正：`see/core/proc.py` `run_text()` 以 bytes 模式執行並 UTF-8 `errors=replace` 解碼；所有 subprocess 呼叫（ffmpeg、ffprobe、espeak、fc-list、nvidia-smi 等）改走此函式；CLI／UI 入口 `ensure_utf8_stdio()`。
+- **`RuntimeWarning: invalid value encountered in cast`**：numpy 把含 NaN 的浮點影像轉 uint8 的警告 → 代表 fp16 推理出現 NaN，產物會是黑圖。GTX 16xx（Turing、無 tensor core）在 fp16 跑 SD 1.5 VAE／UNet 出 NaN 是已知現象（社群對策 `--no-half-vae` / `--no-half`）。修正：生成改 `output_type="np"` 並以 `is_numeric_failure()` 檢查 NaN／全黑；GTX 16xx 預設 VAE fp32（`vae_fp32`）；仍失敗 → 整個 pipeline fp32 + CPU offload（4 GB 可容納 SD 1.5 fp32 UNet 3.4 GB 單元件）；再失敗才 ProviderError → Fallback 退回 Placeholder。
+- **torchvision warning**：`CLIPImageProcessor requires torchvision` 來自 feature_extractor，只有 safety_checker 用得到；已 `feature_extractor=None`，**不新增 torchvision 依賴**。
+- 4 GB 安全策略（fp16、slicing、offload、≤512）與 Placeholder fallback 全部保留；OOM 降級與數值降級為兩條獨立階梯。
+- 回歸測試：`tests/test_windows_regressions.py`（7 項）。

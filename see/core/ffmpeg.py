@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from see.core.errors import RenderError
+from see.core.proc import run_text
 
 
 @dataclass(frozen=True)
@@ -32,7 +33,7 @@ class FFmpeg:
     def run(self, args: list[str], timeout: float = 600) -> None:
         cmd = [self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", *args]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            proc = run_text(cmd, timeout=timeout)
         except FileNotFoundError as e:
             raise RenderError(f"ffmpeg not found: {self.ffmpeg}") from e
         except subprocess.TimeoutExpired as e:
@@ -43,7 +44,7 @@ class FFmpeg:
     def probe(self, path: Path) -> MediaInfo:
         cmd = [self.ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)]
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            proc = run_text(cmd, timeout=60)
         except FileNotFoundError as e:
             raise RenderError(f"ffprobe not found: {self.ffprobe}") from e
         if proc.returncode != 0:

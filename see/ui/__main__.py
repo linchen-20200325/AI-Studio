@@ -11,6 +11,9 @@ import sys
 
 
 def main(argv: list[str] | None = None) -> int:
+    from see.core.proc import ensure_utf8_stdio
+
+    ensure_utf8_stdio()
     ap = argparse.ArgumentParser(prog="python -m see.ui", description="see Web UI")
     ap.add_argument("--lan", action="store_true", help="綁定 0.0.0.0 供同一可信任區網的裝置使用（預設只綁 127.0.0.1）")
     ap.add_argument("--host", default=None, help="明確指定綁定位址（覆寫 --lan）")
