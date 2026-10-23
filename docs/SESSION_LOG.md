@@ -95,7 +95,7 @@
 ---
 - Date: 2026-10-23
 - Start SHA: 1b0bce5
-- End SHA: __END__
+- End SHA: 63e7855
 - Batch: Batch 9 — Windows 真機「純黑 PNG 卻回報成功」root cause 與修復
 - Result: 主因＝黑圖被 manifest 當有效快取重用（version 未 bump、不驗內容）；修 image_qa 內容驗證（快取前／生成後／fallback／存檔後）、version 3、VAE dtype cast、evidence（manifest meta／CLI image_evidence／UI image_meta）
 - Tests: 83 passed（+10 回歸）；CI 見 STATE
