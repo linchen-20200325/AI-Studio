@@ -26,6 +26,11 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-047 | **長期產品目標：連續劇情 AI 短劇**（三條視覺路線：真人／電影感、日系動畫、半寫實 3D 動畫短劇）；Roadmap P1＝Character Identity、Multi-character、Image-to-Video、Dialogue Performance、Audio／Editing；CyberRealistic 東亞女性主觀確認、男性 JSON 未入庫 | 有效（規格） | 可逆 |
+| D-046 | 角色多樣性＋Reference Image 規格（PROJECT_RULES §16、ARCHITECTURE §14）；東亞女性／男性受控案例 | 有效 | 可逆 |
+| D-045 | MeinaMix native vs Base＝model_preset_level；客戶 OK；**DG-23 裁示接受**；commercial_cleared=false | 有效 | 可逆 |
+| D-044 | style-compare 實機：舊 Base vs MeinaMix 近景 not_comparable（fit vs native）；更正 D-042、撤回 D-043 推論 | 有效 | 可逆 |
+| D-043 | Base SD1.5 native 近景入庫；fair_comparison→baseline_condition；style-compare | 部分被 D-044 修正 | 可逆 |
 | D-042 | MeinaMix `girl_portrait_closeup` 主觀 OK（不鎖模型／畫風、非商用許可）；正式需求「事後可調整風格」→ 擴充 PROJECT_RULES §15；建立「生成後調整偏好→再生成」架構入口（ARCHITECTURE §13）與 backlog | 有效 | 可逆 |
 | D-041 | MeinaMix 真機修復後成功（D-040 驗證）；新增模型／風格中性的人物近景案例 `girl_portrait_closeup`；永久規則 PROJECT_RULES §15（使用者偏好 ≠ 模型實作） | 有效 | 可逆 |
 | D-040 | E2-5 真機失敗 RCA：diffusers 0.41 `clip_skip=` 存取 `text_encoder.text_model.final_layer_norm`，transformers 5.x 已攤平 CLIPTextModel → AttributeError；修法＝自行編碼 prompt（A1111 clip skip N＝hidden_states[-N]＋final LN，執行期驗證順序）傳 prompt_embeds；不取消 clip skip、不改條件 | 有效 | 可逆 |
@@ -352,3 +357,10 @@
 - 新增受控案例：`east_asian_female_portrait`、`east_asian_male_portrait`（與 girl_portrait_closeup 同構圖詞，只換人物描述）。下一真機：CyberRealistic × 這兩案例。
 - 正式後續能力：Reference Image／Character Identity（Provider Agnostic；換模型沿用偏好；model-specific 放模型層）。IP-Adapter／FaceID 類只列研究，不下載、不實作。
 - 真人照片＝敏感素材：不進 GitHub／fixture／第三方，Local First。
+
+## D-047 2026-10-23 長期產品目標：連續劇情 AI 短劇＋Roadmap 調整
+- 客戶正式產品目標（能力方向，**不是**複製任何特定影片／角色／畫面／受版權保護風格；參考影片不得當素材）：連續劇情 AI 短劇——固定主要角色、東亞男女角色、多角色同框、跨場景同一 Identity、表情與肢體演出、人物真正動態化、中文台詞＋TTS＋Lip-sync、BGM／SFX／環境音、字幕、鏡頭運動、自動剪輯成片。
+- 三條可選視覺路線：① 真人／電影感 ② 日系動畫 ③ 半寫實 3D／動畫短劇。**不得**把 CyberRealistic、MeinaMix 或目前測試角色綁成產品預設（PROJECT_RULES §15／§16）。
+- Roadmap P1（並列，詳 BACKLOG「短劇 Roadmap」）：Character Identity／Reference Image；Multi-character Scene；Image-to-Video／Video Generation（先研究 LOCAL_FREE＋GTX 1650 4 GB 可行性，硬體不足必須明說）；Dialogue Performance（角色聲音、真 Lip-sync、多角色台詞、字幕對齊）；Audio／Editing integration（BGM、SFX、ambience、ducking、轉場、自動剪輯）。
+- 人工驗證（single-user subjective）：CyberRealistic × `east_asian_female_portrait` technical PASS，客戶確認「是東方女性沒錯」；× `east_asian_male_portrait` 客戶提供圖、外觀確為東亞成年男性，**technical JSON 未入庫（不補造數值）**。五官等外觀保持可調，不因測試角色固定。
+- 本輪僅規格入庫：未下載模型、未開始 IP-Adapter／FaceID／Video model、未改 production default、未用付費 API。

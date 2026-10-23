@@ -226,3 +226,14 @@ workspace/projects/<project_id>/
 - 模型層：prompt 型 provider 用文字錨點；Identity 型 provider（未來 IP-Adapter／FaceID 類）讀 `reference_images`＋`adapter`（model-specific）。核心不依賴任何特定 adapter。
 - 隱私：參考照片只在本機 workspace，不進 Git／fixture／第三方（PROJECT_RULES §16）。
 - 驗證案例：`east_asian_female_portrait`、`east_asian_male_portrait`（與 `girl_portrait_closeup` 只差人物描述）。
+
+## 15. 長期目標：連續劇情 AI 短劇（D-047；能力缺口地圖，未實作）
+三條視覺路線（真人／電影感、日系動畫、半寫實 3D）＝ Style Profile＋模型 preset 的組合，皆走 Provider Agnostic 介面；路線不綁模型。
+
+| 能力 | 現況（已有） | 缺口 |
+|---|---|---|
+| Character Identity | `CharacterAppearance` 文字錨點、`reference_images` 欄位（未使用）、§14 規格 | 結構化欄位；Identity provider（IP-Adapter／FaceID 類，RESEARCH）；跨鏡頭／服裝 Identity 驗證案例 |
+| Multi-character Scene | 單一人物 prompt | 多角色 layout／區域 prompt；不交換臉／衣服／設定的 controlled test |
+| Image-to-Video | Ken Burns（靜態圖推拉）；`VideoProvider` 介面 | 真動態（人物動作、表情、鏡頭）；LOCAL_FREE＋GTX 1650 4 GB 可行性**未知／可能不足**（RESEARCH，須明說） |
+| Dialogue Performance | Kokoro TTS、角色 voice、字幕 | 真 Lip-sync provider（目前僅介面）；多角色台詞→角色→聲音對應；字幕／timeline 對齊驗證 |
+| Audio／Editing | BGM＋ducking（E2-3）、SFX（聽感未驗）、FFmpeg timeline | ambience、shot transition、自動剪輯節奏 |

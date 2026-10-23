@@ -364,3 +364,11 @@
 - Result: D-046；PROJECT_RULES §16；ARCHITECTURE §14；案例 east_asian_female_portrait／east_asian_male_portrait；未下載、未實作 Reference Image
 - Tests: 160 passed、1 skipped
 - Next: Windows `git pull` → CyberRealistic 東亞女性
+
+---
+- Date: 2026-10-23
+- Start SHA: 477ae11
+- Batch: Batch 37 — 長期目標（連續劇情 AI 短劇）＋Roadmap 入庫
+- Result: D-047；ARCHITECTURE §15；BACKLOG 短劇 Roadmap；CyberRealistic 東亞女性／男性主觀入庫（男性 JSON 未入庫）；DECISIONS 索引補 D-043～D-047
+- Tests: 僅文件
+- Next: 結構化 Character 設定（非 UI）

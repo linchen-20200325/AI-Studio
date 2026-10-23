@@ -98,8 +98,8 @@ E2-1 ✅　E2-2 ✅　→ DG-13 裁示 A：Kokoro 正式採用為目前 Phase 2 
 | anime × MeinaMix V12（girl_portrait_closeup，**native 重跑**，D-045） | meinamix_v12 | ✅ | fp16→float32；無 OOM；無 fallback；technical_valid=true；768×512 crop [0,40,768,472]；clip skip 2；NT$0 | （未回報） | （未回報） | PASS（single-user subjective） | PASS：「這樣 OK」（single-user subjective） |
 | realistic × base SD1.5（對照） | — | — | ⏳ | | | | |
 | realistic × CyberRealistic（girl_portrait_closeup） | cyberrealistic_final | （客戶未回報 JSON） | technical PASS | | | — | 真人感良好、但人物偏西方臉孔 → 人物控制未判定（single-user subjective observation，D-046） |
-| realistic × CyberRealistic（east_asian_female_portrait，D-046） | cyberrealistic_final | | ⏳ | | | | |
-| realistic × CyberRealistic（east_asian_male_portrait，D-046） | cyberrealistic_final | | ⏳ | | | | |
+| realistic × CyberRealistic（east_asian_female_portrait，D-046／D-047） | cyberrealistic_final | ✅ | technical PASS（其餘數值客戶未回報） | | | — | 「是東方女性沒錯」（single-user subjective） |
+| realistic × CyberRealistic（east_asian_male_portrait，D-046／D-047） | cyberrealistic_final | ✅ | **technical JSON 未入庫（不補造）** | | | — | 外觀確為東亞成年男性（single-user subjective，客戶提供圖） |
 
 **E2-5 人物近景觀察（D-043；single-user subjective；D-044：非受控比較）**：原以為同 case／seed 1234／native 768×512／steps 25／CFG 7／DPM++ 2M Karras／同 prompt 與 negative（同 style、同 base_prompt_en）／fp16→float32 同路徑。客戶判斷：Base SD1.5「眼睛很怪異」；MeinaMix「比較像日本漫畫的角色」（先前已判「這樣算 OK」）→ 對 P1 日系動畫人物呈現有**明顯主觀改善**。
 - **D-044 更正：實機 `style-compare`＝not_comparable**——舊 MeinaMix 近景為 fit 512×288（無 crop），Base 為 native 768×512；上方客戶評語僅為 single-user subjective observation，**不是受控比較結論**。待重跑：`style-test --style anime --case girl_portrait_closeup --gen-policy native --checkpoint meinamix_v12 --scheduler dpmpp_2m_karras` 後再 style-compare。

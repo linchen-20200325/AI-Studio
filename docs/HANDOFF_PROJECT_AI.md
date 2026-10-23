@@ -5,10 +5,10 @@
 - 已完成：Phase 0／0.5／1；Phase 2 進行中：Kokoro TTS（D-027／D-029，真機 validated）、Voice Selection／Character Voice（`zm_010`＝目前使用者偏好候選，非永久鎖定，DG-14）、BGM/SFX＋ducking（SFX 人工聽感未驗）、Style Profile、Character Consistency foundation（僅 prompt 錨點，無 IP-Adapter/LoRA）、Lip-sync 介面（無實際模型）、checkpoint 型錄／下載驗證／single-file 載入／clip-skip 相容（D-039／D-040；**不是** Model Router，Router 未實作）。
 - E2-5：MeinaMix V12 native 近景真機成功；`style-compare` vs Base native＝**model_preset_level**（只差 model＋clip skip 2 vs 1，unexpected=[]）；客戶「這樣 OK」scene PASS／style PASS（single-user subjective）；DG-23 已裁示接受（D-045）→ MeinaMix＝目前 P1 日系動畫**品質驗證通過**；**不永久鎖定模型／畫風**（§15 Preference Layer）、**commercial_cleared=false**、不得商用。
 - `fair_comparison`：已更名 `baseline_condition`；跨次比較一律 `style-compare`（D-043／D-044）。
-- CyberRealistic：已下載；西方女性近景 technical PASS、真人感佳但偏西方臉孔（single-user subjective observation）→ 人物控制**未判定通過**；下一步東亞女性／男性受控案例（D-046）。upstream lineage 未釐清；commercial_cleared=false。
+- CyberRealistic：已下載；東亞女性 technical PASS＋客戶確認東方女性；東亞男性外觀確認但 JSON 未入庫（single-user subjective，D-047）；commercial_cleared=false；upstream lineage 未釐清；未鎖定為預設。
 - production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
 - 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
-- **下一唯一安全接手點**：Windows 一次一條：`git pull` → CyberRealistic × `east_asian_female_portrait`（native、dpmpp_2m_karras）→ `east_asian_male_portrait` → 人工看圖（D-046）。Reference Image 只研究不實作。
+- **下一唯一安全接手點**：（自主、非 UI）結構化 Character 設定（ARCHITECTURE §14，角色 A／B，舊欄位相容）；同時待客戶回傳 CyberRealistic 東亞男性 style-test JSON（可選）。研究項（Identity／Image-to-Video 4 GB 可行性）不下載。長期目標見 D-047／ARCHITECTURE §15。
 - 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
 
 

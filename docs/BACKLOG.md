@@ -159,3 +159,15 @@
 - [ ] **結構化 Character 設定（D-046，ARCHITECTURE §14）**：NEXT（非 UI 可自主；性別／年齡區間／外貌地區／髮／五官／服裝／體型／辨識特徵，舊欄位相容）。
 - [ ] **Reference Image／Character Identity（IP-Adapter／FaceID 類）**：RESEARCH（授權、GTX 1650 可行性、品質；不下載、不實作）→ NEEDS HUMAN DECISION。
 - [ ] **CyberRealistic 西方女性近景 JSON 未回傳**：補紀錄（可選）。
+
+## 短劇 Roadmap（D-047；長期目標＝連續劇情 AI 短劇；三路線：真人／電影感、日系動畫、半寫實 3D）
+| P1 能力 | 項目 | 狀態 |
+|---|---|---|
+| Character Identity／Reference Image | 角色 A／B 定義（結構化設定，ARCHITECTURE §14） | NEXT（非 UI 可自主） |
+| | 跨鏡頭／背景／服裝維持 Identity；Identity provider 研究（IP-Adapter／FaceID 類：授權、4 GB 可行性） | RESEARCH → NEEDS HUMAN DECISION |
+| | 真人照片 Local First／不進 Git（§16） | 規則已生效 |
+| Multi-character Scene | ≥2 角色同框、不交換臉／衣服／設定；controlled test 案例 | RESEARCH（先設計測試案例，可自主） |
+| Image-to-Video | 人物動作／表情／鏡頭動態（超越 Ken Burns）；LOCAL_FREE＋GTX 1650 4 GB 可行性研究，不足須明說 | RESEARCH（不下載、不用付費 API）→ NEEDS HUMAN DECISION |
+| Dialogue Performance | 角色聲音接 TTS（已有基礎）；真 Lip-sync provider；多角色台詞對應；字幕／timeline 對齊 | Lip-sync：BLOCKED（未核准模型）；其餘 NEXT |
+| Audio／Editing | BGM ✅／ducking ✅；SFX 聽感未驗；ambience、轉場、自動剪輯 | NEXT |
+| 真機證據 | CyberRealistic × east_asian_male_portrait technical JSON 入庫 | NEXT（需客戶回傳 JSON） |
