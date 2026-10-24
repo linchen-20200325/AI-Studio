@@ -526,3 +526,8 @@
 - Result: see/core/character_migration_apply.py、CLI `--apply --decisions --confirm`／`--rollback`／`--list-migrations`、apply_confirmation_token。**Batch 5 engine implemented ≠ any real project migrated.**
 - Tests: tests/test_character_migration_apply.py；全套 351 passed、10 skipped
 - Next: 客戶 Windows `--dry-run --decisions` 取得 token；是否 `--apply` 由客戶決定；Batch 6 需另行裁示
+
+## 2026-10-24 — Batch 61
+- Batch: Batch 61 — D-072 客戶裁示入庫（docs only）
+- Result: PR #2 rebase merged → main `589c3ef`（D-071）；裁示 2／3 寫入 DECISIONS／BACKLOG。Batch 5 engine implemented ≠ any real project migrated.
+- Next: 客戶 Windows `character-migrate sd15test --dry-run --decisions sd15test_decisions.json`（唯讀）
