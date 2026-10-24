@@ -194,8 +194,8 @@
 | S4 A／B binding 追溯 | DONE（D-056）：mapping verified、非程式 bug；加 position 排序／mask 幾何自檢／`identity_region_map`＋疊圖 |
 | S4 同 seed 重跑取 evidence | DONE（D-057）：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 只作研究證據，不升格 production；不再以調 scale 為主解法 |
 | DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | **PAUSED（D-059）**：`ab_background` 與 A isolated（identity FAIL）保留為 evidence；B isolated、compose-scene、Route C、去背優化暫停，待 identity preservation 解決 |
-| **DG-28 Identity Preservation Research**（DG28_IDENTITY_PRESERVATION_RESEARCH.md） | 研究 DONE（D-059）→ **NEEDS HUMAN DECISION**：Top 1 FaceID-Plus-V2 SD1.5（研究用、≈0.53 GB、InsightFace 非商用、pickle 例外）／Top 2 SD1.5 角色 LoRA（訓練 Gate） |
-| 零下載 reference 裁臉對照（手動裁成臉部大近照，同 seed 重跑 A isolated） | 可選（未排程；分離前處理因素） |
+| **DG-28 Identity Preservation Research**（DG28_IDENTITY_PRESERVATION_RESEARCH.md） | 研究 DONE（D-059）→ 裁示 B（D-060）：先做 reference crop 對照；Top 1 FaceID-Plus-V2（研究用、≈0.53 GB、InsightFace 非商用、pickle 例外）**未核准**，crop FAIL 後才回到選項 A 裁示 |
+| 零下載 reference 裁臉對照（手動裁成臉部大近照，同 seed 重跑 A isolated） | **NEXT（DG-28 裁示 B，D-060）**：只允許一次；FAIL → 停止 crop 路線、回 DG-28 選項 A |
 | Reference Quality Check UI（ARCHITECTURE §17.7） | BACKLOG（規格 DONE） |
 | Identity Consistency 跨 Scene 驗收矩陣（ARCHITECTURE §17.8） | 規格 DONE；待 identity 路線確定後執行 |
 | DG-26 Route C：合成後只修接縫（4-ch inpaint 或低 strength img2img，既有權重） | BACKLOG（Route A 真機後評估） |

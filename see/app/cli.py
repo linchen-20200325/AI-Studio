@@ -489,7 +489,7 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     out = out_dir / (_style_test_stem(style.style_id, case.stem_id, seed, args.gen_policy, bool(args.base_prompt),
                                       args.checkpoint, args.scheduler,
                                       "regional" if args.regional else ("longprompt" if args.long_prompt else None))
-           + (f"_identity-{args.identity}" if args.identity else "") + ".png")
+           + _identity_stem_suffix(args.identity, refs) + ".png")
     t0 = time.perf_counter()
     res = image.generate_image(req, out)
     elapsed = round(time.perf_counter() - t0, 2)
@@ -590,6 +590,13 @@ def _identity_overlay(img_path: Path, region_map: list[dict]) -> Path:
     out = img_path.with_name(img_path.stem + "_identity_regions.png")
     im.save(out)
     return out
+
+
+def _identity_stem_suffix(identity_id: str | None, refs: list[dict]) -> str:
+    """D-060：reference 不同＝不同實驗 → 檔名帶各 reference sha256 前 8 碼；換 reference 重跑永不覆寫舊 evidence。"""
+    if not identity_id:
+        return ""
+    return f"_identity-{identity_id}_ref-" + "-".join(r["sha256"][:8] for r in refs)
 
 
 def _identity_references(s: Settings, case, ref_args: list[str]) -> tuple[list[dict], str | None]:

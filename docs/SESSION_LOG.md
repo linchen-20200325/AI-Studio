@@ -457,3 +457,9 @@
 - Result: D-059；DG28 研究文件＋docs/evidence/dg28（官方 README／LICENSE／HF API／PyPI，MANIFEST.sha256）；ARCHITECTURE §17.7／§17.8
 - Tests: 無程式變更
 - Next: 等 DG-28 裁示（不下載、不給 Windows 指令）
+
+## 2026-10-24 — Batch 50
+- Batch: Batch 50 — DG-28 裁示 B（reference crop controlled rerun）入庫
+- Result: D-060；style-test identity 檔名加 `_ref-<sha8>`（換 reference 不覆寫舊 evidence）；其餘不需程式
+- Tests: 全套通過（見 commit）
+- Next: Windows git pull → 放裁臉近照 → style-test ab_char_a_isolated（只此一次）

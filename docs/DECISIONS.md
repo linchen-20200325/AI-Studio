@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-060 | **DG-28 裁示 B**：零下載 reference crop 對照（只允許一次 controlled rerun；唯一變因＝男性 reference 改臉部大近照）；FaceID-Plus-V2 維持 research only、未核准下載；style-test identity 檔名加 reference sha（換 reference 不覆寫舊 evidence） | 有效（待真機） | 可逆 |
 | D-059 | v2 A 男主角 isolated 真機：**identity fidelity FAIL**（主觀；單人也不像）→ DG-26 Route A 後續暫停（B、compose、Route C、去背優化）；啟動 **DG-28 Identity Preservation Research**（研究完成、未下載）；Reference Quality Check 與 Identity Consistency 驗收標準入規格 | 有效；DG-28 待裁示 | 可逆 |
 | D-058 | 角色身份定義治理：客戶裁示 **A＝男、B＝女**（v1 寫反）→ A／B 案例 v2＋舊 evidence `historical_reversed_character_mapping`；character_id ≠ 性別／位置／style／voice；Character Definition／Reference Asset schema、Reference Library 主路徑 `reference_library/`、Character Validation Gate、Confirmation Card、Style／Voice 解耦、Layered Scene 以 character_id 綁定 | 有效 | 可逆（治理） |
 | D-057 | S4 同 seed 重跑：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 僅研究證據；啟動 DG-26 角色分開生成再合成（Route A 零下載 PoC：`ab_*` 層案例＋`compose-scene`／`compose-review`）；Layered Scene 架構原則入庫 | 有效（待 Windows PoC） | 可逆 |
@@ -470,3 +471,15 @@
   - **Top 2（長期商用候選）**：SD1.5 角色 LoRA（授權最乾淨、per-character；但 4 GB 本機訓練不實際、客戶目前禁止訓練）。
 - **規格入庫**：Reference Quality Check（ARCHITECTURE §17.7）、Identity Consistency 驗收（§17.8：character_id 跨背景／服裝／表情／角度／鏡頭／Style 仍可辨識）。
 - 本輪未做：任何下載、安裝 InsightFace／ControlNet、SDXL／FLUX、LoRA 訓練、付費、生成 B、reroll、production default 變更。下一步＝**DG-28 客戶裁示**。
+
+## D-060 2026-10-24 DG-28 裁示 B：零下載 reference crop controlled rerun
+- **客戶裁示**：選 B。理由：男性 reference 臉部佔比偏小、背景有其他人，現行 plus-face 無人臉偵測／對齊（CLIP 中心裁切）→ 先排除 reference preprocessing 變因，避免立即引入 FaceID-Plus-V2 的非商用 InsightFace 與 pickle 權重。
+- **規則**：不下載新模型；不安裝 insightface／onnxruntime；不啟動 FaceID-Plus-V2；不生成 B；不訓練 LoRA；不 reroll；**只允許一次 controlled rerun**。
+- **受控條件（全部不變）**：`ab_char_a_isolated` v2、seed 1234、cyberrealistic_final、dpmpp_2m_karras、style realistic、gen-policy native、identity ip_adapter_plus_face_sd15、prompt／negative／所有模型條件。**唯一刻意變因**：男性 reference 改為使用者自行裁好、臉部佔畫面較大的近照（本機；放 `workspace/reference_library/people/`，不進 Git）。
+- **程式確認**：`--ref char_a=<本機路徑或 people/檔名>` 本來就接受使用者自裁的本機圖（無需新功能）。唯一改動：style-test 的 identity 檔名加 `_ref-<reference sha256 前 8 碼>`——否則同 case／seed／條件重跑會**覆寫舊 reference 的 evidence**（D-055／不覆寫原則）。舊檔（無 `_ref-` 後綴）保持原樣。
+- **對照判定**：舊 vs 新 evidence 只差 `generation.identity.references[].sha256`（及檔名後綴）；`style-compare` 比對生成條件應全同（reference 不在 comparison fields 內，人工以 JSON 的 reference sha 核對）。
+- **驗收（single-user subjective）**：
+  - 仍明顯不像 → `identity_validated=false`，**停止 reference crop 路線**：不做第二次 crop、不換 seed、不調 adapter scale → 回 DG-28，下一候選＝A（FaceID-Plus-V2 研究 PoC，需另一次裁示才可下載／安裝）。
+  - 明顯改善但仍不足以辨認為同一人 → **仍算 FAIL**，不得因「有進步」升格 production。
+  - 只有客戶確認「足以辨認為同一人」→ crop route 才值得繼續研究（仍非 production；跨 Scene 驗收見 ARCHITECTURE §17.8）。
+- FaceID-Plus-V2 維持 research only、commercial_cleared=false、未經下一次裁示不得下載／安裝。

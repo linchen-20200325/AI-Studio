@@ -192,3 +192,12 @@ def test_identity_overlay_written_next_to_output(tmp_path):
     out = _identity_overlay(p, rm)
     assert out.name == "out_identity_regions.png" and Image.open(out).size == (96, 54)
     assert Image.open(p).getpixel((5, 5)) == (0, 0, 0)  # 原圖不被改動（evidence sha256 不變）
+
+
+def test_identity_stem_differs_per_reference_so_reruns_never_overwrite():
+    from see.app.cli import _identity_stem_suffix
+
+    old = _identity_stem_suffix("ip_adapter_plus_face_sd15", [{"sha256": "a" * 64}])
+    crop = _identity_stem_suffix("ip_adapter_plus_face_sd15", [{"sha256": "b" * 64}])
+    assert old == "_identity-ip_adapter_plus_face_sd15_ref-aaaaaaaa" and old != crop
+    assert _identity_stem_suffix(None, []) == ""
