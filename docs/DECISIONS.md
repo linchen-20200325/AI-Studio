@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-066 | 客戶裁示：(1) **Project 層結構化場景預設先不做**；(2) **visual_description 與 Scene structured fields 並存、不互相自動改寫**。角色資料唯一架構設計（docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）：推薦 revision pinning（Library 單一來源＋不可變 revision history；Project 存 character_id＋revision）；發現 **DG-29 角色 ID 命名空間**（舊專案 ID 為專案內順序 ID，跨專案不唯一）待裁示 | 有效（2 項裁示）／設計待核可 | 可逆（未實作） |
 | D-065 | 客戶裁示方案 A：machine-specific 設定用專案本機設定檔 `see.local.json`（env > local config > unset；不進 Git；doctor 顯示來源）；Scene 結構化設定（13 欄位，中文、None 不補值、確定性對照、局部重做）；鏡頭運動沿用 camera_motion、視覺風格沿用 Scene.preferences | 有效 | 可逆 |
 | D-064 | Environment Bootstrap／Migration Foundation：`doctor`（系統／Python／GPU／工具／模型／workspace、Ready／Not ready、Tier A–D）、`bootstrap`（預設唯讀；`--apply-safe` 只建空資料夾）、machine-local environment manifest＋去識別化範例、`env-export`（可恢復資訊，不含模型／私人圖片）、`smoke`；模型 logical ID＋相對 SEE_MODELS_DIR；workspace／Character Store／Reference sidecar schema_version＋fail safe；workspace 搬移後產物沿用 | 有效 | 可逆 |
 | D-063 | 客戶裁示：**一般 UI 全中文輸入**（模型語言屬內部實作）；Scene `image_prompt_zh`（圖片描述）→ prompt builder → 英文 prompt（無 AI 翻譯時標示來源，不假裝）；`image_prompt_en` 改為 internal／legacy；**Scene Character Override**（表情／情緒／動作／視線／姿勢／本幕服裝／位置／景深＋中文原話）與角色永久設定分離；Scene 卡改中文分區＋人物子卡 | 有效 | 可逆 |
@@ -545,3 +546,15 @@
   - UI：場景卡新增「場景設定」（場景、構圖兩組）、「鏡頭」（鏡頭運動＋轉場）、「視覺」（光線、色調、氣氛＋視覺風格下拉）；全中文、技術名只在進階；進階顯示生效／未生效欄位。Playwright 實測無 JS 錯誤。
   - 修正：非 default 風格移除 legacy 畫風詞時，若其後接人物／場景詞會留下空項（", ,"）→ `apply_style` 收掉空項（只影響原本就含空項的 prompt；舊 default 專案不受影響）。
 - 規格外未做：Project 層結構化場景預設、framing／composition 的產品字句精修、DG-19 最終 UI。無新依賴、無 LLM、production default 不變。
+
+## D-066 2026-10-24 兩項客戶裁示＋角色資料唯一架構設計（只設計，未實作）
+- **客戶裁示 1**：Project 層級結構化場景預設（全片統一天氣／光線等）**先不做**。Scene 結構化設定只存在 Scene 層（D-065）；Project 層維持 D-062 偏好（style_id＋preferences）。
+- **客戶裁示 2**：`visual_description` 與 Scene structured fields（`Scene.settings`）**維持並存，不互相自動改寫**：改結構化欄位不改 visual_description；改 visual_description 不解析成結構化欄位；兩者各自進入既有流程（visual_description＝畫面說明／caption；結構化欄位＝prompt builder 詞）。
+- **角色資料設計**（docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）：
+  - 盤點（依 code path）：角色資料目前分散 6 處——① `Project.characters`（CharacterVoice：唯一在 production 使用；voice、確認閘門、外觀錨點進 prompt／fingerprint）② `Script.characters`（Mock 依出現順序產生 `char_01`）③ CharacterDefinition／Character Store（未接 pipeline）④ ReferenceAsset sidecar ⑤ Scene.character_ids／narrator_id／voice ⑥ SceneCharacter。reference 綁定有 3 個來源；名稱 3 處；voice 2 處；expression 語意衝突（角色預設 vs 本幕）。
+  - 責任邊界：Library＝角色永久資料（含 default voice／style／mood、reference bindings、archive、revision）；Project＝cast（character_id＋pinned revision＋role label／alias＋voice 確認）；Scene＝登場與演出覆寫。
+  - 方案比較 A live／B snapshot／C clone／D revision pinning → **推薦 D**（＋使用者顯式 fork）。舊 Project 不因 Library 更新而悄悄變樣；revision 缺失 → fail closed；「跟隨最新」只能顯式設定；更新 UX＝保持／更新到最新版／複製成專用角色，永不自動更新。
+  - 發現前提缺口：CharacterStore 目前覆寫檔案、只有 revision 計數，**沒有歷史 revision** → 需 append-only history（Batch 2）；導入前的舊 revision 無法還原、不補造。
+  - 舊 `Project.characters` 遷移規格：migration version、backup、dry-run（預設）、mapping／conflict report、apply 需使用者決定檔、rollback（還原 project.json；Library 新增項 archive 不刪）、idempotent、`legacy_characters` 保留；分類 自動／人工／不可搬（seed、adapter、body_type、遺失 reference、空殼條目不搬、不補造）。
+  - **Stop condition → DG-29（角色 ID 命名空間）**：舊專案角色 ID 是專案內 ID（跨專案不唯一、可能不符 Library ID 格式）；採「Library／Project／Scene 同一 ID」需逐案改寫專案內引用 → 需客戶裁示。總管推薦 A：Library ID 系統產生（不由名稱生成）、舊專案按需逐案遷移（dry-run→確認→備份→改寫→可 rollback）、未遷移專案維持 legacy 可用。
+- 本輪無程式變更、無 schema 變更、無資料搬移。

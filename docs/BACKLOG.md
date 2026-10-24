@@ -221,8 +221,8 @@
 |---|---|
 | SceneSettings 13 欄位（場景／構圖／視覺）＋中文 UI＋確定性對照＋no_prompt_effect＋局部重做 | DONE（D-065） |
 | 鏡頭運動（camera_motion）、視覺風格（Scene.preferences.visual_style_id）中文 UI | DONE（沿用既有單一來源） |
-| Project 層結構化場景預設（全片統一天氣／光線等） | NEEDS HUMAN DECISION（無規格；目前 Project 層只有 D-062 英文偏好） |
-| visual_description 與結構化欄位的關係（是否自動由欄位產生畫面說明） | NEEDS HUMAN DECISION（目前兩者並存，不自動改寫） |
+| Project 層結構化場景預設（全片統一天氣／光線等） | **客戶裁示：先不做（D-066）** |
+| visual_description 與結構化欄位的關係 | **客戶裁示：並存、不互相自動改寫（D-066）** |
 | 真中文翻譯（自訂中文對不到關鍵詞） | BLOCKED（DG-10 LLM） |
 
 ## 中文輸入／Scene Character Override 規格缺口（D-063；不自行決定）
@@ -252,7 +252,7 @@
 | Character Definition Schema、ReferenceAsset Schema、ScenePlacement、VoiceAssignment | DONE（`see/models/character_definition.py`） |
 | Character Validation Gate（fail closed） | DONE（library＋`style-test --identity`／`compose-scene` 接線）；UI 接線 → BACKLOG |
 | Reference Library service（list／register／validate／bind／primary；legacy 唯讀）＋`ref` CLI | DONE（D-062） |
-| Character CRUD 後端（`workspace/character_library/`；archive／restore，無 hard delete） | DONE（D-062）；與 Project 綁定／遷移 → NEEDS HUMAN DECISION |
+| Character CRUD 後端（`workspace/character_library/`；archive／restore，無 hard delete） | DONE（D-062）；與 Project 綁定／遷移 → 設計完成（D-066，docs/CHARACTER_LIBRARY_PROJECT_BINDING.md），待裁示 |
 | Confirmation payload（含 gate、can_generate） | DONE（D-062，後端）；卡片 UI → DG-19 |
 | Reference Library 主路徑 `workspace/reference_library/`（含 styles/）＋sidecar `.ref.json`；legacy `identity_refs/` 相容 | DONE（CLI）；非 people 類別一律 not yet supported |
 | `Project.characters`（CharacterVoice）遷移到 CharacterDefinition | BACKLOG（需可逆 migration 設計；不做不可逆遷移） |
@@ -268,6 +268,20 @@
 | UI H Scene Placement（左中右、前中後景、景別、動作、姿勢） | BACKLOG |
 | **Character Confirmation Card**（生成前必經、可直接修改、Gate 衝突時禁止生成） | BACKLOG（規格 ARCHITECTURE §17.6） |
 | 一般 UI 不暴露技術名稱；Advanced／Debug 區 | BACKLOG |
+
+## Character Library ↔ Project 綁定（D-066；設計：docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）
+| 項目 | 狀態 |
+|---|---|
+| 設計（盤點、責任邊界、A／B／C／D 比較、revision pinning、遷移規格、UX） | DONE（D-066；只設計） |
+| **DG-29 角色 ID 命名空間**（舊專案內 ID → Library 同一 ID；總管推薦 A：系統產生 ID＋逐案按需遷移） | **NEEDS HUMAN DECISION** |
+| 綁定方案採用 D（revision pinning）＋顯式 fork | NEEDS HUMAN DECISION（核可設計） |
+| Batch 2：CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結 | NEXT（設計核可後；不影響 pipeline） |
+| Batch 3：Project `cast` schema＋解析器（revision 缺失 fail closed） | BACKLOG（Batch 2 後） |
+| Batch 4／5：`character-migrate --dry-run`／`--apply`＋rollback | BACKLOG（DG-29 後） |
+| Batch 6：pipeline 改由 pinned revision 解析 voice／anchor／reference | BACKLOG |
+| Batch 7：角色更新 UX（保持／更新／fork）、角色庫挑選 | BACKLOG（DG-19） |
+| Voice／Style 的 Project override 層 | 無規格，不實作（Character default → Scene override） |
+| CharacterDefinition.expression 改名 default_expression（與本幕 expression 區分） | BACKLOG（未來 schema 版本；需遷移） |
 
 ## Layered Scene（D-057；客戶裁示；架構見 ARCHITECTURE §16）
 | 層 | 狀態 |

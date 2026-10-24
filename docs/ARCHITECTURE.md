@@ -438,4 +438,18 @@ base prompt（zh／legacy）→ ＋Scene 設定詞 → ＋角色演出詞 → ap
 | 視覺風格 | preferences.visual_style_id | Scene.preferences | image＋clip |
 | 鏡頭運動 | camera_motion | Scene（既有） | 只有 clip |
 - 與 Scene Character Override（§13.2）、CharacterDefinition（§17）分離；舊 Scene 無 settings → prompt／fingerprint 不變，evidence `scene_settings.source=legacy_none`。
+- **D-066 客戶裁示**：(1) 不做 Project 層結構化場景預設（Scene.settings 只在 Scene 層）；(2) `visual_description` 與 `Scene.settings` 並存、不互相自動改寫（visual_description＝畫面說明／caption；settings＝prompt builder 詞）。
+
+## 21. 角色資料唯一架構（D-066 設計；未實作；全文：docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）
+```
+Character Library（唯一來源）                         Project                              Scene
+ CharacterRecord head ＋ history/<id>/r<n>.json  ◀── cast: {character_id: {revision,  ◀── character_ids／narrator_id
+ （definition、default voice／style／mood、           role_label, alias, follow,            SceneCharacter 演出覆寫
+   reference_bindings{asset_id,sha256}、archived）    voice_confirmed_revision}}            scene voice／style override
+          │ reference_bindings → Reference Library（<category>/<file>＋sha256）
+```
+- 現況：production 只用 `Project.characters`（CharacterVoice）；CharacterDefinition／Store 未接 pipeline；Store 無歷史 revision。
+- 推薦綁定：**revision pinning**（D）；revision 缺失或 hash 不符 → fail closed；跟隨最新只能顯式設定；永不自動更新。
+- 解析鏈：Character default（pinned revision）→〔Project override：無規格，不實作〕→ Scene override。
+- 待裁示：**DG-29 角色 ID 命名空間**（舊專案內 ID vs Library 同一 ID）。
 

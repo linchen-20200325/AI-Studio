@@ -487,3 +487,9 @@
 - Result: config.py local config＋`config` CLI＋doctor 來源；scene_settings.py＋prompt builder＋再生成範圍＋場景卡中文欄位；apply_style 空項修正；PROJECT_RULES §19／§20、ARCHITECTURE §19.1／§20
 - Tests: 見 commit（test_local_config.py、test_scene_settings.py、Playwright）
 - Next: Project.characters → CharacterDefinition 可逆 migration 設計文件（只設計，可自主）
+
+## 2026-10-24 — Batch 55
+- Batch: Batch 55 — D-066 兩項裁示入庫＋角色資料唯一架構設計（只設計）
+- Result: docs/CHARACTER_LIBRARY_PROJECT_BINDING.md；DECISIONS D-066；BACKLOG／ARCHITECTURE §20 註記＋§21；DG-29（角色 ID 命名空間）提出
+- Tests: 無程式變更
+- Next: 等客戶裁示 DG-29＋核可 revision pinning → Batch 2
