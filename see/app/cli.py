@@ -357,19 +357,37 @@ def cmd_character_migrate(args: argparse.Namespace) -> int:
     if out is not None and out.exists():
         print(f"拒絕：{out} 已存在（不覆寫）", file=sys.stderr)
         return 2
+    if args.decisions and args.decisions_template:
+        print("拒絕：--decisions 與 --decisions-template 不可同時使用", file=sys.stderr)
+        return 2
     before = workspace_digest(ws)
     try:
         result = analyze(args.project_id, ws)
+        summary = human_summary
+        if args.decisions_template:  # D-070 Batch 4.1：只輸出範本（不寫 workspace）
+            from see.core.migration_decisions import decisions_template
+
+            template = decisions_template(result)
+        elif args.decisions:  # D-070 Batch 4.1：讀人工決定檔重算 migration_ready（仍唯讀）
+            from see.core import migration_decisions as md
+            from see.storage.character_store import CharacterStore
+
+            doc, load_errors, dsha = md.load_decisions(Path(args.decisions))
+            result = md.apply_decisions(result, doc, CharacterStore(ws), load_errors=load_errors, decisions_file_sha256=dsha)
+            summary = md.human_summary
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
         return 1
     after = workspace_digest(ws)
     proof = {"workspace_digest_before": before, "workspace_digest_after": after, "unchanged": before == after}
-    envelope = {"migration_report_schema_version": result["report"]["migration_report_schema_version"],
-                "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),  # 不進 report_sha256
-                "report_sha256": result["report_sha256"], "zero_write_proof": proof, "report": result["report"]}
-    text = json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) if args.json else \
-        human_summary(result) + f"\nzero-write：{'通過（workspace 前後一致）' if proof['unchanged'] else '失敗！workspace 有變動'}"
+    if args.decisions_template:
+        text = json.dumps(template, ensure_ascii=False, indent=2)
+    else:
+        envelope = {"migration_report_schema_version": result["report"]["migration_report_schema_version"],
+                    "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),  # 不進 report_sha256
+                    "report_sha256": result["report_sha256"], "zero_write_proof": proof, "report": result["report"]}
+        text = json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) if args.json else \
+            summary(result) + f"\nzero-write：{'通過（workspace 前後一致）' if proof['unchanged'] else '失敗！workspace 有變動'}"
     if out is not None:
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "x", encoding="utf-8") as f:
@@ -377,7 +395,11 @@ def cmd_character_migrate(args: argparse.Namespace) -> int:
         print(f"report → {out}")
     else:
         print(text)
-    return 0 if proof["unchanged"] else 3
+    if not proof["unchanged"]:
+        return 3
+    if args.decisions and result["report"]["decisions"]["status"] != "applied":
+        return 4  # 決定檔 stale／驗證失敗：報告已輸出，但未採用任何決定（fail closed）
+    return 0
 
 
 def cmd_smoke(args: argparse.Namespace) -> int:
@@ -1389,6 +1411,8 @@ def main(argv: list[str] | None = None) -> int:
     cmg.add_argument("--dry-run", action="store_true", help="必填：只分析、不遷移（實際 migration 尚未核准）")
     cmg.add_argument("--json", action="store_true", help="輸出 versioned JSON（供 Batch 5 使用）")
     cmg.add_argument("--out", default=None, help="報告檔（必須在 workspace 外、不可已存在）；預設 stdout")
+    cmg.add_argument("--decisions", default=None, help="（Batch 4.1）人工決定檔 JSON：套用後重算 migration_ready（仍只分析、不寫任何資料）")
+    cmg.add_argument("--decisions-template", action="store_true", help="（Batch 4.1）輸出決定檔範本（action 需人工填寫）")
     cmg.set_defaults(fn=cmd_character_migrate)
     sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")

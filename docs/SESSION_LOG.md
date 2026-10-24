@@ -512,3 +512,10 @@
 - Note: 本 session 未收到原始 Batch 4 指令的第一份訊息（上一輪回覆因此重複了 Batch 3 回報）；本批依客戶重送的 Batch 4 規格實作。
 - Tests: 見 commit（tests/test_character_migration.py）
 - Next: 客戶挑真實舊專案跑 dry-run 審查 → Batch 4.1 決定檔（唯讀）
+
+## 2026-10-24 — Batch 59
+- Batch: Batch 59 — D-070 Batch 4.1：Migration Human Decisions Layer（只分析）
+- Start: main `31ab4def`（GitHub Verification Gate：Open PR 0；BACKLOG 4.1=NEXT）；客戶回報 sd15test dry-run（4 個 SCRIPT_ONLY_CHARACTER、26 改寫、5 場景、zero-write PASS）
+- Result: see/core/migration_decisions.py、CLI `--decisions-template`／`--decisions`、docs/examples/character_migration_decisions.example.json；analyze() 未改。**Batch 4.1 remains analysis-only. No project has been migrated.**
+- Tests: tests/test_migration_decisions.py；全套 328 passed、10 skipped
+- Next: 客戶在 Windows 對 sd15test 產生並填寫決定檔、`--decisions` 重跑審查；Batch 5 需另行裁示

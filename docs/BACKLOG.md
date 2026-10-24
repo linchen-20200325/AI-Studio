@@ -278,8 +278,11 @@
 | Batch 2：CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結＋CharacterBinding／resolve_binding 基礎 | **DONE（D-067）** |
 | Batch 3：Project `cast` schema（optional，預設空）＋`resolve_project_cast()`＋doctor／export／唯讀 CLI／API；不改 pipeline、不遷移 | **DONE（D-068）**；Project.cast exists but is not yet production source of truth |
 | Batch 4：`character-migrate <pid> --dry-run`（唯讀 mapping／conflict report；不寫任何檔） | **DONE（D-069）**；**Batch 4 only analyzes. No project has been migrated.** |
-| Batch 4.1：人工決定檔（decisions）格式＋dry-run 套用決定後重算 migration_ready（仍唯讀） | **NEXT**（可自主；需先由客戶挑一個真實舊專案跑 dry-run 審查） |
-| Batch 5：`--apply`＋backup＋verify＋rollback（逐專案、客戶確認 dry-run 後才執行） | BACKLOG（需客戶選定專案並確認報告） |
+| Batch 4.1：人工決定檔（decisions）格式＋dry-run 套用決定後重算 migration_ready（仍唯讀） | **DONE（D-070）**；**Batch 4.1 remains analysis-only. No project has been migrated.** |
+| sd15test：客戶產生決定檔範本、填 action、`--decisions` 重跑審查（Windows，唯讀） | **NEXT**（客戶操作；一次一個指令） |
+| 決定檔 v2：欄位層級決定（gender_presentation enum、age_impression 措辭、description_en／features_en 拆欄、reference 登記確認、未知欄位處置） | BACKLOG（spec gap；v1 下這些衝突在 create_new 時維持 blocking；sd15test 不受影響） |
+| 同時當旁白與畫面角色（VOICE_ROLE_AMBIGUOUS）的人工決定語意 | BACKLOG（spec gap；v1 無 action 可解決） |
+| Batch 5：`--apply`＋backup＋verify＋rollback（逐專案、客戶確認 dry-run 後才執行） | BACKLOG（**需客戶另行裁示**；前提：客戶審查過套用決定後的報告；正式 ID 在此才產生） |
 | Batch 6：pipeline 改由 pinned revision 解析 voice／anchor／reference | BACKLOG |
 | Batch 7：角色更新 UX（保持／更新／fork）、角色庫挑選 | BACKLOG（DG-19） |
 | Voice／Style 的 Project override 層 | 無規格，不實作（Character default → Scene override） |
