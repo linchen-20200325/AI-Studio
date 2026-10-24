@@ -26,6 +26,8 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-062 | 不需 GPU 升級的安全工作：Preference Layer 非 UI 核心（PreferenceSet、Project→Scene override、再生成範圍、偏好快照、舊資料相容）；Web UI Scene 卡圖片描述／畫面說明／影片動態欄位＋影響範圍提示；Reference Library service、Character CRUD（無 hard delete）、Confirmation payload | 有效 | 可逆 |
+| D-061 | 客戶裁示：**Identity Preservation／Character LoRA＝HARDWARE_UPGRADE_BLOCKED**（GTX 1650 4 GB）；D-060 reference crop rerun → DEFERRED（superseded by hardware block，歷史保留）；專案繼續，改做不需 GPU 升級的安全工作；Hardware Upgrade Resume Gate | 有效 | 可逆（硬體升級後重評） |
 | D-060 | **DG-28 裁示 B**：零下載 reference crop 對照（只允許一次 controlled rerun；唯一變因＝男性 reference 改臉部大近照）；FaceID-Plus-V2 維持 research only、未核准下載；style-test identity 檔名加 reference sha（換 reference 不覆寫舊 evidence） | 有效（待真機） | 可逆 |
 | D-059 | v2 A 男主角 isolated 真機：**identity fidelity FAIL**（主觀；單人也不像）→ DG-26 Route A 後續暫停（B、compose、Route C、去背優化）；啟動 **DG-28 Identity Preservation Research**（研究完成、未下載）；Reference Quality Check 與 Identity Consistency 驗收標準入規格 | 有效；DG-28 待裁示 | 可逆 |
 | D-058 | 角色身份定義治理：客戶裁示 **A＝男、B＝女**（v1 寫反）→ A／B 案例 v2＋舊 evidence `historical_reversed_character_mapping`；character_id ≠ 性別／位置／style／voice；Character Definition／Reference Asset schema、Reference Library 主路徑 `reference_library/`、Character Validation Gate、Confirmation Card、Style／Voice 解耦、Layered Scene 以 character_id 綁定 | 有效 | 可逆（治理） |
@@ -483,3 +485,18 @@
   - 明顯改善但仍不足以辨認為同一人 → **仍算 FAIL**，不得因「有進步」升格 production。
   - 只有客戶確認「足以辨認為同一人」→ crop route 才值得繼續研究（仍非 production；跨 Scene 驗收見 ARCHITECTURE §17.8）。
 - FaceID-Plus-V2 維持 research only、commercial_cleared=false、未經下一次裁示不得下載／安裝。
+
+## D-061 2026-10-24 Identity Preservation／Character LoRA：HARDWARE_UPGRADE_BLOCKED；D-060 deferred；專案繼續
+- **客戶裁示**：AI-Studio 專案繼續；「高相似度真人 Identity Preservation／Character LoRA」暫停，等硬體升級後重新開啟；不再消耗 GTX 1650 時間做低價值 identity rerun。
+- **正式標記**：`Identity Preservation / Character LoRA = HARDWARE_UPGRADE_BLOCKED`。
+- **D-060**（DG-28 裁示 B：reference crop controlled rerun）→ **DEFERRED／SUPERSEDED BY HARDWARE BLOCK**：D-060 原文不刪不改；該 rerun 未執行、不執行。D-060 的 `_ref-<sha8>` 檔名防覆寫改動保留（通用防呆）。
+- **目前禁止**：reference crop rerun、B identity test、下載 FaceID、安裝 InsightFace、LoRA 訓練、reroll、繼續 DG-26 合成的人物 fidelity 驗證。所有既有 evidence 保留。
+- **解除條件（Hardware Upgrade Resume Gate；ARCHITECTURE §18、BACKLOG）**：至少有 12 GB VRAM 級 GPU 時重新評估；屆時重查 GPU 型號、VRAM、CUDA／torch、可用硬碟、當時最新 identity route、模型授權、商用授權、訓練時間、reference 數量，並重新評估 SD1.5 Character LoRA、Identity Preservation、FaceID 類研究方案、SDXL／新模型。VRAM 分級（4／12／16／24 GB）**只是 resume planning，不是永久硬體需求**；屆時依當時模型重新研究。
+- **現階段工作**：不需 GPU 升級、NT$0、可逆、規格明確的安全工作（Preference Layer 非 UI 核心、Web UI Scene 編輯欄位、Character／Reference 後端）。
+
+## D-062 2026-10-24 自主安全工作（D-061 後）：Preference Layer 核心、Scene 編輯欄位、Character／Reference 後端
+- **Batch A Preference Layer（非 UI）**：`see/models/preferences.py`。PreferenceSet（visual_style_id〔僅 Scene〕、mood〔D-058 §17.6 E 的 preset 標籤〕、lighting、color_tone、camera、composition＝preset＋custom_en；generation.gen_policy）；`extra="forbid"` 擋身份欄位；Project default → Scene override 逐欄位解析（已有規格者）；`prompt_terms` 只取使用者 custom_en；`snapshot()` 進 image evidence；`regeneration_scope()`／`edit_impact()`／`set_preferences()`；舊資料 None → request／fingerprint 不變（測試證明）。
+  - **停在規格缺口、未自行決定**：(1) Character default 參與解析的優先序（多角色同景）；(2) Mood 等 preset → prompt 詞的對照（需產品字句或 DG-10 LLM；preset-only 標 `no_prompt_effect`）；(3) Voice per-scene emotion（目前 TTS 無情緒參數）；(4) GenerationSettings 的品質／速度欄位（無規格值）。
+- **Batch B Web UI Scene 編輯**：Scene 卡新增「圖片描述（英文）」、「畫面說明」、「影片動態描述」欄位；只送有改的欄位；儲存前呼叫 `POST /api/projects/{pid}/scenes/{sid}/impact` 顯示「將重做／不受影響」並請使用者確認；HTTP API 補 `visual_description`、`video_prompt`、`duration`；回應帶 impact。改圖片描述只重做 image＋clip，旁白／字幕沿用快取（測試以 manifest fingerprint 證明；Playwright 實測欄位渲染、無 JS 錯誤）。Scene voice／duration 的 UI 未加（voice 走既有角色／narrator 流程；duration 會被旁白長度校正，UI 語意待 DG-19）。
+- **Batch C Character／Reference 後端**：ReferenceLibrary service＋`ref` CLI；CharacterStore（create／read／update／archive／restore，無 hard delete）；`confirmation_payload()`（含 gate、`can_generate`）。全部 metadata 衝突 fail closed；私人圖片不進 Git。
+- 未做：新模型、新依賴、production default 變更、DG-19 UI 視覺／流程、DG-14、資料遷移。

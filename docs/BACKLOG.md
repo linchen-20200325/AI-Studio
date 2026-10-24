@@ -11,10 +11,10 @@
 | cinematic 驗證（共用 realistic 模型） | BLOCKED（CyberRealistic 之後） |
 | DG-21 native 是否成為預設 | NEEDS HUMAN DECISION（比較完成後） |
 | 3D（P2） | BLOCKED（P1 之後） |
-| Preference Layer 產品化（ARCHITECTURE §13） | NEXT（非 UI 部分可自主） |
+| Preference Layer 產品化（ARCHITECTURE §13） | 非 UI 核心 **DONE（D-062）**；待裁示：Character default 優先序、preset→prompt 詞對照；UI＝DG-19 |
 | Style／character／voice／BGM UI（DG-19） | NEEDS HUMAN DECISION |
 | SFX 人工聽感 | NEXT（需真機人耳） |
-| Character consistency：IP-Adapter／LoRA | RESEARCH（目前僅 prompt foundation） |
+| Character consistency：IP-Adapter／LoRA | **HARDWARE_UPGRADE_BLOCKED（D-061）**：plus-face 已證實不足（D-057／D-059）；Identity Preservation／Character LoRA 等 ≥12 GB VRAM 級 GPU 再依 Resume Gate 重評 |
 | Lip-sync 實際模型 | BLOCKED（未核准） |
 | commercial-safe anime 路徑（DG-22） | RESEARCH／NEEDS HUMAN DECISION |
 | 自有／乾淨授權 Anime LoRA（DG-22 c） | RESEARCH（不下載資料、不訓練） |
@@ -69,7 +69,7 @@
 - [ ] 備案（D-022 C）：fp16 UNet + upcast_attention／部分層 fp32，僅在 fp32 全程太慢時評估（目前不需要）。
 - [ ] 效能：GTX 16xx 直接以 fp32 起跑（跳過每個程序一次的 fp16 失敗嘗試），或把已證明的 floor 持久化到 workspace（可自主；需真機量時間）。
 - [x] UI 顯示實際使用的 image provider 與 fallback 原因（D-021：Scene 卡 `image_meta`）。
-- [ ] Web UI Scene 卡加 `image_prompt_en` 編輯欄（API 已支援）。🤖
+- [x] Web UI Scene 卡加 `image_prompt_en` 編輯欄（D-062；另加畫面說明、影片動態描述、影響範圍確認）。
 - [ ] Scene 編輯 UX：編輯欄位完整度（visual_description／video_prompt／voice／duration 已有 API）、編輯後只重做必要資產的提示。🤖🖥️（最終體驗）
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
@@ -193,9 +193,9 @@
 | S4 PoC：每角色 reference image＋IP-Adapter mask | 實作 DONE（D-054）；真機一次：2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分（主觀，scene FAIL，D-056） |
 | S4 A／B binding 追溯 | DONE（D-056）：mapping verified、非程式 bug；加 position 排序／mask 幾何自檢／`identity_region_map`＋疊圖 |
 | S4 同 seed 重跑取 evidence | DONE（D-057）：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 只作研究證據，不升格 production；不再以調 scale 為主解法 |
-| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | **PAUSED（D-059）**：`ab_background` 與 A isolated（identity FAIL）保留為 evidence；B isolated、compose-scene、Route C、去背優化暫停，待 identity preservation 解決 |
-| **DG-28 Identity Preservation Research**（DG28_IDENTITY_PRESERVATION_RESEARCH.md） | 研究 DONE（D-059）→ 裁示 B（D-060）：先做 reference crop 對照；Top 1 FaceID-Plus-V2（研究用、≈0.53 GB、InsightFace 非商用、pickle 例外）**未核准**，crop FAIL 後才回到選項 A 裁示 |
-| 零下載 reference 裁臉對照（手動裁成臉部大近照，同 seed 重跑 A isolated） | **NEXT（DG-28 裁示 B，D-060）**：只允許一次；FAIL → 停止 crop 路線、回 DG-28 選項 A |
+| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | **PAUSED（D-059；人物 fidelity 驗證 HARDWARE_UPGRADE_BLOCKED，D-061）**：`ab_background` 與 A isolated（identity FAIL）保留為 evidence；B isolated、compose-scene、Route C、去背優化暫停，待 identity preservation 解決 |
+| **DG-28 Identity Preservation Research**（DG28_IDENTITY_PRESERVATION_RESEARCH.md） | 研究 DONE（D-059）→ 裁示 B（D-060）後由 D-061 改為 **HARDWARE_UPGRADE_BLOCKED**；FaceID-Plus-V2 未核准、不下載；硬體升級後依 Resume Gate 重新研究（研究結果屆時可能已過時） |
+| 零下載 reference 裁臉對照（手動裁成臉部大近照，同 seed 重跑 A isolated） | **DEFERRED（D-061：superseded by hardware block）**；D-060 歷史保留，不執行 |
 | Reference Quality Check UI（ARCHITECTURE §17.7） | BACKLOG（規格 DONE） |
 | Identity Consistency 跨 Scene 驗收矩陣（ARCHITECTURE §17.8） | 規格 DONE；待 identity 路線確定後執行 |
 | DG-26 Route C：合成後只修接縫（4-ch inpaint 或低 strength img2img，既有權重） | BACKLOG（Route A 真機後評估） |
@@ -206,6 +206,22 @@
 | S5 IP-Adapter-FaceID | D-053 不建議（pickle＋InsightFace 非商用＋新依賴）；**D-059 重新評估**：FaceID-Plus-V2 SD1.5 為 DG-28 Top 1（研究用），仍需客戶裁示 pickle 例外、InsightFace 非商用、新依賴 |
 | 重抽 seed | 非解法（客戶裁示） |
 
+## Preference Layer 規格缺口（D-062；需客戶裁示，不自行決定）
+| 缺口 | 狀態 |
+|---|---|
+| Character default（default_style_profile／default_mood_profile）在解析中的優先序（多角色同景以誰為準） | NEEDS HUMAN DECISION |
+| Mood／Lighting／Color／Camera／Composition preset → prompt 詞對照（產品字句；或 DG-10 LLM 轉換） | NEEDS HUMAN DECISION |
+| Voice per-scene emotion（TTS 目前無情緒參數） | BLOCKED（provider 能力） |
+| GenerationSettings 品質／速度欄位 | NEEDS HUMAN DECISION（無規格值） |
+
+## Hardware Upgrade Resume Gate（D-061；架構見 ARCHITECTURE §18）
+| 項目 | 狀態 |
+|---|---|
+| Identity Preservation／Character LoRA | **HARDWARE_UPGRADE_BLOCKED**（GTX 1650 4 GB） |
+| 重開前必查：GPU 型號、VRAM、CUDA／torch、可用硬碟、當時最新 identity route、模型授權、商用授權、訓練時間、reference 數量 | 待硬體升級 |
+| 重評範圍：SD1.5 Character LoRA、Identity Preservation、FaceID 類研究方案、SDXL／新模型 | 待硬體升級 |
+| VRAM 規劃參考（非永久需求）：4 GB 不再投入 Character LoRA 訓練；12 GB 可重評 SD1.5 Character LoRA；16 GB 較適合長期角色 LoRA／部分 SDXL；24 GB 再評更大型 identity／SDXL／video | planning only |
+
 ## Character Identity Definition／角色 UI（D-058；規格：ARCHITECTURE §17；規則：PROJECT_RULES §17）
 | 項目 | 狀態 |
 |---|---|
@@ -213,6 +229,9 @@
 | 舊 evidence 標記 `historical_reversed_character_mapping=true`（不刪、不覆寫、不改名） | DONE（文件＋程式辨識；style-compare 標示、compose-scene 拒收） |
 | Character Definition Schema、ReferenceAsset Schema、ScenePlacement、VoiceAssignment | DONE（`see/models/character_definition.py`） |
 | Character Validation Gate（fail closed） | DONE（library＋`style-test --identity`／`compose-scene` 接線）；UI 接線 → BACKLOG |
+| Reference Library service（list／register／validate／bind／primary；legacy 唯讀）＋`ref` CLI | DONE（D-062） |
+| Character CRUD 後端（`workspace/character_library/`；archive／restore，無 hard delete） | DONE（D-062）；與 Project 綁定／遷移 → NEEDS HUMAN DECISION |
+| Confirmation payload（含 gate、can_generate） | DONE（D-062，後端）；卡片 UI → DG-19 |
 | Reference Library 主路徑 `workspace/reference_library/`（含 styles/）＋sidecar `.ref.json`；legacy `identity_refs/` 相容 | DONE（CLI）；非 people 類別一律 not yet supported |
 | `Project.characters`（CharacterVoice）遷移到 CharacterDefinition | BACKLOG（需可逆 migration 設計；不做不可逆遷移） |
 | StyleProfile 拆分：Visual Style／Mood／Lighting／Color Tone／Camera＋Scene override | BACKLOG |

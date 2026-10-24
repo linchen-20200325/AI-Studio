@@ -463,3 +463,9 @@
 - Result: D-060；style-test identity 檔名加 `_ref-<sha8>`（換 reference 不覆寫舊 evidence）；其餘不需程式
 - Tests: 全套通過（見 commit）
 - Next: Windows git pull → 放裁臉近照 → style-test ab_char_a_isolated（只此一次）
+
+## 2026-10-24 — Batch 51
+- Batch: Batch 51 — D-061 硬體封鎖＋D-062 安全工作（Preference 核心、Scene 編輯欄位、Character／Reference 後端）
+- Result: preferences.py、edit_impact／set_preferences、Scene 卡新欄位＋impact 確認、reference_library.py＋`ref` CLI、character_store.py、confirmation_payload；ARCHITECTURE §13／§17.4.1／§18
+- Tests: 見 commit（含 Playwright UI 實測）
+- Next: Environment Bootstrap（可自主）

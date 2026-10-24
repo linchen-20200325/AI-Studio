@@ -39,7 +39,10 @@ class SceneEditIn(BaseModel):
     narration: str | None = None
     subtitle_override: str | None = None
     image_prompt: str | None = None
-    image_prompt_en: str | None = None
+    image_prompt_en: str | None = Field(default=None, max_length=2000, description="英文圖片描述；空字串＝退回 image_prompt")
+    visual_description: str | None = Field(default=None, min_length=1, max_length=1000)
+    video_prompt: str | None = Field(default=None, max_length=1000)
+    duration: float | None = Field(default=None, gt=0, le=60, description="規劃秒數；實際仍以旁白長度校正（下限）")
     camera_motion: str | None = None
     transition: str | None = None
     voice: str | None = None
@@ -130,6 +133,8 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "narration": s.narration, "subtitle_override": s.subtitle_override, "subtitle_text": s.subtitle_text,
                 "visual_description": s.visual_description, "image_prompt": s.image_prompt, "image_prompt_en": s.image_prompt_en,
                 "camera_motion": s.camera_motion, "transition": s.transition,
+                "video_prompt": s.video_prompt, "voice": s.voice,
+                "preferences": s.preferences.model_dump(mode="json") if s.preferences else None,
                 "image_url": f"/api/projects/{project.project_id}/scenes/{s.scene_id}/image.png"
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
                 "image_meta": _image_meta(project.project_id, s.scene_id),
@@ -239,6 +244,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         _guard_idle(pid)
         project = _load(pid)
         try:
+            impact = orch.edit_impact(project, sid, **body.model_dump())  # D-062：只重做受影響產物（其餘沿用快取）
             orch.update_scene(project, sid, **body.model_dump())
         except KeyError:
             raise HTTPException(404, f"scene not found: {sid}")
@@ -252,7 +258,18 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             orch.render(project, JobKind.PREVIEW)
 
         runner.submit(pid, "edit", _work)
-        return {"project_id": pid, "job": runner.status(pid).to_dict()}
+        return {"project_id": pid, "job": runner.status(pid).to_dict(), "impact": impact}
+
+    @app.post("/api/projects/{pid}/scenes/{sid}/impact")
+    def scene_edit_impact(pid: str, sid: str, body: SceneEditIn) -> dict[str, Any]:
+        """預覽修改影響範圍（不寫入、不重做）：UI 用來提示「會重做哪些產物」。"""
+        project = _load(pid)
+        try:
+            return orch.edit_impact(project, sid, **body.model_dump())
+        except KeyError:
+            raise HTTPException(404, f"scene not found: {sid}")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
 
     @app.post("/api/projects/{pid}/scenes/{sid}/regen", status_code=202)
     def regen_scene(pid: str, sid: str) -> dict[str, Any]:

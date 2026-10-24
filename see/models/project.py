@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from see.models.approval import Approval
 from see.models.asset import Asset
 from see.models.enums import Status
+from see.models.preferences import PreferenceSet
 from see.models.render_job import RenderJob
 from see.models.scene import Scene
 from see.models.script import Script
@@ -142,6 +143,7 @@ class Project(BaseModel):
     speech_speed: float = Field(default=1.0, gt=0.5, lt=2.0, description="TTS 語速倍率")
     characters: dict[str, CharacterVoice] = Field(default_factory=dict, description="角色設定：voice（D-030）＋ appearance（D-032）")
     style_id: str = Field(default="default", description="Style Profile id（see/core/styles.py；default = Phase 1 既有風格）")
+    preferences: PreferenceSet | None = Field(default=None, description="D-062 Project default 偏好（Mood／Lighting／Color／Camera／Composition／Generation）；None＝無")
     script: Script | None = None
     scenes: list[Scene] = Field(default_factory=list)
     assets: list[Asset] = Field(default_factory=list)

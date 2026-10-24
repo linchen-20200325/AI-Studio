@@ -1014,6 +1014,29 @@ def cmd_compose_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ref(args: argparse.Namespace) -> int:
+    """D-062 Reference Library（本機；只讀寫 metadata sidecar，不碰圖片、不上傳）。"""
+    from see.core.reference_library import ReferenceLibrary, ReferenceLibraryError, entries_json
+
+    lib = ReferenceLibrary(Settings().workspace)
+    try:
+        if args.ref_cmd == "list":
+            print(entries_json(lib.list(category=args.category)))
+            return 0
+        if args.ref_cmd == "register":
+            a = lib.register(args.path, asset_id=args.asset_id, role=args.role, source_type=args.source_type,
+                             character_id=args.character, commercial_clearance_status=args.clearance, notes=args.note or "")
+        elif args.ref_cmd == "bind":
+            a = lib.bind(args.asset_id, None if args.unbind else args.character)
+        else:
+            a = lib.mark_primary(args.asset_id)
+    except (ReferenceLibraryError, ValueError) as e:
+        print(f"錯誤：{e}", file=sys.stderr)
+        return 2
+    print(a.model_dump_json(indent=2))
+    return 0
+
+
 def cmd_style_compare(args: argparse.Namespace) -> int:
     """D-043：兩份 style-test evidence 逐項比對生成條件，判定是否為單一變數比較（相容舊 JSON；唯讀）。"""
     from see.core.style_tests import compare_conditions, historical_reversed_character_mapping
@@ -1213,6 +1236,23 @@ def main(argv: list[str] | None = None) -> int:
     crv.add_argument("--identity", action="append", help="<layer_id>=pass|fail")
     crv.add_argument("--pasted", choices=["yes", "no"], help="是否看起來像貼上去")
     crv.add_argument("--note"); crv.add_argument("--by", default="customer"); crv.set_defaults(fn=cmd_compose_review)
+    rf = sub.add_parser("ref", help="Reference Library（workspace/reference_library/<category>/；metadata 決定歸屬與用途，不看檔名）")
+    rfs = rf.add_subparsers(dest="ref_cmd", required=True)
+    rl = rfs.add_parser("list", help="列出圖片、metadata 狀態與支援度（含 legacy identity_refs/，唯讀）")
+    rl.add_argument("--category", choices=["people", "animals", "characters", "backgrounds", "styles"])
+    rr = rfs.add_parser("register", help="登記已放進 Library 的圖片（計算 sha256、寫 <檔名>.ref.json）")
+    rr.add_argument("path", help="<category>/<檔名>，例 people/hero_v1.jpg")
+    rr.add_argument("--asset-id", required=True)
+    rr.add_argument("--role", required=True, choices=["identity_face", "full_body", "outfit", "pose", "style_reference", "background_reference"])
+    rr.add_argument("--source-type", required=True, choices=["user_supplied", "generated", "imported"])
+    rr.add_argument("--character", default=None, help="綁定的 character_id（角色用途必填於生成前）")
+    rr.add_argument("--clearance", default="unknown", choices=["cleared", "not_cleared", "unknown"])
+    rr.add_argument("--note", default=None)
+    rb = rfs.add_parser("bind", help="綁定／解除綁定角色")
+    rb.add_argument("asset_id"); rb.add_argument("--character", default=None); rb.add_argument("--unbind", action="store_true")
+    rp = rfs.add_parser("primary", help="設為該角色的主要 identity reference")
+    rp.add_argument("asset_id")
+    rf.set_defaults(fn=cmd_ref)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")

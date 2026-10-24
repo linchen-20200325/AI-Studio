@@ -253,3 +253,45 @@ def validate_characters(characters: list[CharacterDefinition], assets: list[Refe
 
 def blocking(issues: list[GateIssue]) -> list[GateIssue]:
     return [i for i in issues if i.blocking]
+
+
+# ---------------------------------------------------------------- Character Confirmation payload（D-058 §17.6；D-062）
+class ConfirmationRow(BaseModel):
+    character_id: str
+    display_name: str
+    character_type: CharacterType
+    gender_presentation: GenderPresentation
+    primary_reference: dict[str, str] | None  # {asset_id, file_name, sha256}；None＝沒有主要 identity reference
+    outfit: str
+    style: str | None
+    mood: str | None
+    voice: str | None
+    placement: dict[str, str] | None
+
+
+class ConfirmationPayload(BaseModel):
+    rows: list[ConfirmationRow]
+    issues: list[GateIssue]
+    can_generate: bool  # 有 blocking issue → False（UI 不得允許按「生成」）
+
+
+def confirmation_payload(characters: list[CharacterDefinition], assets: list[ReferenceAsset], placements: list[ScenePlacement],
+                         *, scene_style: str | None = None, scene_mood: str | None = None,
+                         scene_voice: dict[str, str] | None = None, **gate_kw) -> ConfirmationPayload:
+    """生成前人工確認卡的資料（UI 外觀未定）。style／mood：Scene override 優先，否則角色預設；voice：scene_voice[character_id]
+    優先，否則角色 voice_profile。缺值保持 None（不補值）。同時執行 Character Validation Gate。"""
+    issues = validate_characters(characters, assets, placements, **gate_kw)
+    by_place = {p.character_id: p for p in placements}
+    rows = []
+    for c in characters:
+        prim = [a for a in assets if a.character_id == c.character_id and a.role == RefRole.identity_face and a.is_primary]
+        ref = prim[0] if len(prim) == 1 else None
+        p = by_place.get(c.character_id)
+        voice = (scene_voice or {}).get(c.character_id) or (c.voice_profile.voice_id if c.voice_profile else None)
+        rows.append(ConfirmationRow(
+            character_id=c.character_id, display_name=c.display_name, character_type=c.character_type,
+            gender_presentation=c.gender_presentation,
+            primary_reference={"asset_id": ref.asset_id, "file_name": Path(ref.file_path).name, "sha256": ref.sha256} if ref else None,
+            outfit=c.outfit, style=scene_style or c.default_style_profile, mood=scene_mood or c.default_mood_profile, voice=voice,
+            placement={"horizontal": p.horizontal.value, "depth": p.depth.value, "shot_size": p.shot_size} if p else None))
+    return ConfirmationPayload(rows=rows, issues=issues, can_generate=not blocking(issues))

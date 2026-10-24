@@ -169,7 +169,8 @@ function render(p) {
   }
   // scenes（只在內容變動時重繪，避免打斷使用者輸入）
   $("scenesCard").hidden = !p.scenes.length;
-  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta])) + busy;
+  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta, s.image_prompt_en, s.visual_description, s.video_prompt])) + busy;
+  sceneOrig = Object.fromEntries(p.scenes.map(s => [s.scene_id, s]));
   if (sk !== lastScenesKey) { lastScenesKey = sk; $("scenes").innerHTML = p.scenes.map(s => sceneHtml(s, busy)).join(""); }
   // approve
   $("approveCard").hidden = !p.preview_url;
@@ -211,6 +212,10 @@ function sceneHtml(s, busy) {
       <div class="meta"><span class="pill ${s.status}">${s.status}</span> ${esc(s.visual_description)}</div>
       <label>旁白</label><textarea id="nar-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.narration)}</textarea>
       <label>字幕覆寫（留空＝同旁白）</label><input id="sub-${s.scene_id}" value="${esc(s.subtitle_override ?? "")}" ${busy ? "disabled" : ""}>
+      <label>圖片描述（英文；留空＝改用中文圖片描述）</label><textarea id="ipe-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.image_prompt_en ?? "")}</textarea>
+      <div class="meta">⚠ 修改圖片描述或畫面說明會重做此景的圖片與影片片段；旁白、配音、字幕不受影響。</div>
+      <label>畫面說明</label><input id="vd-${s.scene_id}" value="${esc(s.visual_description ?? "")}" ${busy ? "disabled" : ""}>
+      <label>影片動態描述（只影響此景影片片段）</label><input id="vp-${s.scene_id}" value="${esc(s.video_prompt ?? "")}" ${busy ? "disabled" : ""}>
       <div class="row" style="margin-top:6px"><div><label>鏡頭</label>${sel("cam", opts.camera_motions, s.camera_motion)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition)}</div></div>
       <div class="actions">
         <button onclick="saveScene('${s.scene_id}')" ${busy ? "disabled" : ""}>儲存並重做此景</button>
@@ -219,10 +224,20 @@ function sceneHtml(s, busy) {
     </div></div>`;
 }
 
+let sceneOrig = {};
 async function saveScene(sid) {
+  const o = sceneOrig[sid] || {};
+  const changed = (id, key) => { const v = $(`${id}-${sid}`).value.trim(); return v !== (o[key] ?? "").trim() ? v : null; };
+  const vd = changed("vd", "visual_description");
   const body = { narration: $(`nar-${sid}`).value.trim() || null, subtitle_override: $(`sub-${sid}`).value.trim() || null,
-                 camera_motion: $(`cam-${sid}`).value, transition: $(`tr-${sid}`).value };
-  try { await api(`/api/projects/${current}/scenes/${sid}`, "POST", body); open(current); } catch (e) { alert(e.message); }
+                 camera_motion: $(`cam-${sid}`).value, transition: $(`tr-${sid}`).value,
+                 image_prompt_en: changed("ipe", "image_prompt_en"),  // 只送有改的欄位；空字串＝改用中文圖片描述
+                 visual_description: vd || null, video_prompt: changed("vp", "video_prompt") };
+  try {
+    const imp = await api(`/api/projects/${current}/scenes/${sid}/impact`, "POST", body);
+    if (imp.assets.length && !confirm(`將重做：${imp.assets.join("、")}\n不受影響：${imp.unaffected.join("、")}\n確定儲存？`)) return;
+    await api(`/api/projects/${current}/scenes/${sid}`, "POST", body); open(current);
+  } catch (e) { alert(e.message); }
 }
 async function regenScene(sid) { try { await api(`/api/projects/${current}/scenes/${sid}/regen`, "POST", {}); open(current); } catch (e) { alert(e.message); } }
 $("btnApprove").onclick = async () => { try { await api(`/api/projects/${current}/approve`, "POST", { by: $("approver").value || "human" }); poll(); } catch (e) { alert(e.message); } };

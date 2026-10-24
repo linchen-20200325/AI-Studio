@@ -101,6 +101,9 @@
 ## 6.5 客戶裁示（D-060）
 選 **B：零下載 reference crop 對照**（一次 controlled rerun，唯一變因＝男性 reference 改臉部大近照）。仍不像或只「有進步」＝FAIL → 停止 crop 路線、回到選項 A（FaceID-Plus-V2 研究 PoC，須再裁示）。FaceID-Plus-V2 未核准下載／安裝。
 
+## 6.6 後續（D-061）
+客戶裁示 **HARDWARE_UPGRADE_BLOCKED**：D-060 的 reference crop rerun 改為 DEFERRED（未執行）；FaceID／InsightFace／LoRA 全部不做。硬體升級（≥12 GB VRAM 級）後依 ARCHITECTURE §18 Resume Gate 重新研究；本文件屆時視為過期參考。
+
 ## 7. Reference 品質（研究）
 - 本次男性 reference：非正面證件照、背景有人、光線一般、臉部佔比有限（客戶描述）。
 - 現行管線**沒有人臉偵測**：`_identity_embeds` 對整張圖做 CLIP 224 中心裁切 → 臉小時，送進 plus-face 的多半不是臉（背景、身體、其他人）。這是**本專案前處理造成的可歸因因素之一**，但不是全部原因：plus-face 本質是 CLIP 外觀 embedding、非身份 embedding（Route II 的差異）。

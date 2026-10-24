@@ -77,3 +77,33 @@ def test_regen_single_scene_via_api(client: TestClient, settings: Settings):
     p = client.get(f"/api/projects/{pid}").json()
     assert p["job"]["state"] == "done"
     assert clip2.read_bytes() == before
+
+
+def test_scene_image_prompt_en_edit_rebuilds_only_visual_assets(client: TestClient, settings: Settings):
+    """D-062 Batch B：Scene 卡改英文圖片描述 → 只重做 image＋clip（旁白／字幕沿用快取）；impact 端點不寫入。"""
+    from see.storage.project_store import ProjectStore
+
+    pid = client.post("/api/projects", json={"text": TINY_STORY}).json()["project_id"]
+    p = client.get(f"/api/projects/{pid}").json()
+    s = p["scenes"][0]
+    sid = s["scene_id"]
+    assert "image_prompt_en" in s and "video_prompt" in s and "visual_description" in s
+    store = ProjectStore(settings.workspace)
+    before = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    other = p["scenes"][1]["scene_id"]
+    other_before = {k: v.fingerprint for k, v in store.load_manifest(pid, other).entries.items()}
+    imp = client.post(f"/api/projects/{pid}/scenes/{sid}/impact", json={"image_prompt_en": "a red kite over green hills"}).json()
+    assert imp["changed_fields"] == ["image_prompt_en"] and imp["affects_image"] and not imp["affects_narration_audio"]
+    assert client.get(f"/api/projects/{pid}").json()["scenes"][0]["image_prompt_en"] == s["image_prompt_en"]  # 未寫入
+    r = client.post(f"/api/projects/{pid}/scenes/{sid}", json={"image_prompt_en": "a red kite over green hills"})
+    assert r.status_code == 202 and r.json()["impact"]["assets"][:2] == ["image", "clip"]
+    p2 = client.get(f"/api/projects/{pid}").json()
+    assert p2["job"]["state"] == "done" and p2["scenes"][0]["image_prompt_en"] == "a red kite over green hills"
+    after = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    assert after["image"] != before["image"] and after["clip"] != before["clip"]
+    assert after["narration"] == before["narration"] and after["subtitle"] == before["subtitle"]
+    # 其他景完全沒動
+    assert {k: v.fingerprint for k, v in store.load_manifest(pid, other).entries.items()} == other_before
+    # video_prompt 只影響 clip；visual_description 不可為空
+    assert client.post(f"/api/projects/{pid}/scenes/{other}/impact", json={"video_prompt": "slow push in"}).json()["assets"][:1] == ["clip"]
+    assert client.post(f"/api/projects/{pid}/scenes/{sid}", json={"visual_description": ""}).status_code == 422

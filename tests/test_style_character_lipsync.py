@@ -48,7 +48,9 @@ def test_old_projects_keep_image_request_identical(orchestrator):
     req, ctx = orchestrator.image_request(p, p.scenes[0])
     s = p.scenes[0]
     assert req.prompt == s.effective_image_prompt and req.negative_prompt == s.negative_prompt and req.params == {}
+    snap = ctx.pop("preference_snapshot")  # D-062：偏好快照只進 evidence，不改 request／fingerprint
     assert ctx == {"style_id": "default", "style_validated": True, "character_anchors": []}
+    assert snap["resolved"]["visual_style_id"] == "default" and snap["no_prompt_effect"] == []
 
 
 def test_style_change_changes_only_images(orchestrator):

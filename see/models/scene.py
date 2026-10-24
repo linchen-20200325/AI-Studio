@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 
 from see.models.enums import CameraMotion, Status, Transition
+from see.models.preferences import PreferenceSet
 
 
 class Dialogue(BaseModel):
@@ -57,6 +58,7 @@ class Scene(SceneDraft):
     speech_speed: float | None = Field(default=None, gt=0.5, lt=2.0, description="本景語速覆寫；None = 角色或專案語速")
     lipsync: bool = Field(default=False, description="本景是否做嘴型同步（需有效 LipSyncProvider；預設 False）")
     measured_narration_duration: float | None = Field(default=None, ge=0)
+    preferences: PreferenceSet | None = Field(default=None, description="D-062 Scene override（逐欄位覆寫 Project default）；None＝不覆寫")
 
     @property
     def effective_image_prompt(self) -> str:

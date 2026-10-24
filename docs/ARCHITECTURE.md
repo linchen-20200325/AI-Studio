@@ -213,13 +213,16 @@ workspace/identity_refs/<people|animals|characters|backgrounds>/   Reference Lib
 | 能力 | 現況 | 缺口 |
 |---|---|---|
 | 生成前選風格 | `set_style`（`Project.style_id`，6 內建 Style Profile） | 使用者自訂／微調 Style Profile（目前只能選內建） |
-| 生成後改風格再生成 | `set_style` 使全景回 DRAFT；image fingerprint 含 style terms → 下次 build 只重做 image 與下游 | 只改部分景的風格（per-scene override） |
+| 生成後改風格再生成 | `set_style` 使全景回 DRAFT；image fingerprint 含 style terms → 下次 build 只重做 image 與下游 | per-scene override：**DONE（D-062）** `Scene.preferences.visual_style_id` |
 | 人物外觀 | `set_character_appearance`（CharacterAppearance 錨點＋結構化 refs） | 外觀變更 → 自動標記「有此角色的景」需重生（目前靠 fingerprint 自然失效，需驗證並加報表） |
 | 單景調整 | `update_scene`／`regenerate_scene` | 構圖／鏡頭欄位（目前混在 visual_description／image_prompt_en） |
-| 色彩／構圖／鏡頭 | 無結構欄位 | `CompositionPrefs`、色彩偏好（Style Profile 子欄位或獨立） |
+| 色彩／構圖／鏡頭／氛圍／光線 | **DONE（D-062，非 UI）**：`see/models/preferences.py` PreferenceSet（mood／lighting／color_tone／camera／composition＝preset 標籤＋custom_en 詞；generation.gen_policy） | preset → prompt 詞對照無規格（目前只有 custom_en 進 prompt；preset-only 標 `no_prompt_effect`）；UI＝DG-19 |
 | 自然語言偏好 | 無 | 需真 LLM（DG-10）把描述轉成結構化設定；轉換結果需人工確認 |
 | 換模型不重建偏好 | 偏好層與 provider 已分離（style terms 由 `apply_style` 附加；checkpoint 參數在 `CheckpointSpec`） | ModelRouter（style.family → preset）未實作 |
-| 偏好版本／比較 | 無 | 偏好快照（每次再生成記錄使用的偏好版本，供 A/B 與回復） |
+| 偏好版本／比較 | **DONE（D-062）**：image evidence（manifest meta）記 `preference_snapshot`（resolved＋每欄來源＋sha256＋no_prompt_effect） | 偏好歷史版本列表／回復 UI |
+| 再生成範圍 | **DONE（D-062）**：`regeneration_scope()`／`Orchestrator.edit_impact()`／`set_preferences()` 依 fingerprint 相依推導（偏好／圖片描述 → image＋clip；旁白 → narration＋subtitle＋clip；轉場 → 只重組 render）；只有 resolved 偏好真的改變的景回 DRAFT | — |
+
+**D-062 解析順序**：Project default（`Project.style_id`＋`Project.preferences`）→ Scene override（`Scene.preferences`，逐欄位）。Character default（`CharacterDefinition.default_style_profile／default_mood_profile`）**尚未參與**：多角色同景以誰為準沒有規格 → NEEDS HUMAN DECISION。Project 層 visual style 唯一來源是 `style_id`（不接受 `preferences.visual_style_id`，避免雙來源）。偏好 `extra="forbid"`：身份資料（gender、character_id、reference）不得混入。舊資料沒有這些欄位 → None → request／fingerprint 完全不變。
 
 ## 14. Character Identity／Reference Image（D-046；規格入口，未實作）
 目標流程：參考照片 →（本機）擷取／維持辨識特徵 → 選風格 → 角色預覽 → 人工確認 → 跨場景保持同一角色。
@@ -333,6 +336,11 @@ character_id 唯一｜asset_id 唯一｜角色用途 reference 必須綁定存�
 - `gender_presentation` 由 enum 保證為明確值或 unspecified。
 - 現接線：`style-test --identity` 的 `--ref` 路徑（`_character_gate`）、`compose-scene` 角色層 character_id 驗證。UI 接線見 BACKLOG。
 
+### 17.4.1 後端服務（D-062）
+- `see/core/reference_library.py:ReferenceLibrary`：list（含 legacy 唯讀、未登記／支援度／問題）、register（算 sha256、寫 sidecar；legacy 不可登記）、validate（sha256、類別、檔名、role×category、primary 必須綁角色）、bind／unbind、mark_primary（同角色唯一）；只寫 metadata，不碰圖片。CLI：`ref list|register|bind|primary`。
+- `see/storage/character_store.py:CharacterStore`：`workspace/character_library/<id>.json`；create／get／list／update（revision＋1、character_id 不可改、封存中不可改）／archive／restore；**無 hard delete**。與 `Project.characters` 的綁定／遷移待裁示。
+- `confirmation_payload()`（`character_definition.py`）：每角色 display_name、character_type、gender_presentation、primary reference、outfit、style、mood、voice、placement；同時跑 Validation Gate，`can_generate=False` 時 UI 不得允許生成。
+
 ### 17.5 Style／Mood／Voice 與身份解耦
 - Style 不是一個不可拆的 prompt 字串：至少拆 **Visual Style、Mood、Lighting、Color Tone、Camera**（現有 `StyleProfile` 仍是合併的 prompt 詞，拆分為 BACKLOG）。
 - 角色可有 `default_style_profile`／`default_mood_profile`，**每個 Scene 可 override**；同一角色可有寫實／動畫／3D／恐怖／溫暖版本，身份欄位不變。
@@ -366,3 +374,14 @@ character_id 唯一｜asset_id 唯一｜角色用途 reference 必須綁定存�
 - 判定欄位分離：`technical_valid`（自動）≠ `identity_validated`（人工，single-user subjective）≠ scene／style；不可由 technical_valid 或畫面好看推論 identity pass。
 - 最小驗收矩陣（建議）：每個角色 ≥ 6 張（背景×2、服裝×2、表情／角度×2，至少一張不同 Style），逐張人工判定「像／不像」，並記錄 reference asset sha256 與生成條件。
 - 單張 PoC 只能證明「可能像」，不能證明 Identity Consistency。
+
+## 18. Hardware Upgrade Resume Gate（D-061）
+`Identity Preservation / Character LoRA = HARDWARE_UPGRADE_BLOCKED`（GTX 1650 4 GB：plus-face 已證實不足，D-057／D-059；FaceID 類需 InsightFace 非商用模型；LoRA 訓練與 SDXL／FLUX 在 4 GB 不實際，DG-28）。
+重新開啟前必須重新檢查並寫入 GitHub：
+1. GPU 型號、VRAM、CUDA／torch 版本相容（`python -m see.app.cli hardware`）
+2. 可用硬碟（模型＋訓練暫存）
+3. 當時最新 identity route（DG-28 研究結果視為過期，需重查一手來源）
+4. 模型授權、face encoder／detector 授權、訓練資料限制、商用授權（分層，見 DG-28 §2）
+5. 訓練時間與每角色 reference 數量（使用者負擔）
+VRAM 規劃參考（**只是 resume planning，不得硬編為永久硬體需求**）：4 GB 不再投入 Character LoRA 訓練｜12 GB 可重評 SD1.5 Character LoRA｜16 GB 較適合長期角色 LoRA／部分 SDXL workflow｜24 GB 再評更大型 identity／SDXL／video。
+

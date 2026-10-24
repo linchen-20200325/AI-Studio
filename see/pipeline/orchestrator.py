@@ -22,6 +22,8 @@ from see.core.image_qa import image_defect, image_stats
 from see.core.subtitles import build_cues, to_srt
 from see.models.approval import Approval
 from see.models.enums import ApprovalKind, CostTier, JobKind, JobStatus, Status
+from see.models import preferences as prefs
+from see.models.preferences import PreferenceSet
 from see.models.project import CharacterAppearance, CharacterVoice, OutputSpec, Project
 from see.models.render_job import RenderJob
 from see.models.scene import Scene
@@ -232,11 +234,15 @@ class Orchestrator:
     # ------------------------------------------------------------ image request（style + character consistency；D-032）
     def image_request(self, project: Project, scene: Scene) -> tuple[ImageRequest, dict[str, object]]:
         """組 ImageRequest。style=default 且沒有角色外觀 → 與 Phase 1 完全相同（fingerprint 不變）。"""
+        resolved = prefs.resolve(project.style_id, project.preferences, scene.preferences)
         try:
-            style = get_style(project.style_id)
+            style = get_style(resolved["visual_style_id"])
         except ValueError as e:
             raise SchemaViolation(str(e)) from e
         prompt, negative, style_params = apply_style(scene.effective_image_prompt, scene.negative_prompt, style, self.p.image.info.name)
+        pref_terms = prefs.prompt_terms(resolved)  # D-062：偏好詞（只有使用者 custom_en）；沒設定 → prompt 與 fingerprint 不變
+        if pref_terms:
+            prompt = ", ".join([prompt, *pref_terms])
         refs = []
         for cid in scene.character_ids:
             ch = project.characters.get(cid)
@@ -251,10 +257,14 @@ class Orchestrator:
             params["style"] = style_params
         if refs:
             params["characters"] = refs
+        gen_policy = (resolved.get("generation") or {}).get("gen_policy")
+        if gen_policy:
+            params["gen_policy"] = gen_policy
         out = project.output
         req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
                            seed=scene.index, caption=scene.visual_description, params=params)
-        return req, {"style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs]}
+        return req, {"style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs],
+                     "preference_snapshot": prefs.snapshot(resolved)}  # D-062 provenance（只進 evidence，不進 fingerprint）
 
     def _lipsync_stage(self, project: Project, scene: Scene, manifest, clip_fp: str, clip_path: Path, wav_path: Path,
                        img_path: Path, report: SceneBuildReport) -> dict[str, object]:
@@ -384,7 +394,7 @@ class Orchestrator:
         scene = project.scene(scene_id)
         allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
                    "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues",
-                   "character_ids", "lipsync"}
+                   "character_ids", "lipsync", "preferences"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")
@@ -401,6 +411,39 @@ class Orchestrator:
         project.status = Status.DRAFT  # 任何修改都使 PREVIEW/APPROVED/FINAL 失效，需重新 preview → 核准
         self.store.save(project)
         return updated
+
+    def edit_impact(self, project: Project, scene_id: str, **fields: object) -> dict[str, object]:
+        """D-062：預估這次修改會重做哪些產物（不寫入）。只算「值真的改變」的欄位；其餘產物沿用快取。"""
+        scene = project.scene(scene_id)
+        cur = scene.model_dump(mode="json")
+        changed = sorted(k for k, v in fields.items() if v is not None and k in prefs.SCENE_FIELD_IMPACT
+                         and (v.model_dump(mode="json") if hasattr(v, "model_dump") else v) != cur.get(k))
+        return {"scene_id": scene_id, "changed_fields": changed, **prefs.regeneration_scope(changed)}
+
+    def set_preferences(self, project: Project, preferences: PreferenceSet | None, scene_id: str | None = None) -> dict[str, object]:
+        """D-062：設定 Project default（scene_id=None）或 Scene override 偏好。只有 resolved 偏好真的改變的景回到 DRAFT；
+        image fingerprint 依偏好詞／生成設定改變 → 下次 build 只重做 image 與其下游（narration／audio 不受影響）。"""
+        before = {s.scene_id: prefs.resolve(project.style_id, project.preferences, s.preferences) for s in project.scenes}
+        target = project.scene(scene_id) if scene_id else None
+        new = None if preferences is None or preferences.is_empty else preferences
+        if new is not None and new.visual_style_id is not None:
+            if target is None:  # Project 的 visual style 唯一來源是 project.style_id（set_style）→ 不建立第二個來源
+                raise ValueError("project-level visual style is project.style_id; use set_style (visual_style_id is a scene override)")
+            get_style(new.visual_style_id)  # 未知 → ValueError
+        if target is not None:
+            target.preferences = new
+        else:
+            project.preferences = new
+        changed = []
+        for s in project.scenes:
+            after = prefs.resolve(project.style_id, project.preferences, s.preferences)
+            if prefs.snapshot(after)["preference_sha256"] != prefs.snapshot(before[s.scene_id])["preference_sha256"]:
+                s.status = Status.DRAFT
+                changed.append(s.scene_id)
+        if changed:
+            project.status = Status.DRAFT
+        self.store.save(project)
+        return {"changed_scenes": changed, **prefs.regeneration_scope(["preferences"] if changed else [])}
 
     def regenerate_scene(self, project: Project, scene_id: str) -> SceneBuildReport:
         """強制重做單一 Scene 的所有產物（image / narration / subtitle / clip；其他 Scene 不動）。
