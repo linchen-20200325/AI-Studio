@@ -186,10 +186,12 @@
 | D-049 真機證據入庫（scene FAIL／style PASS，主觀） | DONE |
 | S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in `--long-prompt`） | DONE：真機解決截斷；scene FAIL（屬性綁定／臉部多樣性未解，主觀，D-052） |
 | style-compare 實驗變數語意（prompt_mode 被誤判） | DONE（D-052） |
-| S2 Regional prompting 原型（零下載；opt-in `--regional`） | 實作 DONE（D-051）→ NEXT：Windows 真機＋人工 scene 判定 |
+| S2 Regional prompting 原型（零下載；opt-in `--regional`） | DONE：真機 FAIL（單人融合／identity collapse，主觀，D-053）；保留為 opt-in 診斷，不再調參 |
 | 角色 → 畫面區域提升到 Scene／Storyboard 資料（regional 產品化） | 待 S2 真機結果 |
 | S3 分段生成＋合成（零下載） | RESEARCH（S2 不足再評估） |
-| S4 IP-Adapter plus-face／full-face SD1.5（≈2.67 GB；Apache-2.0；image encoder 上游授權待核；4 GB 可行性未證實） | NEEDS HUMAN DECISION（DG-24 B） |
+| S4 IP-Adapter plus-face SD1.5＋ViT-H image encoder（2,626,557,296 bytes ≈2.63 GB；adapter Apache-2.0、encoder MIT＋LAION 研究建議；4 GB 可行性未證實；研究 D-053） | NEEDS HUMAN DECISION（DG-25） |
+| S4 PoC：每角色 reference image＋IP-Adapter mask、測試參考圖用本專案自生角色圖（非真人照） | 規格 DONE（研究 §6）→ 待 DG-25 |
+| ControlNet（openpose 等）兩人佈局控制 | RESEARCH（需另下載；S4 後評估） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
 | 重抽 seed | 非解法（客戶裁示） |
 

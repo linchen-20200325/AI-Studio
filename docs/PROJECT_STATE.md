@@ -8,7 +8,7 @@
 - CyberRealistic：已下載；東亞女性 technical PASS＋客戶確認東方女性；東亞男性外觀確認但 JSON 未入庫（single-user subjective，D-047）；commercial_cleared=false；upstream lineage 未釐清；未鎖定為預設。
 - production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
 - 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
-- **下一唯一安全接手點**：Windows 一次一條：`git pull` → S2 `python -m see.app.cli style-test --style realistic --case two_characters_ab --gen-policy native --checkpoint cyberrealistic_final --scheduler dpmpp_2m_karras --regional` → `style-compare`（對 D-049 基準與 S1，預設自動 intended）→ 客戶 style-review（D-051／D-052）。S1 已完成：解決截斷，scene FAIL（主觀）。S4 不自行下載。
+- **下一唯一 Decision Gate：DG-25**——是否核准下載 IP-Adapter plus-face SD1.5＋ViT-H image encoder（2,626,557,296 bytes ≈2.63 GB；safetensors；無新依賴；commercial_cleared=false）做 S4 PoC（研究 §6）。S1／S2 真機皆 scene FAIL（主觀，D-052／D-053）；prompt-only 路線結案。
 - 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
 - 角色多樣性／Reference Image（D-046）：產品不預設性別／族群／年齡（PROJECT_RULES §16）；Character Identity 規格見 ARCHITECTURE §14（未實作）；真人照片不進 Git。 結構化 Character 設定（角色 A／B）已實作（D-048，ARCHITECTURE §14.1）。
 - **長期產品目標（D-047）**：連續劇情 AI 短劇（真人／電影感、日系動畫、半寫實 3D 三路線）；P1 Roadmap＝Identity、Multi-character、Image-to-Video、Dialogue Performance、Audio／Editing → BACKLOG「短劇 Roadmap」、ARCHITECTURE §15。
@@ -67,7 +67,8 @@ Phase 0（pipeline + Web UI）：證據 `PHASE0_EVIDENCE.md`。Phase 1（SD 1.5 
 - DG-16 **已裁示 A（D-031）**：Audio Layer。
 - DG-17：真機聽感 OK（D-032）；**BGM 預設開啟延後**到完整產品流程／UI（維持 null）。
 - DG-18 **已裁示 A（D-033）**：Style 真機驗收進行中（E2-4；順序 D-034）。
-- **DG-24 已裁示 A（D-051）**：S1／S2 已實作（opt-in），待 Windows 真機受控比較；S4 IP-Adapter 待真機結果再議。
+- **DG-24 已裁示 A（D-051）→ 結果**：S1 解決截斷但 scene FAIL；S2 單人融合 scene FAIL（主觀，D-052／D-053）；prompt-only 結案。
+- **DG-25（D-053，待裁示）**：S4 IP-Adapter plus-face SD1.5 下載 ≈2.63 GB（內部驗證）。
 - **DG-23 已裁示（D-045）**：接受 model_preset_level 比較；不需 Base clip skip 2 隔離。
 - **下一 Decision Gate**：CyberRealistic 真人／電影感品質驗證（D-039 授權下載；待客戶確認啟動）。
 - DG-21（待 native A/B）：`gen_policy=native` 是否成為預設（既有 image fingerprint 全失效重生、每張耗時增加）。

@@ -411,3 +411,11 @@
 - Result: D-052；compare_conditions 自動 intended（model／prompt_mode 恰一）；S1 evidence（scene FAIL，主觀）；PROJECT_RULES §12 需求當輪入庫；BACKLOG 生成後可調整總表
 - Tests: 176 passed、5 skipped
 - Next: Windows git pull → S2
+
+---
+- Date: 2026-10-24
+- Start SHA: 6b5f655
+- Batch: Batch 43 — S2 真機入庫＋S4 研究／規格
+- Result: D-053；S2 FAIL（單人融合，主觀；technical 未回報不補造）；prompt-only 結案；S4 研究 §6（plus-face SD1.5＋ViT-H，2.63 GB，無新依賴，diffusers 0.41 原始碼核對 mask／embeds）；adapters.py 型錄骨架（未核准）；evidence/dg24 補 laion encoder 與 IP-Adapter LICENSE
+- Tests: 178 passed、5 skipped
+- Next: DG-25

@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-053 | S2 真機 FAIL（單人融合，主觀）；prompt-only 路線結案、不 reroll；S4 研究＋adapter 型錄骨架（未核准）；DG-25 待裁示 | 有效 | 可逆 |
 | D-052 | style-compare 實驗變數自動判定（修 S1 誤判 not_comparable）；S1 真機 scene FAIL（主觀）；PROJECT_RULES 需求當輪入庫 | 有效 | 可逆 |
 | D-051 | DG-24 裁示 A：S1 `--long-prompt`＋S2 `--regional`（opt-in；零下載；tiny diffusers 整合測試）；待真機受控比較 | 有效（待真機） | 可逆 |
 | D-050 | D-049 真機 scene FAIL／style PASS（主觀）＋prompt 80＞77；多角色／Identity 研究；新需求 Style/Mood Profile、Mobile-first、Env Bootstrap、Migration | 有效；DG-24 待裁示 | 可逆 |
@@ -399,3 +400,9 @@
 - 修正：`--intended` 預設改為**自動**——實驗變數（model、prompt_mode）**恰好一個**不同時即為 intended；兩個以上同時不同（例：換模型又換 prompt_mode）或其他任何欄位不同 → not_comparable；明確指定時仍只允許列出的欄位，且一次只能有一個變動。evidence 增 `intended_source`（auto／explicit）。未改任何生成結果、未重抽 seed、production default 不變。
 - S1 真機人工（single-user subjective）：寫實攝影質感尚可；女角眼鏡／鼻眼交界局部五官幾何異常；外觀過度模板化；A 紅大衣遺失、A 錯戴眼鏡、B 灰短髮與灰西裝未遵守 → S1 解決截斷，**未**解決 attribute binding、臉部多樣性與局部品質；scene_validated=false；style_validated 未正式填寫（不由 scene FAIL 推論）。
 - 永久治理：PROJECT_RULES §12 增「客戶需求當輪入庫」。BACKLOG 補「生成後可調整項目總表」（只補缺、指向既有項目）。
+
+## D-053 2026-10-24 S2 真機失敗＋prompt-only 路線結案＋S4 研究啟動（不下載）
+- S2 真機（客戶回報，single-user subjective）：CyberRealistic × `two_characters_ab`、seed 1234、native、dpmpp_2m_karras、prompt_mode=regional → 只剩 1 人；A／B 身份 collapse／fusion；長髮、眼鏡、灰西裝、紅色衣物混在同一人；性別表徵交叉污染。scene_validated=false；style 未正式填寫（不由 scene FAIL 推論）；technical 數值無 stdout／JSON → 不補造。
+- 正式結論：S1 解決 prompt truncation，但未解決角色綁定／臉部多樣性／局部幾何品質；S2 在 `two_characters_ab` 失敗（單人融合）。**不採用 reroll seed；不再以純 prompt 技巧無限調參**；下一路線升級為 **S4 Reference Image／Identity conditioning**（客戶指示）。
+- Project AI 推測（非裁示）：S2 為 0.2 base＋0.8 欄位 mask 的 cross-attention 分區；base 只寫「two people」不足以在 SD 1.5 上撐住兩人佈局，左右兩欄又各自描述「upper body, front view」單人構圖 → 模型傾向生成一位置中人物並混合兩欄條件。未經實驗證實，不再為此調參（依上條）。
+- S4 研究：`DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md` §6；安全骨架 `see/providers/image/adapters.py`（候選型錄＋守門，`approved=False`，無下載／載入）。下一 Decision Gate＝DG-25（是否核准下載 ≈2.63 GB）。
