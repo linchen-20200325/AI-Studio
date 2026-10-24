@@ -388,3 +388,10 @@
 - Result: D-049；two_characters_ab、CaseCharacter、multi_character_prompt、evidence case_characters、77 token 守門測試
 - Tests: 167 passed、1 skipped
 - Next: Windows `git pull` → CyberRealistic × two_characters_ab
+
+---
+- Date: 2026-10-24
+- Start SHA: 2b22802
+- Batch: Batch 40 — D-049 真機入庫＋多角色／Identity 研究＋新產品需求
+- Result: D-050；PHASE2_EVIDENCE two_characters_ab（scene FAIL／style PASS，主觀；80＞77 截斷）；DG24 研究文件＋evidence/dg24；BACKLOG：Style/Mood Profile、Mobile-first、Env Bootstrap、Migration；移除被實測推翻的 token 粗估測試
+- Next: DG-24 裁示

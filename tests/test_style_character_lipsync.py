@@ -508,14 +508,3 @@ def test_two_characters_style_test_evidence(tmp_path, monkeypatch, capsys):
     assert ev["prompt_subject_check"]["passed"] and ev["prompt_source"] == "case_base_prompt_en"
     assert "圓眼鏡只在 B" in " ".join(ev["human_review"]["checklist"])
 
-
-def test_two_characters_prompt_fits_clip_limit_for_p1_styles():
-    """容器無 tokenizer：以「詞＋標點」粗估（CLIP BPE 對常見英文詞多為 1 token），留 BOS/EOS 後須 ≤ 75。"""
-    import re
-
-    from see.core.style_tests import get_case
-    from see.core.styles import apply_style, get_style
-
-    for sid in ("anime", "realistic", "cinematic", "3d"):
-        prompt, _, _ = apply_style(get_case("two_characters_ab").base_prompt_en, "", get_style(sid))
-        assert len(re.findall(r"\w+|[^\w\s]", prompt)) <= 75, sid

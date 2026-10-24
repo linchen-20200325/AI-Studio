@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-050 | D-049 真機 scene FAIL／style PASS（主觀）＋prompt 80＞77；多角色／Identity 研究；新需求 Style/Mood Profile、Mobile-first、Env Bootstrap、Migration | 有效；DG-24 待裁示 | 可逆 |
 | D-049 | A／B 多角色同框受控案例 `two_characters_ab`（產品錨點路徑、互斥屬性、人工互換檢查；77 token 守門） | 有效（待真機） | 可逆 |
 | D-048 | 結構化 Character 設定 `CharacterTraits`（角色 A／B；舊欄位／fingerprint 相容；reference_images 只收本機路徑） | 有效 | 可逆 |
 | D-047 | **長期產品目標：連續劇情 AI 短劇**（三條視覺路線：真人／電影感、日系動畫、半寫實 3D 動畫短劇）；Roadmap P1＝Character Identity、Multi-character、Image-to-Video、Dialogue Performance、Audio／Editing；CyberRealistic 東亞女性主觀確認、男性 JSON 未入庫 | 有效（規格） | 可逆 |
@@ -374,3 +375,11 @@
 ## D-049 2026-10-23 A／B 多角色同框受控測試設計（自主，未真機）
 - 新增 `two_characters_ab` 案例、`CaseCharacter`、`multi_character_prompt`；style-test evidence 增 `case_characters`；人工檢查清單含位置、髮、服裝、眼鏡互換、人數／肢體融合、臉部品質。
 - 受控測試設定，不代表產品預設角色／性別／族群（§16）。下一步：Windows 真機 CyberRealistic × two_characters_ab（native、dpmpp_2m_karras）。
+
+## D-050 2026-10-24 D-049 真機結果＋多角色／Identity 研究＋新產品需求
+- 真機（客戶回報＋style-review）：CyberRealistic × `two_characters_ab` technical_valid=true（fp16→fp32、無 OOM、無 fallback、≈638 s、NT$0）；**prompt_tokens=80＞77、prompt_truncated=true**；scene_validated=false、style_validated=true（reviewer=customer，single-user subjective）。
+- 客戶主觀判定：寫實品質可接受，但 A／B 角色辨識失敗；臉部過度相似、East Asian 外觀模板化；A 紅大衣遺失且錯戴眼鏡；B 灰短髮未遵守；眼鏡污染 A。**客戶明示：後續改善角色差異化與多角色 attribute binding，不以重抽 seed 當解法。**
+- 問題定義（D-049 證明）：prompt-only SD1.5 多角色 attribute binding 不可靠；屬性互相污染；臉部差異不足；`East Asian` 可能模板化；重抽 seed 非解法；Identity 與 multi-character binding 未解。token 截斷為**次要**問題，不是全部失敗原因。D-049 的「≤75 粗估」守門被實測推翻 → 移除該啟發式測試。
+- 研究（Project AI，非裁示）：`DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md`。
+- 新正式產品需求（客戶）：User-defined Style／Mood Profile；Mobile-first Preference Layer；Environment Bootstrap（SEE_MODELS_DIR 未設定導致既有 CyberRealistic 被誤判 provenance 不可用）；Migration／Reinstall（模型搬移後驗證、不強迫重下載；備份還原 Style／Character／Voice／Project 設定）→ BACKLOG。
+- CyberRealistic `commercial_cleared=false` 不變；production default 不變；未下載、未安裝依賴。

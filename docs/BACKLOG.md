@@ -166,8 +166,27 @@
 | Character Identity／Reference Image | 角色 A／B 定義（結構化設定，ARCHITECTURE §14.1，D-048） | DONE（非 UI） |
 | | 跨鏡頭／背景／服裝維持 Identity；Identity provider 研究（IP-Adapter／FaceID 類：授權、4 GB 可行性） | RESEARCH → NEEDS HUMAN DECISION |
 | | 真人照片 Local First／不進 Git（§16） | 規則已生效 |
-| Multi-character Scene | ≥2 角色同框、不交換臉／衣服／設定；controlled test 案例 `two_characters_ab`（D-049 設計 DONE） | NEXT：Windows 真機（CyberRealistic）→ 人工互換判定 |
+| Multi-character Scene | `two_characters_ab` 真機：scene FAIL（屬性互換／污染，D-050） | NEEDS HUMAN DECISION：DG-24 |
 | Image-to-Video | 人物動作／表情／鏡頭動態（超越 Ken Burns）；LOCAL_FREE＋GTX 1650 4 GB 可行性研究，不足須明說 | RESEARCH（不下載、不用付費 API）→ NEEDS HUMAN DECISION |
 | Dialogue Performance | 角色聲音接 TTS（已有基礎）；真 Lip-sync provider；多角色台詞對應；字幕／timeline 對齊 | Lip-sync：BLOCKED（未核准模型）；其餘 NEXT |
 | Audio／Editing | BGM ✅／ducking ✅；SFX 聽感未驗；ambience、轉場、自動剪輯 | NEXT |
 | 真機證據 | CyberRealistic × east_asian_male_portrait technical JSON 入庫 | NEXT（需客戶回傳 JSON） |
+
+## 新正式產品需求（D-050；客戶）
+| 需求 | 內容 | 狀態 |
+|---|---|---|
+| User-defined Style／Mood Profile | 使用者新增／修改／儲存風格，不寫死；分層：Visual style（日系動漫／真人電影感／3D／繪本…）、Mood（恐怖／溫馨／陽光／悲傷／浪漫／懸疑…）、Cinematography、Lighting、Audio mood、Character appearance；可組合（例「日系動漫＋溫馨＋黃昏」）；自然語言 → AI 產生 Style Profile → 試生成 → 人工確認 → 存成「我的風格」 | NEXT（資料模型非 UI 可自主；自然語言需 DG-10 LLM） |
+| Mobile-first Preference Layer | 手機／Web：輸入故事 → 選角色 → 選風格／氛圍 → 選聲音試聽 → 調整 → 生成 → Preview → 局部修改 → Final；使用者不接觸 CMD／checkpoint／CUDA／模型路徑／環境變數 | NEEDS HUMAN DECISION（UI＝DG-19） |
+| Environment Bootstrap | 不得要求每次 `set SEE_MODELS_DIR=...`；persistent configuration（設定檔／啟動腳本）＋啟動自檢。實例：新 CMD 未設 SEE_MODELS_DIR → 既有 CyberRealistic 被誤判 provenance 不可用 | NEXT（可自主；錯誤訊息應提示「模型目錄未設定」而非「未驗證」） |
+| Migration／Reinstall | 安裝／還原 → GPU／VRAM 檢測 → Python／runtime／CUDA 相容檢查 → dependency 檢查 → 模型存在性＋provenance 驗證（搬移後驗 sha256，不強迫重下載）→ 只補缺 → 還原使用者設定；備份／還原 Style／Character／Voice／Project settings | NEXT（可自主，分階段） |
+
+## 多角色／Identity（D-050；研究見 DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md）
+| 項目 | 狀態 |
+|---|---|
+| D-049 真機證據入庫（scene FAIL／style PASS，主觀） | DONE |
+| S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in） | NEEDS HUMAN DECISION（DG-24 A） |
+| S2 Regional prompting 原型（零下載；opt-in 診斷） | NEEDS HUMAN DECISION（DG-24 A） |
+| S3 分段生成＋合成（零下載） | RESEARCH（S2 不足再評估） |
+| S4 IP-Adapter plus-face／full-face SD1.5（≈2.67 GB；Apache-2.0；image encoder 上游授權待核；4 GB 可行性未證實） | NEEDS HUMAN DECISION（DG-24 B） |
+| S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
+| 重抽 seed | 非解法（客戶裁示） |

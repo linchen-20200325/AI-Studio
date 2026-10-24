@@ -250,3 +250,6 @@ workspace/projects/<project_id>/
 - 案例 `two_characters_ab`（`see/core/style_tests.py`）：`CaseCharacter` 以產品同一條路徑（`CharacterAppearance`／`CharacterTraits` → `anchor_text`）產生 A／B 錨點；`multi_character_prompt` 確定性組裝「人數 → 錨點＋位置 → 共用構圖」。
 - A／B 屬性刻意互斥（女／男、黑長直髮／灰短髮、紅大衣／灰西裝、圓眼鏡只在 B）→ 人工審圖可判斷互換或混合；evidence 記 `case_characters`（anchor＋swap_checks）。是否互換**只由人工判定**，不做自動評分。
 - 構圖詞為 portrait 系列精簡子集，以守 CLIP 77 token（測試粗估 P1 各風格 ≤75；真機 evidence 另記實測 `prompt_tokens／prompt_truncated`）。
+
+### 14.3 D-049 真機結論（D-050）
+prompt-only 文字錨點在 SD 1.5 同框時**無法綁定屬性**（眼鏡、髮色、服裝互相污染），臉部 Identity 也無法以文字表達 → 架構上 Identity 需「區域條件（regional）」＋「參考圖條件（IP-Adapter 類）」兩種 provider 能力；偏好層（CharacterTraits／reference_images）不變，能力差異屬 provider／模型層。研究見 `DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md`。

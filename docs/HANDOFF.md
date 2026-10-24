@@ -8,7 +8,7 @@
 - CyberRealistic：已下載；東亞女性 technical PASS＋客戶確認東方女性；東亞男性外觀確認但 JSON 未入庫（single-user subjective，D-047）；commercial_cleared=false；upstream lineage 未釐清；未鎖定為預設。
 - production default **未變**（gen_policy=fit、base SD1.5、預設 style）。
 - 本機：Windows、GTX 1650 4 GB（fp16 會 NaN → 自動 float32）、SD1.5 於 `D:\ai-models\sd15`、checkpoints 於 `SEE_MODELS_DIR\checkpoints\<id>\`（永不進 Git）。
-- **下一唯一安全接手點**：Windows 一次一條：`git pull` → `python -m see.app.cli style-test --style realistic --case two_characters_ab --gen-policy native --checkpoint cyberrealistic_final --scheduler dpmpp_2m_karras` → 人工依 evidence `human_review.checklist` 判定 A／B 是否互換（D-049）。研究項（Identity provider／Image-to-Video 4 GB 可行性）不下載。
+- **下一唯一 Decision Gate：DG-24**（多角色／Identity 路線；`DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md`）。總管推薦 A：先零下載 S1 長 prompt 分段＋S2 regional prompting 原型（opt-in）→ 同案例同 seed 真機對照；B：核准下載 IP-Adapter SD1.5（≈2.67 GB）。D-049 真機：scene FAIL／style PASS（主觀）。
 - 禁止直接做：付費／API key、下載未核准模型、改 production default、Model Router、DG-19 UI、lip-sync 模型、刪 SD1.5、pickle/ckpt/bin、LoRA 訓練、把 MeinaMix 當商用。
 
 
