@@ -274,4 +274,12 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - 固定狀態 OK／PARTIAL／UNAVAILABLE／ERROR；**缺少 ≠ OK**；optional 缺少不使整體失敗；介面存在 ≠ 能力完成。
 - 模型以 logical model ID＋相對 `SEE_MODELS_DIR` 的路徑描述，**不得寫死磁碟代號**；換磁碟只改 `SEE_MODELS_DIR`。新寫入的 metadata 不存本機絕對路徑。
 - 匯出物去識別化（家目錄 → `~`、使用者名稱 → `<user>`、secret → `<redacted>`）；不打包模型、不複製私人圖片；machine-local manifest 不進 Git，GitHub 只放去識別化範例。
+- **Machine-specific 設定（D-065，客戶裁示方案 A）**：放專案本機設定檔 `see.local.json`（不進 Git；GitHub 只留 `see.local.example.json`）；優先序 **OS 環境變數 > local config > unset**；只收 machine-specific key（models_dir、workspace_dir、模型路徑、tts_device、ffmpeg／ffprobe、subtitle_font），**不收 secret／token／API key、不收 portable 專案偏好**；doctor 必須顯示來源。`setx` 不是主要方案。
 - 資料 schema 帶版本；舊資料相容讀取且不偷偷改寫；比程式新 → fail safe；遷移前先備份；**禁止 silent destructive migration；不可逆遷移 → Decision Gate**。
+
+## 20. Scene 結構化設定（D-065，永久）
+- Scene 的場景描述以結構化欄位表達（背景、環境、地點、時間、天氣、構圖、取景、景別、鏡頭角度、焦點、光線、色調、氣氛）；全部可為 None，**缺值不補造**；一般 UI 中文輸入，技術欄位名只在 backend／Advanced。
+- 不重複單一來源：鏡頭運動＝`Scene.camera_motion`（只影響影片片段）；視覺風格＝`Scene.preferences.visual_style_id`。
+- Scene 結構化設定與 Scene Character Override、CharacterDefinition 分離，互不覆寫。
+- 層級：Scene structured > Scene.preferences > Project.preferences（同一維度最具體者生效）。
+- 沒有 LLM 時只用確定性對照；對不到 → `no_prompt_effect`，不得假裝翻譯成功；evidence 記錄來源與實際生效欄位。

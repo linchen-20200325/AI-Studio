@@ -20,7 +20,7 @@
 2. 建 venv：`py -3.12 -m venv .venv` → `.venv\Scripts\activate`
 3. `python -m see.app.cli bootstrap`（唯讀；列出缺什麼）
 4. `pip install -r requirements.txt`（基礎依賴）；GPU 相關（torch CUDA）依 doctor 結果與 ENVIRONMENT_SETUP Tier C 決定（需裁示）
-5. 放回模型：複製到新位置（例 `E:\AI\models`），設定 `SEE_MODELS_DIR`
+5. 放回模型：複製到新位置（例 `E:\AI\models`），`python -m see.app.cli config set models_dir "E:\AI\models"`（寫入新機的 `see.local.json`；舊機設定檔不必搬）
 6. 放回 workspace：複製到專案根目錄的 `workspace\`（或設定 `SEE_WORKSPACE`）
 7. `python -m see.app.cli doctor --hash`（模型 sha256 與舊機一致才算 OK）
 8. `python -m see.app.cli smoke`
@@ -29,9 +29,9 @@
 ## 3. 情境
 | 情境 | 要做的事 |
 |---|---|
-| **重灌（同一台）** | 第 1 節備份 → 重灌 → 第 2 節。模型若在另一顆未格式化的磁碟，只要重設 `SEE_MODELS_DIR`。 |
+| **重灌（同一台）** | 第 1 節備份 → 重灌 → 第 2 節。模型若在另一顆未格式化的磁碟，只要 `config set models_dir …`。 |
 | **換 GPU** | 不需搬資料。`doctor` 看 `gpu.cuda`（名稱、VRAM、compute capability、fp16／bf16）；torch wheel 可能需更換（需裁示）。VRAM 升級後 identity 路線依 ARCHITECTURE §18 Resume Gate 重評，**不自動解除 blocked**。 |
-| **換磁碟／搬模型** | 例 `D:\ai-models` → `E:\AI\models`：複製資料夾、改 `SEE_MODELS_DIR`、`doctor --hash`。模型以 logical ID＋相對路徑描述，沒有任何地方寫死磁碟代號。 |
+| **換磁碟／搬模型** | 例 `D:\ai-models` → `E:\AI\models`：複製資料夾、`config set models_dir "E:\AI\models"`（或環境變數 `SEE_MODELS_DIR`，優先序較高）、`doctor --hash`。模型以 logical ID＋相對路徑描述，沒有任何地方寫死磁碟代號。 |
 | **搬 workspace** | 整個資料夾複製即可。專案 manifest 舊的絕對路徑會在讀取時自動對應到新位置的同名檔（fingerprint 不含路徑 → 產物沿用、不重做）。 |
 | **Reference Library** | 隨 workspace 複製。`.ref.json` 以「類別資料夾＋檔名＋sha256」對應圖片；路徑改變但檔案 hash 相同 → 仍是同一份 reference、角色綁定與 primary 不變（不會被當成新角色）。檔案內容變了 → `sha256 mismatch`，fail closed。 |
 | **Character Store** | 隨 workspace 複製；`schema_version`、archived、revision 都在檔案內。舊檔（無 schema_version）以 v1 讀取、不改寫。 |
@@ -52,5 +52,5 @@
 | 類別 | 內容 | 搬機時 |
 |---|---|---|
 | portable | `SEE_LLM_PROVIDER`、`SEE_IMAGE_PROVIDER`、`SEE_IMAGE_MODEL_PRESET`、`SEE_VIDEO_PROVIDER`、`SEE_TTS_PROVIDER`、`SEE_TTS_DEFAULT_VOICE`、`SEE_AUDIO_PROVIDER`、`SEE_LIPSYNC_PROVIDER`；專案內的 style／preferences／scene preferences／角色 voice 與外觀（在 project.json） | 照抄 |
-| machine-specific | `SEE_WORKSPACE`、`SEE_MODELS_DIR`、`SEE_IMAGE_MODEL_PATH`、`SEE_TTS_MODEL_PATH`、`SEE_TTS_DEVICE`、`SEE_FFMPEG`、`SEE_FFPROBE`、`SEE_SUBTITLE_FONT`；CUDA、GPU、暫存路徑 | 依新機重設 |
+| machine-specific（D-065：放 `see.local.json` 或環境變數；env 優先） | `SEE_WORKSPACE`、`SEE_MODELS_DIR`、`SEE_IMAGE_MODEL_PATH`、`SEE_TTS_MODEL_PATH`、`SEE_TTS_DEVICE`、`SEE_FFMPEG`、`SEE_FFPROBE`、`SEE_SUBTITLE_FONT`；CUDA、GPU、暫存路徑 | 依新機重設 |
 | UI 設定 | Web UI 目前沒有持久化設定 | — |

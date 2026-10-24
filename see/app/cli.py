@@ -220,9 +220,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             print(f"[{c.status.value:11s}] {c.name:24s} {req:8s} {c.detail}")
             if c.hint and c.status.value != "OK":
                 print(f"{'':14s}→ {c.hint}")
-        print("--- 基本設定（必要的只有這幾個；其餘見 .env.example）")
+        print("--- 基本設定（優先序：環境變數 > see.local.json > 程式預設）")
+        from see.core.config import setting_source
+
         for k in ("SEE_MODELS_DIR", "SEE_IMAGE_PROVIDER", "SEE_TTS_PROVIDER"):
-            print(f"  {k:20s} {os.environ.get(k) or '(未設定：使用程式預設)'}")
+            v, src = setting_source(k)
+            print(f"  {k:20s} {v or '(未設定：使用程式預設)'}  [來源：{src}]")
         print("--- Ready for")
         for k, v in rep.readiness["ready"].items():
             print(f"  ✓ {k:32s} {v}")
@@ -278,6 +281,33 @@ def cmd_env_export(args: argparse.Namespace) -> int:
     for p in sorted(out.iterdir()):
         print(f"  {p.name}  {p.stat().st_size} bytes")
     return 0
+
+
+def cmd_config(args: argparse.Namespace) -> int:
+    """D-065 專案本機設定檔（see.local.json；machine-specific；不進 Git）。只有 set／unset 會寫檔。"""
+    from see.core.config import (LOCAL_CONFIG_KEYS, LocalConfigError, local_config_path, read_local_config, setting_source,
+                                 write_local_config)
+
+    path = local_config_path()
+    if args.action in ("set", "unset"):
+        if args.key not in LOCAL_CONFIG_KEYS:
+            print(f"未知設定 {args.key!r}；可用：{sorted(LOCAL_CONFIG_KEYS)}（只收 machine-specific，不收 secret／專案偏好）", file=sys.stderr)
+            return 2
+        if args.action == "set" and not args.value:
+            print("config set 需要值", file=sys.stderr)
+            return 2
+        try:
+            write_local_config({args.key: args.value if args.action == "set" else None}, path)
+        except LocalConfigError as e:
+            print(str(e), file=sys.stderr)
+            return 1
+        print(f"已寫入 {path.name}：{args.key} = {args.value if args.action == 'set' else '(移除)'}")
+    local, err = read_local_config(path)
+    print(f"本機設定檔：{path}（{'不存在' if not path.is_file() else '格式錯誤，未採用：' + err if err else '有效'}）")
+    for key, env_name in LOCAL_CONFIG_KEYS.items():
+        v, src = setting_source(env_name, local=local)
+        print(f"  {key:18s} {v or '(程式預設)'}  [來源：{src}；環境變數 {env_name}]")
+    return 1 if err else 0
 
 
 def cmd_smoke(args: argparse.Namespace) -> int:
@@ -482,9 +512,11 @@ def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler
     if spec is not None:
         prov = read_provenance(s.models_dir, spec)
         if not prov or not prov.get("verified") or prov.get("local_sha256") != spec.sha256:
-            if not os.environ.get("SEE_MODELS_DIR"):  # D-064：區分「模型目錄未設定」與「未驗證」
-                return None, (f"模型目錄未設定：SEE_MODELS_DIR 沒有設定，程式在預設 {s.models_dir} 找不到 {spec.checkpoint_id}；"
-                              f"請先設定 SEE_MODELS_DIR（例 $env:SEE_MODELS_DIR=\"E:\\AI\\models\"）再執行 `python -m see.app.cli doctor`")
+            from see.core.config import setting_source
+
+            if setting_source("SEE_MODELS_DIR")[1] == "unset":  # D-064／D-065：區分「模型目錄未設定」與「未驗證」
+                return None, (f"模型目錄未設定：環境變數與 see.local.json 都沒有 models_dir，程式在預設 {s.models_dir} 找不到 {spec.checkpoint_id}；"
+                              f"請先 `python -m see.app.cli config set models_dir \"E:\\AI\\models\"` 再執行 `python -m see.app.cli doctor`")
             return None, (f"checkpoint {spec.checkpoint_id} 沒有通過驗證的 provenance（{checkpoint_file(s.models_dir, spec).parent}）；"
                           f"若是從舊機搬來，先 `python -m see.app.cli doctor --hash` 確認；否則 "
                           f"`python -m see.app.cli checkpoint-download {spec.checkpoint_id} --yes`")
@@ -1272,6 +1304,11 @@ def main(argv: list[str] | None = None) -> int:
     ee.add_argument("--out", default=None, help="輸出資料夾（必須不存在或為空）")
     ee.add_argument("--hash", action="store_true", help="重算模型 sha256")
     ee.set_defaults(fn=cmd_env_export)
+    cfg = sub.add_parser("config", help="專案本機設定檔 see.local.json（machine-specific；不進 Git）：show／set／unset")
+    cfg.add_argument("action", choices=["show", "set", "unset"], nargs="?", default="show")
+    cfg.add_argument("key", nargs="?", default="")
+    cfg.add_argument("value", nargs="?", default="")
+    cfg.set_defaults(fn=cmd_config)
     sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
     hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")

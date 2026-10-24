@@ -242,7 +242,9 @@ class Orchestrator:
             raise SchemaViolation(str(e)) from e
         base, prompt_ev = build_scene_prompt(scene)  # D-063：中文圖片描述／人物演出 → 英文 prompt（舊 Scene＝legacy_en，不變）
         prompt, negative, style_params = apply_style(base, scene.negative_prompt, style, self.p.image.info.name)
-        pref_terms = prefs.prompt_terms(resolved)  # D-062：偏好詞（只有使用者 custom_en）；沒設定 → prompt 與 fingerprint 不變
+        # D-062 偏好詞（只有使用者 custom_en）；D-065：Scene 結構化欄位已指定的維度由它取代（Scene structured > preferences）
+        overridden = set(prompt_ev["scene_settings"]["overrides_preference_dims"])
+        pref_terms = prefs.prompt_terms({k: v for k, v in resolved.items() if k not in overridden})
         if pref_terms:
             prompt = ", ".join([prompt, *pref_terms])
         refs = []
@@ -397,7 +399,7 @@ class Orchestrator:
         scene = project.scene(scene_id)
         allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
                    "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues",
-                   "character_ids", "lipsync", "preferences", "image_prompt_zh", "characters"}
+                   "character_ids", "lipsync", "preferences", "image_prompt_zh", "characters", "settings"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")
@@ -407,6 +409,8 @@ class Orchestrator:
             updated = Scene.model_validate(data)  # 重新驗證（enum / 長度 / 型別）
         except ValidationError as e:
             raise ValueError(f"invalid scene edit: {e}") from e
+        if updated.preferences is not None and updated.preferences.visual_style_id is not None:
+            get_style(updated.preferences.visual_style_id)  # 未知風格 → ValueError（fail closed，不等到生成才失敗）
         if updated.narrator_id is not None and updated.narrator_id not in project.characters:
             raise ValueError(f"unknown narrator_id '{updated.narrator_id}'; characters: {sorted(project.characters)}")
         updated.status = Status.DRAFT
@@ -426,9 +430,13 @@ class Orchestrator:
             Scene.model_validate({**cur, **js})
         except ValidationError as e:
             raise ValueError(f"invalid scene edit: {e}") from e
-        changed = sorted(k for k, v in js.items() if k in prefs.SCENE_FIELD_IMPACT and k != "characters" and v != cur.get(k))
+        changed = sorted(k for k, v in js.items() if k in prefs.SCENE_FIELD_IMPACT and k not in ("characters", "settings")
+                         and v != cur.get(k))
         if "characters" in js:
             changed += prefs.character_field_changes(cur.get("characters") or [], js["characters"])
+        if "settings" in js:  # D-065 逐欄比對（只改天氣 → 只列 settings.weather）
+            new = Scene.model_validate({**cur, "settings": js["settings"]}).settings
+            changed += prefs.settings_field_changes(cur.get("settings"), new.model_dump(mode="json", exclude_none=True) if new else None)
         # 被中文圖片描述蓋過的 legacy 欄位：改了也不影響圖片（prompt 來源仍是 zh_generated）
         zh_after = (js.get("image_prompt_zh", cur.get("image_prompt_zh")) or "").strip()
         en_after = (js.get("image_prompt_en", cur.get("image_prompt_en")) or "").strip()

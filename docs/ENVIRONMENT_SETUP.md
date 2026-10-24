@@ -16,13 +16,19 @@
 ## 1. 必要設定只有一個
 | 環境變數 | 何時需要 | 說明 |
 |---|---|---|
-| `SEE_MODELS_DIR` | 要用 SD1.5／Kokoro／checkpoint 時 | 模型資料夾（建議大容量磁碟，例 `E:\AI\models`）。換磁碟只改這一個。 |
+| `models_dir`（`see.local.json`）／`SEE_MODELS_DIR` | 要用 SD1.5／Kokoro／checkpoint 時 | 模型資料夾（建議大容量磁碟，例 `E:\AI\models`）。換磁碟只改這一個。 |
 | `SEE_IMAGE_PROVIDER` | 想用真 AI 生圖時設 `auto` | 預設 `placeholder`（production default，不改） |
 | `SEE_TTS_PROVIDER` | 通常不用設 | 預設 `auto`（Kokoro → espeak-ng → silent） |
 
-其他變數見 [`.env.example`](../.env.example)。程式不會自動讀 `.env`；Windows 用下列方式設定：
-- 只對目前視窗：PowerShell `$env:SEE_MODELS_DIR="E:\AI\models"`；cmd `set SEE_MODELS_DIR=E:\AI\models`
-- 永久（使用者自行決定）：`setx SEE_MODELS_DIR "E:\AI\models"`，然後**重開**終端機。doctor 只會提示，不會替你執行。
+**主要方式（D-065，客戶裁示方案 A）：專案本機設定檔 `see.local.json`**（在專案根目錄；已 `.gitignore`；GitHub 只放 [`see.local.example.json`](../see.local.example.json)）：
+```
+python -m see.app.cli config set models_dir "E:\AI\models"
+python -m see.app.cli config
+```
+- 優先序：**OS 環境變數 > see.local.json > 未設定（程式預設）**。`doctor` 與 `config` 都會顯示每個設定的來源（env／local_config／unset）。
+- 只收 machine-specific：`models_dir`、`workspace_dir`、`image_model_path`、`tts_model_path`、`tts_device`、`ffmpeg`、`ffprobe`、`subtitle_font`。secret／token／API key、專案偏好（風格、provider 選擇）一律拒收；格式錯或含不允許的 key → 整份不採用、doctor 顯示 ERROR。
+- 相對路徑以設定檔所在資料夾為基準；Windows 絕對路徑原樣保存。搬機後在新機重新 `config set` 即可（不需要也不應該複製舊機設定檔）。
+- 環境變數仍可用（例 PowerShell `$env:SEE_MODELS_DIR="E:\AI\models"`，會蓋過設定檔）；`setx` 不是主要方案。其他變數見 [`.env.example`](../.env.example)。
 
 ## 2. 安裝分層（每層可獨立判斷 readiness：`doctor` 最後的 Tiers）
 
@@ -37,6 +43,7 @@ cd AI-Studio
 py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+python -m see.app.cli config set models_dir "E:\AI\models"
 python -m see.app.cli doctor
 ```
 
@@ -70,8 +77,8 @@ CUDA 版 torch、diffusers、transformers、SD1.5 base（`%SEE_MODELS_DIR%\sd15`
 | `ip_adapter_plus_face_sd15` | `adapters/ip_adapter_plus_face_sd15/` | 檔案＋provenance（identity 路線 blocked，只做存在檢查） |
 
 ## 4. 哪些檔案不進 Git
-`workspace/`（專案、Reference Library 私人圖片、角色庫、evidence 圖、environment manifest、exports）、`/models/` 與所有權重（`*.safetensors`、`*.pth`…）、`.env`。
-GitHub 只保存：程式、規則、schema、文件、[`environment_manifest.example.json`](environment_manifest.example.json)（去識別化範例）、`.env.example`（只有鍵名）。
+`workspace/`（專案、Reference Library 私人圖片、角色庫、evidence 圖、environment manifest、exports）、`/models/` 與所有權重（`*.safetensors`、`*.pth`…）、`.env`、`see.local.json`（本機設定）。
+GitHub 只保存：程式、規則、schema、文件、[`environment_manifest.example.json`](environment_manifest.example.json)（去識別化範例）、`.env.example`（只有鍵名）、`see.local.example.json`（範例）。
 
 ## 5. Environment Manifest（machine-local）
 `python -m see.app.cli doctor --write-manifest` → `workspace/environment_manifest.json`：schema_version、generated_at、OS、Python、torch、CUDA、GPU、VRAM、ffmpeg、repo commit、models_dir（變數名＋本機路徑）、models（logical ID／相對路徑／狀態）、detected_model_ids、workspace_version、readiness、settings（portable／machine-specific）。

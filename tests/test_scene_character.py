@@ -27,7 +27,8 @@ def test_old_scene_loads_without_new_fields_and_prompt_is_unchanged():
     assert s.image_prompt_zh == "" and s.characters == []
     prompt, ev = scene_prompt(s)
     assert prompt == s.effective_image_prompt == "mountains, storybook"
-    assert ev == {"prompt_source": {"source": "legacy_en", "translator": None, "ai_translated": False}, "scene_characters": []}
+    assert ev["prompt_source"] == {"source": "legacy_en", "translator": None, "ai_translated": False} and ev["scene_characters"] == []
+    assert ev["scene_settings"]["source"] == "legacy_none"  # D-065
     s2 = Scene.model_validate({**LEGACY, "image_prompt_en": ""})
     assert base_prompt(s2)[1]["source"] == "legacy_image_prompt" and base_prompt(s2)[0] == "插畫風格，山"
 

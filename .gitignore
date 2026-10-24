@@ -1,4 +1,7 @@
 # --- Secrets (never commit) ---
+# 專案本機設定（D-065；machine-specific，只在本機）；GitHub 只放 see.local.example.json
+see.local.json
+see.local.json.tmp
 .env
 .env.*
 !.env.example

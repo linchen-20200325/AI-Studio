@@ -24,6 +24,12 @@ FFMPEG_OK = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is no
 requires_ffmpeg = pytest.mark.skipif(not FFMPEG_OK, reason="ffmpeg/ffprobe not installed")
 
 
+@pytest.fixture(autouse=True)
+def _isolate_local_config(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """D-065：開發者機器上的 see.local.json 不得影響測試 → 預設指向不存在的檔案（個別測試可再覆寫）。"""
+    monkeypatch.setenv("SEE_LOCAL_CONFIG", str(tmp_path_factory.mktemp("cfg") / "absent.local.json"))
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     s = Settings()

@@ -139,3 +139,29 @@ def test_scene_zh_description_and_character_override_via_api(client: TestClient,
     imp = client.post(f"/api/projects/{pid}/scenes/{sid}/impact",
                       json={"characters": [{"character_id": "hero", "expression": {"preset": "sad"}, "placement": "right"}]}).json()
     assert imp["changed_fields"] == ["characters.expression", "characters.placement"] and not imp["affects_narration_audio"]
+
+
+def test_scene_structured_settings_via_api(client: TestClient, settings: Settings):
+    """D-065：Scene 結構化設定（中文自訂＋固定選項）存檔、只重做 image＋clip；視覺風格走 Scene preferences。"""
+    from see.storage.project_store import ProjectStore
+
+    pid = client.post("/api/projects", json={"text": TINY_STORY}).json()["project_id"]
+    s = client.get(f"/api/projects/{pid}").json()["scenes"][0]
+    sid = s["scene_id"]
+    assert s["settings"] == {} and s["advanced"]["scene_settings"]["source"] == "legacy_none"
+    o = client.get("/api/options").json()
+    assert o["scene_settings"]["labels"]["weather"] == "天氣" and o["scene_settings"]["presets"]["weather"]["rain"] == "下雨"
+    assert o["styles"]["anime"] == "日系動畫"
+    store = ProjectStore(settings.workspace)
+    before = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    body = {"settings": {"background": {"custom_zh": "森林"}, "weather": {"preset": "rain"}}, "preferences": {"visual_style_id": "anime"}}
+    imp = client.post(f"/api/projects/{pid}/scenes/{sid}/impact", json=body).json()
+    assert imp["changed_fields"] == ["preferences", "settings.background", "settings.weather"] and not imp["affects_narration_audio"]
+    assert client.post(f"/api/projects/{pid}/scenes/{sid}", json=body).status_code == 202
+    s2 = client.get(f"/api/projects/{pid}").json()["scenes"][0]
+    assert s2["settings"]["background"] == {"preset": "custom", "custom_zh": "森林"} and s2["preferences"]["visual_style_id"] == "anime"
+    assert s2["advanced"]["scene_settings"]["applied_fields"] == ["background", "weather"]
+    after = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    assert after["image"] != before["image"] and after["narration"] == before["narration"] and after["subtitle"] == before["subtitle"]
+    bad = client.post(f"/api/projects/{pid}/scenes/{sid}/impact", json={"settings": {"weather": {"preset": "hail"}}})
+    assert bad.status_code == 422

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from see.core.prompting import _STYLE as LEGACY_STYLE_SUFFIX
@@ -48,6 +49,7 @@ def apply_style(prompt: str, negative: str, style: StyleProfile, provider_name: 
     """回傳 (prompt, negative, params)。default → 原樣返回（params 空），保證舊 fingerprint 不變。"""
     if style.is_default:
         return prompt, negative, {}
-    base = prompt.replace(LEGACY_STYLE_SUFFIX, "").strip(" ,")
+    # legacy 畫風詞可能在中間（D-063／D-065 會在其後接人物／場景詞）→ 移除後收掉留下的空項（", ,"）
+    base = re.sub(r"\s*,(\s*,)+", ",", prompt.replace(LEGACY_STYLE_SUFFIX, "")).strip(" ,")
     params: dict[str, Any] = {"style_id": style.style_id, **style.params, **style.provider_overrides.get(provider_name, {})}
     return _join(base, ", ".join(style.positive_terms)), _join(negative, ", ".join(style.negative_terms)), params

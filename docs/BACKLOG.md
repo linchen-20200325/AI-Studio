@@ -179,7 +179,7 @@
 |---|---|---|
 | User-defined Style／Mood Profile | 使用者新增／修改／儲存風格，不寫死；分層：Visual style（日系動漫／真人電影感／3D／繪本…）、Mood（恐怖／溫馨／陽光／悲傷／浪漫／懸疑…）、Cinematography、Lighting、Audio mood、Character appearance；可組合（例「日系動漫＋溫馨＋黃昏」）；自然語言 → AI 產生 Style Profile → 試生成 → 人工確認 → 存成「我的風格」 | NEXT（資料模型非 UI 可自主；自然語言需 DG-10 LLM） |
 | Mobile-first Preference Layer | 手機／Web：輸入故事 → 選角色 → 選風格／氛圍 → 選聲音試聽 → 調整 → 生成 → Preview → 局部修改 → Final；使用者不接觸 CMD／checkpoint／CUDA／模型路徑／環境變數 | NEEDS HUMAN DECISION（UI＝DG-19） |
-| Environment Bootstrap | 不得要求每次 `set SEE_MODELS_DIR=...`；persistent configuration（設定檔／啟動腳本）＋啟動自檢。實例：新 CMD 未設 SEE_MODELS_DIR → 既有 CyberRealistic 被誤判 provenance 不可用 | **DONE（D-064）**：`doctor`／`bootstrap`（唯讀）／`smoke`；錯誤訊息已區分「模型目錄未設定」與「未驗證」。**持久化設定機制 → NEEDS HUMAN DECISION**（專案本地設定檔 vs 使用者 `setx`）；Windows 真機 doctor 輸出待實跑 |
+| Environment Bootstrap | 不得要求每次 `set SEE_MODELS_DIR=...`；persistent configuration（設定檔／啟動腳本）＋啟動自檢。實例：新 CMD 未設 SEE_MODELS_DIR → 既有 CyberRealistic 被誤判 provenance 不可用 | **DONE（D-064）**：`doctor`／`bootstrap`（唯讀）／`smoke`；錯誤訊息已區分「模型目錄未設定」與「未驗證」。持久化設定機制 **DONE（D-065，客戶裁示方案 A：see.local.json）**；Windows 真機 doctor 輸出待實跑 |
 | Migration／Reinstall | 安裝／還原 → GPU／VRAM 檢測 → Python／runtime／CUDA 相容檢查 → dependency 檢查 → 模型存在性＋provenance 驗證（搬移後驗 sha256，不強迫重下載）→ 只補缺 → 還原使用者設定；備份／還原 Style／Character／Voice／Project settings | **第一階段 DONE（D-064）**：`env-export`、environment manifest、模型 logical ID＋相對路徑、workspace／reference／character 搬移相容、schema_version＋fail safe、backup／migration_plan（只列出）；流程見 docs/MIGRATION_REINSTALL.md。後續：真正的 restore 指令、設定還原 UI（DG-19） |
 
 ## 多角色／Identity（D-050；研究見 DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md）
@@ -216,13 +216,22 @@
 | Voice per-scene emotion（TTS 目前無情緒參數） | BLOCKED（provider 能力） |
 | GenerationSettings 品質／速度欄位 | NEEDS HUMAN DECISION（無規格值） |
 
+## Scene 結構化設定（D-065）
+| 項目 | 狀態 |
+|---|---|
+| SceneSettings 13 欄位（場景／構圖／視覺）＋中文 UI＋確定性對照＋no_prompt_effect＋局部重做 | DONE（D-065） |
+| 鏡頭運動（camera_motion）、視覺風格（Scene.preferences.visual_style_id）中文 UI | DONE（沿用既有單一來源） |
+| Project 層結構化場景預設（全片統一天氣／光線等） | NEEDS HUMAN DECISION（無規格；目前 Project 層只有 D-062 英文偏好） |
+| visual_description 與結構化欄位的關係（是否自動由欄位產生畫面說明） | NEEDS HUMAN DECISION（目前兩者並存，不自動改寫） |
+| 真中文翻譯（自訂中文對不到關鍵詞） | BLOCKED（DG-10 LLM） |
+
 ## 中文輸入／Scene Character Override 規格缺口（D-063；不自行決定）
 | 缺口 | 狀態 |
 |---|---|
 | 真中文 → 英文翻譯（目前 keyword_fallback_v1，會漏詞；evidence 已標 ai_translated=false） | BLOCKED（DG-10 LLM；不接 PAID） |
 | 人物中文原話 `raw_character_direction_zh` → 結構化欄位解析 | BLOCKED（需 LLM；解析結果需使用者確認） |
 | Advanced「模型提示詞（英文）」是否可覆寫、與中文描述的優先序（`advanced_override`） | NEEDS HUMAN DECISION（目前只讀） |
-| 視覺偏好（風格／氣氛／光線／色調／鏡頭）中文輸入：PreferenceTerms 目前只有英文 custom_en | NEEDS HUMAN DECISION（需 custom_zh＋translator 規格；場景卡暫不開放） |
+| 視覺偏好（風格／氣氛／光線／色調／鏡頭）中文輸入：PreferenceTerms 目前只有英文 custom_en | **Scene 層 DONE（D-065 Scene 結構化設定＋視覺風格下拉）**；Project 層中文偏好仍待裁示 |
 | 場景卡聲音區：角色聲音、聲音情緒 | BLOCKED（DG-14／DG-15；TTS 無情緒參數）；語速已開放 |
 | 場景卡新增／移除登場角色（`character_ids`）與角色顯示名來源 | NEEDS HUMAN DECISION（綁 Character Library ↔ Project 裁示） |
 | 多角色時演出詞綁到正確角色 | HARDWARE_UPGRADE_BLOCKED／模型限制（SD1.5；D-061） |

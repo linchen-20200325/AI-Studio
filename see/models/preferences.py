@@ -145,6 +145,17 @@ SCENE_FIELD_IMPACT.update({f"characters.{f}": _IMAGE_CHAIN for f in (
     "expression", "emotion", "action", "gaze", "pose", "outfit_override", "placement", "depth")})
 SCENE_FIELD_IMPACT.update({f"characters.{f}": () for f in ("display_name", "notes", "raw_character_direction_zh")})
 SCENE_FIELD_IMPACT["characters"] = _IMAGE_CHAIN  # 整批覆寫（無法逐欄比對時的保守範圍）
+# D-065 Scene 結構化設定：全部欄位都進 image prompt → image＋clip（＋lipsync）；鏡頭運動是既有 camera_motion（只影響 clip）
+SCENE_FIELD_IMPACT.update({f"settings.{f}": _IMAGE_CHAIN for f in (
+    "background", "environment", "location", "time_of_day", "weather", "composition", "framing", "shot_size", "camera_angle",
+    "focus_target", "lighting", "color_tone", "mood")})
+SCENE_FIELD_IMPACT["settings"] = _IMAGE_CHAIN
+
+
+def settings_field_changes(before: dict[str, Any] | None, after: dict[str, Any] | None) -> list[str]:
+    """Scene 結構化設定逐欄比對 → settings.<field>。"""
+    b, a = before or {}, after or {}
+    return sorted(f"settings.{k}" for k in set(b) | set(a) if (b.get(k) or a.get(k)) and b.get(k) != a.get(k))
 
 
 def character_field_changes(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> list[str]:

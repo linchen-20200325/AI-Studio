@@ -26,7 +26,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from see.core.config import Settings
+from see.core.config import (LOCAL_CONFIG_KEYS, Settings, local_config_path, read_local_config, repo_root as _cfg_repo_root,
+                             setting_source)
 
 MANIFEST_SCHEMA_VERSION = 1
 WORKSPACE_SCHEMA_VERSION = 1
@@ -97,9 +98,12 @@ MACHINE_SETTINGS = ("SEE_WORKSPACE", "SEE_MODELS_DIR", "SEE_IMAGE_MODEL_PATH", "
 ESSENTIAL_SETTINGS = ("SEE_MODELS_DIR", "SEE_IMAGE_PROVIDER", "SEE_TTS_PROVIDER")
 
 
-def settings_snapshot(env: dict[str, str] | None = None) -> dict[str, Any]:
-    """SEE_* 設定分兩類。值只記錄使用者實際設定的（未設定＝null，代表用程式預設）；secret 類名稱一律遮蔽。"""
+def settings_snapshot(env: dict[str, str] | None = None, local: dict[str, str] | None = None) -> dict[str, Any]:
+    """SEE_* 設定分兩類。值只記錄使用者實際設定的（未設定＝null，代表用程式預設）；secret 類名稱一律遮蔽。
+    machine-specific 依 D-065 優先序（env → see.local.json → unset），另附來源。"""
     env = dict(os.environ if env is None else env)
+    local = read_local_config()[0] if local is None else local
+    machine = {k: setting_source(k, env, local) for k in MACHINE_SETTINGS}
 
     def val(k: str) -> str | None:
         v = env.get(k)
@@ -110,7 +114,8 @@ def settings_snapshot(env: dict[str, str] | None = None) -> dict[str, Any]:
     others = sorted(k for k in env if k.startswith("SEE_") and k not in PORTABLE_SETTINGS + MACHINE_SETTINGS)
     return {
         "portable": {k: val(k) for k in PORTABLE_SETTINGS},
-        "machine_specific": {k: val(k) for k in MACHINE_SETTINGS},
+        "machine_specific": {k: v for k, (v, _) in machine.items()},
+        "machine_specific_sources": {k: src for k, (_, src) in machine.items()},
         "other_see_vars": {k: val(k) for k in others},
         "project_level_portable": "style_id／preferences／scene preferences／characters（voice、外觀）存在各 project.json，隨 workspace 搬移",
         "ui_settings": "Web UI 目前沒有持久化設定（無 localStorage／伺服器端 UI 設定）",
@@ -257,6 +262,27 @@ def check_gpu(info: dict[str, Any]) -> list[Check]:
                   f" · fp16={'yes' if d['fp16'] else 'no'} bf16={'yes' if d['bf16'] else 'no'}", data=info)]
 
 
+def check_config(env: dict[str, str] | None = None) -> list[Check]:
+    """D-065：專案本機設定檔狀態＋每個 machine-specific 設定的實際值與來源（env／local_config／unset）。"""
+    env = dict(os.environ if env is None else env)
+    p = local_config_path()
+    local, err = read_local_config(p)
+    shown = p.name if p.resolve().parent == _cfg_repo_root() else str(p)
+    if err:
+        out = [Check("config", "local_config", Status.ERROR, False, f"{shown} 格式錯誤，整份未採用：{err}",
+                     "修正或刪除後重建（python -m see.app.cli config set …）；只允許 machine-specific key", {"path": shown})]
+    elif p.is_file():
+        out = [Check("config", "local_config", Status.OK, False, f"{shown}（{len(local)} 項）", data={"path": shown})]
+    else:
+        out = [Check("config", "local_config", Status.UNAVAILABLE, False, f"{shown} 不存在（選用）",
+                     'python -m see.app.cli config set models_dir "E:\\AI\\models"', {"path": shown})]
+    for key, env_name in LOCAL_CONFIG_KEYS.items():
+        v, src = setting_source(env_name, env, local)
+        out.append(Check("config", key, Status.OK if v else Status.UNAVAILABLE, False,
+                         f"{v}（來源：{src}）" if v else "（來源：unset → 程式預設）", data={"env": env_name, "source": src, "value": v}))
+    return out
+
+
 def check_tools(settings: Settings) -> list[Check]:
     out = []
     for name, exe, required, hint in (
@@ -360,21 +386,23 @@ def check_models(settings: Settings, models: list[dict[str, Any]], env: dict[str
     env = dict(os.environ if env is None else env)
     root = settings.models_dir
     out = []
-    configured = bool(env.get("SEE_MODELS_DIR"))
+    _, source = setting_source("SEE_MODELS_DIR", env)
+    configured = source != "unset"
     if not configured:
-        out.append(Check("models", "models_dir", Status.UNAVAILABLE, False, f"SEE_MODELS_DIR 未設定（目前使用預設 {root}）",
-                         "設定 SEE_MODELS_DIR 指向大容量磁碟的模型資料夾（例 E:\\AI\\models）；doctor 不會替你寫永久環境變數"))
+        out.append(Check("models", "models_dir", Status.UNAVAILABLE, False, f"模型目錄未設定（來源：unset；目前使用預設 {root}）",
+                         'python -m see.app.cli config set models_dir "E:\\AI\\models"（寫入專案本機設定檔 see.local.json；不改系統）',
+                         {"source": source}))
     elif not root.is_dir():
-        out.append(Check("models", "models_dir", Status.ERROR, False, f"SEE_MODELS_DIR={root} 不存在",
-                         "確認磁碟代號／路徑；搬機後只需改 SEE_MODELS_DIR"))
+        out.append(Check("models", "models_dir", Status.ERROR, False, f"{root} 不存在（來源：{source}）",
+                         "確認磁碟代號／路徑；搬機後只需改 models_dir（config set）或 SEE_MODELS_DIR", {"source": source}))
     elif not os.access(root, os.R_OK):
         out.append(Check("models", "models_dir", Status.ERROR, False, f"{root} 無讀取權限"))
     else:
         free = _disk_free_mb(root)
         sub = sorted(p.name for p in root.iterdir() if p.is_dir())
-        out.append(Check("models", "models_dir", Status.OK, False, f"{root} · free {free} MB · 子目錄 {sub}",
+        out.append(Check("models", "models_dir", Status.OK, False, f"{root}（來源：{source}）· free {free} MB · 子目錄 {sub}",
                          "" if (root / "checkpoints").is_dir() else "尚無 checkpoints/ 子目錄（只用 base SD1.5 時可忽略）",
-                         {"free_mb": free, "subdirs": sub}))
+                         {"free_mb": free, "subdirs": sub, "source": source}))
     for m in models:
         out.append(Check("models", m["model_id"], Status(m["status"]), False, m["detail"], data=m))
     return out
@@ -550,7 +578,7 @@ def run_doctor(settings: Settings | None = None, hash_files: bool = False, env: 
     settings = settings or Settings()
     gpu = gpu_info()
     models = model_inventory(settings, hash_files=hash_files)
-    checks = [*check_system(settings), *check_python(), *check_gpu(gpu), *check_tools(settings),
+    checks = [*check_system(settings), *check_config(env), *check_python(), *check_gpu(gpu), *check_tools(settings),
               *check_models(settings, models, env), *check_workspace(settings)]
     rd = readiness(checks)
     return DoctorReport(checks, gpu, models, rd, tiers(checks, rd), settings_snapshot(env))
@@ -572,6 +600,7 @@ def build_manifest(report: DoctorReport, settings: Settings) -> dict[str, Any]:
         "ffmpeg": st["tools.ffmpeg"].detail if st["tools.ffmpeg"].status == Status.OK else None,
         "repo": {"commit": st["system.repo"].data.get("commit"), "branch": st["system.repo"].data.get("branch")},
         "models_dir": {"variable": "SEE_MODELS_DIR", "configured": bool(report.settings["machine_specific"].get("SEE_MODELS_DIR")),
+                       "source": report.settings["machine_specific_sources"].get("SEE_MODELS_DIR"),
                        "local_path": str(settings.models_dir)},
         "models": [{k: m.get(k) for k in ("model_id", "kind", "root", "rel_path", "status", "expected_sha256", "bytes")}
                    for m in report.models],
@@ -620,8 +649,8 @@ def bootstrap_plan(report: DoctorReport, settings: Settings) -> dict[str, list[d
         if st[f"tools.{t}"].status != Status.OK:
             user.append({"item": f"安裝 {t}", "detail": st[f"tools.{t}"].hint, "command": ""})
     if st["models.models_dir"].status != Status.OK:
-        user.append({"item": "設定 SEE_MODELS_DIR", "detail": st["models.models_dir"].hint,
-                     "command": 'PowerShell（本次視窗）：$env:SEE_MODELS_DIR="E:\\AI\\models"'})
+        user.append({"item": "設定模型目錄（寫入專案本機設定檔；D-065）", "detail": "優先序：環境變數 > see.local.json > 預設",
+                     "command": 'python -m see.app.cli config set models_dir "E:\\AI\\models"'})
     missing_models = {m["model_id"] for m in report.models if m["status"] != Status.OK.value}
     if missing_models:
         user.append({"item": "放回模型（從舊機／備份複製到 SEE_MODELS_DIR）", "detail": ", ".join(sorted(missing_models)),

@@ -16,7 +16,10 @@ from pydantic import BaseModel, Field
 from see.core.config import Settings
 from see.core.errors import InvalidTransition, SeeError
 from see.models import JobKind, OutputSpec, Project
+from see.models.preferences import PreferenceSet
 from see.models.scene_character import LABELS_ZH, SceneCharacter
+from see.models import scene_settings as ss
+from see.models.scene_settings import SceneSettings
 from see.pipeline.orchestrator import Orchestrator
 from see.providers.registry import ProviderRegistry
 from see.render.renderer import Renderer
@@ -43,6 +46,8 @@ class SceneEditIn(BaseModel):
     image_prompt_en: str | None = Field(default=None, max_length=2000, description="internal／legacy 英文 prompt（一般 UI 不編輯；D-063）")
     image_prompt_zh: str | None = Field(default=None, max_length=2000, description="中文圖片描述（一般 UI「圖片描述」）；空字串＝清除")
     characters: list[SceneCharacter] | None = Field(default=None, max_length=10, description="本幕人物演出覆寫（D-063）；[]＝清除")
+    settings: SceneSettings | None = Field(default=None, description="D-065 Scene 結構化設定；{}＝清除")
+    preferences: PreferenceSet | None = Field(default=None, description="Scene 偏好 override（UI 用於視覺風格 visual_style_id）；{}＝清除")
     visual_description: str | None = Field(default=None, min_length=1, max_length=1000)
     video_prompt: str | None = Field(default=None, max_length=1000)
     duration: float | None = Field(default=None, gt=0, le=60, description="規劃秒數；實際仍以旁白長度校正（下限）")
@@ -144,6 +149,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 "narration_meta": _narration_meta(project.project_id, s.scene_id),
                 "character_ids": s.character_ids, "lipsync": s.lipsync, "speech_speed": s.speech_speed,
                 "image_prompt_zh": s.image_prompt_zh,
+                "settings": s.settings.model_dump(mode="json", exclude_none=True) if s.settings else {},
                 "characters": [c.model_dump(mode="json") for c in s.characters],
                 "character_slots": [{"character_id": cid, "label": _char_label(project, s, cid, i)} for i, cid in enumerate(s.character_ids)],
                 "advanced": _prompt_view(project, s),
@@ -174,7 +180,7 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             req, ctx = orch.image_request(project, scene)
         except SeeError as e:
             return {"model_prompt_en": None, "error": str(e)}
-        return {"model_prompt_en": req.prompt, "prompt_source": ctx.get("prompt_source"),
+        return {"model_prompt_en": req.prompt, "prompt_source": ctx.get("prompt_source"), "scene_settings": ctx.get("scene_settings"),
                 "scene_characters": ctx.get("scene_characters"), "legacy_image_prompt_en": scene.image_prompt_en}
 
     def _image_meta(pid: str, sid: str) -> dict[str, Any]:
@@ -227,6 +233,8 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
 
     @app.get("/api/options")
     def options() -> dict[str, Any]:
+        from see.core.styles import BUILTIN_STYLES
+
         return {"aspects": ["16:9", "9:16", "1:1"], "speech_speeds": [{"label": "慢", "value": 0.85}, {"label": "正常", "value": 1.0}, {"label": "快", "value": 1.2}],
                 "camera_motions": ["static", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"],
                 "transitions": ["cut", "fade", "dissolve", "wipe_left", "slide_left", "fade_black"],
@@ -235,7 +243,11 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                                          "pan_right": "向右平移", "pan_up": "向上平移", "pan_down": "向下平移"},
                 "transition_labels": {"cut": "直接切換", "fade": "淡入淡出", "dissolve": "交叉溶接", "wipe_left": "向左擦除",
                                       "slide_left": "向左滑入", "fade_black": "黑場淡出"},
-                "scene_character": LABELS_ZH}
+                "scene_character": LABELS_ZH,
+                # D-065 Scene 結構化設定：欄位中文名、分組、各欄 preset（key→中文）；空＝只收中文自訂
+                "scene_settings": {"labels": ss.LABELS_ZH, "groups": ss.GROUPS,
+                                   "presets": {f: {k: v[0] for k, v in p.items()} for f, p in ss.PRESETS.items()}},
+                "styles": {k: v.display_name for k, v in BUILTIN_STYLES.items()}}
 
     @app.get("/api/projects")
     def list_projects() -> list[dict[str, Any]]:

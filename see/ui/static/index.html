@@ -181,7 +181,7 @@ function render(p) {
   }
   // scenes（只在內容變動時重繪，避免打斷使用者輸入）
   $("scenesCard").hidden = !p.scenes.length;
-  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta, s.image_prompt_en, s.visual_description, s.video_prompt, s.image_prompt_zh, s.characters, s.speech_speed, s.advanced])) + busy;
+  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta, s.image_prompt_en, s.visual_description, s.video_prompt, s.image_prompt_zh, s.characters, s.speech_speed, s.advanced, s.settings, s.preferences])) + busy;
   sceneOrig = Object.fromEntries(p.scenes.map(s => [s.scene_id, s]));
   if (sk !== lastScenesKey) { lastScenesKey = sk; $("scenes").innerHTML = p.scenes.map(s => sceneHtml(s, busy)).join(""); }
   // approve
@@ -256,11 +256,31 @@ function readChars(sid) {
     return o;
   }).filter(o => Object.keys(o).some(x => !["character_id", "display_name"].includes(x) && o[x]));
 }
+// D-065 Scene 結構化設定：preset 下拉（不指定／固定選項／自訂）＋自訂中文；無 preset 的欄位只收中文
+function setFieldHtml(s, f, dis) {
+  const cfg = opts.scene_settings, cur = (s.settings || {})[f] || {}, pres = cfg.presets[f] || {}, id = `ss-${f}-${s.scene_id}`;
+  if (!Object.keys(pres).length)
+    return `<div><label>${cfg.labels[f]}</label><input id="${id}-custom" placeholder="中文描述（選填）" value="${esc(cur.custom_zh || "")}" ${dis}></div>`;
+  return `<div><label>${cfg.labels[f]}</label><select id="${id}" ${dis}><option value="">不指定</option>${Object.entries(pres).map(([k, t]) => `<option value="${k}" ${cur.preset === k ? "selected" : ""}>${t}</option>`).join("")}<option value="custom" ${cur.preset === "custom" ? "selected" : ""}>自訂</option></select>
+    <input id="${id}-custom" placeholder="自訂（中文）" value="${esc(cur.custom_zh || "")}" ${dis}></div>`;
+}
+function setGroupHtml(s, group, dis) { return `<div class="row">${opts.scene_settings.groups[group].map(f => setFieldHtml(s, f, dis)).join("")}</div>`; }
+function readSettings(sid) {
+  const out = {};
+  for (const f of Object.keys(opts.scene_settings.labels)) {
+    const sel = $(`ss-${f}-${sid}`), preset = sel ? sel.value : "", custom = ($(`ss-${f}-${sid}-custom`)?.value || "").trim();
+    if (!preset && !custom) continue;
+    // 選了固定選項又填自訂 → 照送，由後端拒絕（fail closed），不靜默丟掉使用者輸入
+    out[f] = !preset || preset === "custom" ? { preset: "custom", custom_zh: custom } : (custom ? { preset, custom_zh: custom } : { preset });
+  }
+  return out;
+}
 function advHtml(s) {
   const a = s.advanced || {}, src = a.prompt_source || {};
   const SRC = {zh_generated: "由中文圖片描述轉換", legacy_en: "舊版英文描述（尚未填中文圖片描述）", legacy_image_prompt: "舊版提示詞"};
   const note = src.source === "zh_generated" ? `（目前不是 AI 翻譯：${esc(src.translator)} 關鍵詞對照，可能遺漏細節${src.generic_fallback ? "；沒有對到任何關鍵詞，已改用通用描述" : ""}）` : "";
   return `<details class="adv"><summary>進階（技術資訊，只讀）</summary>
+    <div>場景設定生效：${esc((a.scene_settings?.applied_fields || []).map(f => opts.scene_settings.labels[f]).join("、") || "—")}${(a.scene_settings?.no_prompt_effect || []).length ? `；未生效（對不到關鍵詞）：${esc(a.scene_settings.no_prompt_effect.map(f => opts.scene_settings.labels[f]).join("、"))}` : ""}</div>
     <div>模型提示詞（英文）來源：${esc(SRC[src.source] || src.source || "—")}${note}</div>
     <pre>${esc(a.model_prompt_en ?? a.error ?? "")}</pre>
     <div>${imageMetaHtml(s.image_meta)}${narrationMetaHtml(s.narration_meta)}</div>
@@ -283,10 +303,17 @@ function sceneHtml(s, busy) {
         <label>場景視覺描述</label><input id="vd-${s.scene_id}" value="${esc(s.visual_description ?? "")}" ${dis}>
         <label>影片動態描述（只影響此景影片片段）</label><input id="vp-${s.scene_id}" value="${esc(s.video_prompt ?? "")}" ${dis}>
       </div>
+      <div class="sec"><b>場景設定</b>
+        <div class="meta">全部選填；不指定就不加入。修改會重新生成此景圖片與影片片段，旁白與字幕不受影響。自訂中文目前以關鍵詞對照轉換（非 AI 翻譯），對不到的會在「進階」標示未生效。</div>
+        ${setGroupHtml(s, "場景", dis)}${setGroupHtml(s, "構圖", dis)}
+      </div>
       <div class="sec"><b>人物</b>${slots.length ? slots.map(slot => charHtml(s, slot, busy)).join("") : `<div class="meta">此景沒有登場角色。</div>`}</div>
+      <div class="sec"><b>鏡頭</b>
+        <div class="row"><div><label>鏡頭運動（只影響影片片段）</label>${sel("cam", opts.camera_motions, s.camera_motion, opts.camera_motion_labels)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition, opts.transition_labels)}</div></div>
+      </div>
       <div class="sec"><b>視覺</b>
-        <div class="row"><div><label>鏡頭</label>${sel("cam", opts.camera_motions, s.camera_motion, opts.camera_motion_labels)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition, opts.transition_labels)}</div></div>
-        <div class="meta">風格、氣氛、光線、色調尚未開放在場景卡設定（中文輸入與轉換規則待定）。</div>
+        ${setGroupHtml(s, "視覺", dis)}
+        <div class="row"><div><label>視覺風格</label><select id="vs-${s.scene_id}" ${dis}><option value="">沿用專案風格</option>${Object.entries(opts.styles).map(([k, t]) => `<option value="${k}" ${(s.preferences || {}).visual_style_id === k ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></div></div>
       </div>
       <div class="sec"><b>聲音</b>
         <div class="row"><div><label>語速</label><select id="spd-${s.scene_id}" ${dis}>${SPEEDS.map(([v, t]) => `<option value="${v}" ${v === spd || (v && Number(v) === s.speech_speed) ? "selected" : ""} ${!v && spd ? "disabled" : ""}>${t}</option>`).join("")}</select></div></div>
@@ -310,7 +337,13 @@ async function saveScene(sid) {
                  camera_motion: $(`cam-${sid}`).value, transition: $(`tr-${sid}`).value,
                  image_prompt_zh: changed("ipz", "image_prompt_zh"),  // 只送有改的欄位；空字串＝清除中文圖片描述
                  visual_description: vd || null, video_prompt: changed("vp", "video_prompt"),
-                 speech_speed: spd ? parseFloat(spd) : null, characters: readChars(sid) };
+                 speech_speed: spd ? parseFloat(spd) : null, characters: readChars(sid), settings: readSettings(sid) };
+  const vs = $(`vs-${sid}`).value, curVs = (o.preferences || {}).visual_style_id || "";
+  if (vs !== curVs) {  // 只改視覺風格；保留此景其他偏好欄位
+    const pf = { ...(o.preferences || {}) };
+    if (vs) pf.visual_style_id = vs; else delete pf.visual_style_id;
+    body.preferences = pf;
+  }
   try {
     const imp = await api(`/api/projects/${current}/scenes/${sid}/impact`, "POST", body);
     if (imp.assets.length && !confirm(`重新生成影響\n將重新生成：${assetList(imp.assets)}\n不受影響：${assetList(imp.unaffected)}\n確定儲存？`)) return;

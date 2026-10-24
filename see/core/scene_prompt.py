@@ -20,6 +20,7 @@ from typing import Any, Protocol
 from see.core.prompting import build_image_prompt_en, zh_to_en_keywords
 from see.models.scene import Scene
 from see.models.scene_character import DIRECTION_FIELDS, PROMPT_EN, SceneCharacter
+from see.models.scene_settings import FOCUS_PREFIX, OVERRIDES_PREFERENCE, PRESETS, PROMPT_ORDER, SceneSettings
 
 PROMPT_SOURCES = ("zh_generated", "legacy_en", "legacy_image_prompt", "advanced_override")
 
@@ -107,9 +108,37 @@ def character_terms(sc: SceneCharacter, translator: PromptTranslator = DEFAULT_T
                    "raw_direction_saved": bool(sc.raw_character_direction_zh.strip()), "raw_direction_applied": False}
 
 
+def settings_terms(settings: SceneSettings | None, translator: PromptTranslator = DEFAULT_TRANSLATOR) -> tuple[list[str], dict[str, Any]]:
+    """D-065 Scene 結構化設定 → 英文詞（固定順序 PROMPT_ORDER）。preset 逐字直譯；自訂中文經 translator，轉不到 → no_prompt_effect。"""
+    if settings is None:
+        return [], {"source": "legacy_none", "applied_fields": [], "no_prompt_effect": [], "overrides_preference_dims": []}
+    terms: list[str] = []
+    applied: list[str] = []
+    no_effect: list[str] = []
+    for f in PROMPT_ORDER:
+        t = getattr(settings, f)
+        if t is None:
+            continue
+        if t.preset == "custom":
+            en = translator.translate_terms(t.custom_zh).text_en
+        else:
+            en = PRESETS[f][t.preset][1]
+        if not en:
+            no_effect.append(f)
+            continue
+        terms.append(f"{FOCUS_PREFIX} {en}" if f == "focus_target" else en)
+        applied.append(f)
+    overrides = sorted({OVERRIDES_PREFERENCE[f] for f in applied if f in OVERRIDES_PREFERENCE})
+    return terms, {"source": "structured", "applied_fields": applied, "no_prompt_effect": no_effect,
+                   "overrides_preference_dims": overrides, "translator": translator.name, "ai_translated": translator.ai_translated}
+
+
 def scene_prompt(scene: Scene, translator: PromptTranslator = DEFAULT_TRANSLATOR) -> tuple[str, dict[str, Any]]:
-    """base prompt ＋ 各角色演出詞（角色間以 '; ' 分隔）。SD1.5 不保證把詞綁到正確角色（DG-24／D-061 限制）。"""
+    """base prompt ＋ Scene 結構化設定詞 ＋ 各角色演出詞（角色間以 '; ' 分隔）。SD1.5 不保證把詞綁到正確角色（DG-24／D-061 限制）。"""
     prompt, source = base_prompt(scene, translator)
+    s_terms, s_ev = settings_terms(scene.settings, translator)
+    if s_terms:
+        prompt = ", ".join([prompt, *s_terms])
     evidence = []
     clauses = []
     for sc in scene.characters:
@@ -119,4 +148,4 @@ def scene_prompt(scene: Scene, translator: PromptTranslator = DEFAULT_TRANSLATOR
             clauses.append(", ".join(terms))
     if clauses:
         prompt = ", ".join([prompt, "; ".join(clauses)])
-    return prompt, {"prompt_source": source, "scene_characters": evidence}
+    return prompt, {"prompt_source": source, "scene_settings": s_ev, "scene_characters": evidence}

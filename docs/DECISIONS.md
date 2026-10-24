@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-065 | 客戶裁示方案 A：machine-specific 設定用專案本機設定檔 `see.local.json`（env > local config > unset；不進 Git；doctor 顯示來源）；Scene 結構化設定（13 欄位，中文、None 不補值、確定性對照、局部重做）；鏡頭運動沿用 camera_motion、視覺風格沿用 Scene.preferences | 有效 | 可逆 |
 | D-064 | Environment Bootstrap／Migration Foundation：`doctor`（系統／Python／GPU／工具／模型／workspace、Ready／Not ready、Tier A–D）、`bootstrap`（預設唯讀；`--apply-safe` 只建空資料夾）、machine-local environment manifest＋去識別化範例、`env-export`（可恢復資訊，不含模型／私人圖片）、`smoke`；模型 logical ID＋相對 SEE_MODELS_DIR；workspace／Character Store／Reference sidecar schema_version＋fail safe；workspace 搬移後產物沿用 | 有效 | 可逆 |
 | D-063 | 客戶裁示：**一般 UI 全中文輸入**（模型語言屬內部實作）；Scene `image_prompt_zh`（圖片描述）→ prompt builder → 英文 prompt（無 AI 翻譯時標示來源，不假裝）；`image_prompt_en` 改為 internal／legacy；**Scene Character Override**（表情／情緒／動作／視線／姿勢／本幕服裝／位置／景深＋中文原話）與角色永久設定分離；Scene 卡改中文分區＋人物子卡 | 有效 | 可逆 |
 | D-062 | 不需 GPU 升級的安全工作：Preference Layer 非 UI 核心（PreferenceSet、Project→Scene override、再生成範圍、偏好快照、舊資料相容）；Web UI Scene 卡圖片描述／畫面說明／影片動態欄位＋影響範圍提示；Reference Library service、Character CRUD（無 hard delete）、Confirmation payload | 有效 | 可逆 |
@@ -529,3 +530,18 @@
   - Schema 版本：`workspace_version.json`（缺＝legacy v1）、`CharacterRecord.schema_version`（缺＝v1）、`ReferenceAsset.schema_version`（缺＝v1）；比程式新 → fail safe（不改寫）。`CharacterStore.backup()`、`migration_plan()`（只列出）。
   - style-test checkpoint 錯誤訊息區分「模型目錄未設定（SEE_MODELS_DIR 未設定）」與「provenance 未驗證」（BACKLOG 實例）。
 - **未做／待裁示**：持久化設定檔（讓使用者不必每個視窗設定 SEE_MODELS_DIR）的機制——專案本地設定檔 vs 使用者自行 `setx` → NEEDS HUMAN DECISION（本輪只提示、不寫永久環境變數）。GPU 真機 doctor 輸出待 Windows 實跑。
+
+## D-065 2026-10-24 本機設定檔（方案 A）＋ Scene 結構化設定資料模型
+- **Part A 客戶裁示（方案 A）**：SEE_MODELS_DIR 等 machine-specific 設定以專案本機設定檔保存，不以 setx 為主要方案。
+  - `see/core/config.py`：`see.local.json`（repo 根；`.gitignore`；`SEE_LOCAL_CONFIG` 可指定路徑）；`see.local.example.json` 為範例。schema_version 1。key：models_dir、workspace_dir、image_model_path、tts_model_path、tts_device、ffmpeg、ffprobe、subtitle_font（對應既有 SEE_* 環境變數）。
+  - 優先序 OS env → local config → unset（程式預設，與以前相同）；`setting_source()` 回傳來源。不允許的 key（secret、provider、偏好）或未來版本 → 整份不採用（fail closed），doctor 顯示 ERROR（非 REQUIRED）。相對路徑以設定檔資料夾為基準；Windows 絕對路徑原樣保存。
+  - CLI `config [show|set|unset] <key> <value>`（只有 set／unset 寫檔，原子寫入）；doctor 新增 `config` 群組（設定檔狀態＋每個 key 的值與來源）；models_dir 檢查、bootstrap 計畫、style-test「模型目錄未設定」訊息改依來源判斷並建議 `config set`。
+  - 測試隔離：`tests/conftest.py` autouse 把 SEE_LOCAL_CONFIG 指向不存在的檔案（開發機的 see.local.json 不影響測試）。
+- **Part B Scene 結構化設定**：`see/models/scene_settings.py` `SceneSettings`（background、environment、location、time_of_day、weather、composition、framing、shot_size、camera_angle、focus_target、lighting、color_tone、mood）；每欄 `SceneTerm`（preset 或「自訂」中文；background／location／focus_target 只收中文）；None＝未指定、空物件正規化為 None；`extra="forbid"`（角色欄位、camera_movement 不得混入）。`Scene.settings`。
+  - **SSOT**：鏡頭運動＝既有 `Scene.camera_motion`（只影響 clip；實測只重做 clip）；視覺風格＝既有 `Scene.preferences.visual_style_id`（update_scene 改為立即驗證未知風格 → fail closed）。
+  - prompt builder（`scene_prompt.settings_terms`）：base → Scene 設定詞（固定順序）→ 角色演出詞；preset 逐字直譯、自訂中文經 keyword_fallback_v1，轉不到 → `no_prompt_effect`；evidence `scene_settings`（source structured／legacy_none、applied_fields、no_prompt_effect、overrides_preference_dims、translator、ai_translated=false）。
+  - 層級：Scene structured > Scene.preferences > Project.preferences：lighting／color_tone／mood／composition 取代同名偏好維度；shot_size／camera_angle 取代偏好的 camera 維度（evidence 記錄）。
+  - 再生成：`settings.<欄位>` → image＋clip（＋lipsync）；旁白／字幕不受影響（ffmpeg 端到端測試）；edit_impact 逐欄比對、先做 schema 驗證。
+  - UI：場景卡新增「場景設定」（場景、構圖兩組）、「鏡頭」（鏡頭運動＋轉場）、「視覺」（光線、色調、氣氛＋視覺風格下拉）；全中文、技術名只在進階；進階顯示生效／未生效欄位。Playwright 實測無 JS 錯誤。
+  - 修正：非 default 風格移除 legacy 畫風詞時，若其後接人物／場景詞會留下空項（", ,"）→ `apply_style` 收掉空項（只影響原本就含空項的 prompt；舊 default 專案不受影響）。
+- 規格外未做：Project 層結構化場景預設、framing／composition 的產品字句精修、DG-19 最終 UI。無新依賴、無 LLM、production default 不變。

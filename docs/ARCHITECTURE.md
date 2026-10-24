@@ -421,3 +421,21 @@ smoke ──▶ 暫存 workspace：mock→placeholder→silent→Ken Burns→ffm
 - 設定分類：portable（provider 選擇、預設 voice、專案內偏好）vs machine-specific（workspace、models_dir、模型路徑、TTS 裝置、ffmpeg、字型、CUDA／GPU）。持久化設定機制待裁示。
 - 流程與指令：docs/ENVIRONMENT_SETUP.md、docs/MIGRATION_REINSTALL.md。
 
+### 19.1 專案本機設定檔（D-065）
+`see.local.json`（repo 根、`.gitignore`）→ `Settings` 的 machine-specific 欄位（models_dir、workspace、模型路徑、tts_device、ffmpeg／ffprobe、subtitle_font）。優先序 env > local config > 程式預設；`see.core.config.setting_source()`；CLI `config`；doctor `config` 群組顯示來源。只收 machine-specific key、不收 secret／偏好；壞檔整份不採用。
+
+## 20. Scene 結構化設定（D-065；PROJECT_RULES §20）
+```
+Scene.settings（SceneSettings：13 欄，preset 或中文自訂；None＝未指定）
+   └─ scene_prompt.settings_terms：preset 逐字直譯／自訂中文 keyword_fallback → 英文詞（轉不到 → no_prompt_effect）
+base prompt（zh／legacy）→ ＋Scene 設定詞 → ＋角色演出詞 → apply_style → ＋偏好詞（被 Scene 結構化欄位取代的維度除外）→ ImageRequest
+```
+| 一般 UI | 欄位 | 單一來源 | 重做 |
+|---|---|---|---|
+| 背景／環境／地點／時間／天氣 | settings.background…weather | Scene.settings | image＋clip |
+| 構圖／取景／景別／鏡頭角度／焦點 | settings.composition…focus_target | Scene.settings | image＋clip |
+| 光線／色調／氣氛 | settings.lighting／color_tone／mood | Scene.settings（取代同名偏好維度） | image＋clip |
+| 視覺風格 | preferences.visual_style_id | Scene.preferences | image＋clip |
+| 鏡頭運動 | camera_motion | Scene（既有） | 只有 clip |
+- 與 Scene Character Override（§13.2）、CharacterDefinition（§17）分離；舊 Scene 無 settings → prompt／fingerprint 不變，evidence `scene_settings.source=legacy_none`。
+

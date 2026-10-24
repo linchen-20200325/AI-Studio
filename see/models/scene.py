@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from see.models.enums import CameraMotion, Status, Transition
 from see.models.preferences import PreferenceSet
 from see.models.scene_character import SceneCharacter
+from see.models.scene_settings import SceneSettings
 
 
 class Dialogue(BaseModel):
@@ -64,6 +65,17 @@ class Scene(SceneDraft):
                                  description="D-063 一般使用者的中文圖片描述（UI「圖片描述」）；非空時由 prompt builder 轉成模型英文 prompt")
     characters: list[SceneCharacter] = Field(default_factory=list, max_length=10,
                                              description="D-063 本幕人物演出覆寫（表情／動作／姿勢／服裝…）；不改角色永久設定")
+
+    settings: SceneSettings | None = Field(default=None, description="D-065 Scene 結構化設定（背景／天氣／光線／構圖…）；None＝未指定")
+
+    @model_validator(mode="after")
+    def _empty_overrides_are_none(self) -> "Scene":
+        # 空的結構化設定／偏好＝未指定（不留下空物件，舊資料的 JSON 與 fingerprint 不變）
+        if self.settings is not None and self.settings.is_empty:
+            self.settings = None
+        if self.preferences is not None and self.preferences.is_empty:
+            self.preferences = None
+        return self
 
     @model_validator(mode="after")
     def _characters_in_scene(self) -> "Scene":

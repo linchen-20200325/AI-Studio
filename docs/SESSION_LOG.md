@@ -481,3 +481,9 @@
 - Result: see/core/environment.py；CLI doctor／bootstrap／env-export／smoke；schema_version（workspace／character／reference）；workspace 搬移相容；docs/ENVIRONMENT_SETUP.md、docs/MIGRATION_REINSTALL.md、environment_manifest.example.json；PROJECT_RULES §19、ARCHITECTURE §19
 - Tests: 見 commit（tests/test_environment.py）
 - Next: Scene 結構化設定資料模型（可自主）；Windows 可選跑 doctor 回報真機輸出
+
+## 2026-10-24 — Batch 54
+- Batch: Batch 54 — D-065 本機設定檔（方案 A）＋ Scene 結構化設定資料模型
+- Result: config.py local config＋`config` CLI＋doctor 來源；scene_settings.py＋prompt builder＋再生成範圍＋場景卡中文欄位；apply_style 空項修正；PROJECT_RULES §19／§20、ARCHITECTURE §19.1／§20
+- Tests: 見 commit（test_local_config.py、test_scene_settings.py、Playwright）
+- Next: Project.characters → CharacterDefinition 可逆 migration 設計文件（只設計，可自主）

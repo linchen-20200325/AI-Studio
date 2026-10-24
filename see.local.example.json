@@ -1,0 +1,12 @@
+{
+  "_comment": "D-065 專案本機設定範例。複製為 see.local.json（已 gitignore）或用 `python -m see.app.cli config set models_dir <路徑>` 建立。只放 machine-specific 設定；不可放 secret／token／API key／專案偏好。優先序：OS 環境變數 > see.local.json > 程式預設。相對路徑以本檔所在資料夾為基準。",
+  "schema_version": 1,
+  "models_dir": "<你的模型資料夾，例：E:/AI/models>",
+  "workspace_dir": null,
+  "image_model_path": null,
+  "tts_model_path": null,
+  "tts_device": null,
+  "ffmpeg": null,
+  "ffprobe": null,
+  "subtitle_font": null
+}
