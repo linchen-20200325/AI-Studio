@@ -16,6 +16,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator
 
 from see.models.project import CharacterAppearance, CharacterTraits
+from see.models.scene_character import Depth, Horizontal  # noqa: F401（D-063 移至 scene_character；此處 re-export 相容）
 
 ID_PATTERN = r"^[a-z][a-z0-9_]{1,63}$"  # 產品建議 char_001、char_002…；A／B 只作測試槽位或 UI 暫時排序
 
@@ -149,18 +150,6 @@ class CharacterDefinition(BaseModel):
                                  hair_style=self.hair_style, hair_color=self.hair_color, facial_features=features,
                                  distinctive_marks=list(self.distinctive_marks))
         return CharacterAppearance(outfit_en=self.outfit, traits=traits)
-
-
-class Horizontal(str, Enum):
-    left = "left"
-    center = "center"
-    right = "right"
-
-
-class Depth(str, Enum):
-    foreground = "foreground"
-    midground = "midground"
-    background = "background"
 
 
 class ScenePlacement(BaseModel):

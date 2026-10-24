@@ -19,6 +19,7 @@ from see.core.config import Settings
 from see.core.errors import InvalidTransition, PaidProviderNotApproved, ProviderError, RenderError, SchemaViolation
 from see.core.hashing import file_sha256, fingerprint, short_id
 from see.core.image_qa import image_defect, image_stats
+from see.core.scene_prompt import scene_prompt as build_scene_prompt
 from see.core.subtitles import build_cues, to_srt
 from see.models.approval import Approval
 from see.models.enums import ApprovalKind, CostTier, JobKind, JobStatus, Status
@@ -239,7 +240,8 @@ class Orchestrator:
             style = get_style(resolved["visual_style_id"])
         except ValueError as e:
             raise SchemaViolation(str(e)) from e
-        prompt, negative, style_params = apply_style(scene.effective_image_prompt, scene.negative_prompt, style, self.p.image.info.name)
+        base, prompt_ev = build_scene_prompt(scene)  # D-063：中文圖片描述／人物演出 → 英文 prompt（舊 Scene＝legacy_en，不變）
+        prompt, negative, style_params = apply_style(base, scene.negative_prompt, style, self.p.image.info.name)
         pref_terms = prefs.prompt_terms(resolved)  # D-062：偏好詞（只有使用者 custom_en）；沒設定 → prompt 與 fingerprint 不變
         if pref_terms:
             prompt = ", ".join([prompt, *pref_terms])
@@ -264,7 +266,8 @@ class Orchestrator:
         req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
                            seed=scene.index, caption=scene.visual_description, params=params)
         return req, {"style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs],
-                     "preference_snapshot": prefs.snapshot(resolved)}  # D-062 provenance（只進 evidence，不進 fingerprint）
+                     "preference_snapshot": prefs.snapshot(resolved),  # D-062 provenance（只進 evidence，不進 fingerprint）
+                     **prompt_ev}  # D-063 prompt_source／scene_characters（只進 evidence）
 
     def _lipsync_stage(self, project: Project, scene: Scene, manifest, clip_fp: str, clip_path: Path, wav_path: Path,
                        img_path: Path, report: SceneBuildReport) -> dict[str, object]:
@@ -394,7 +397,7 @@ class Orchestrator:
         scene = project.scene(scene_id)
         allowed = {"narration", "subtitle_override", "image_prompt", "image_prompt_en", "negative_prompt", "visual_description", "video_prompt",
                    "camera_motion", "transition", "voice", "duration", "narrator_id", "speech_speed", "audio_cues",
-                   "character_ids", "lipsync", "preferences"}
+                   "character_ids", "lipsync", "preferences", "image_prompt_zh", "characters"}
         bad = set(fields) - allowed
         if bad:
             raise ValueError(f"cannot edit fields {sorted(bad)}; allowed: {sorted(allowed)}")
@@ -416,9 +419,22 @@ class Orchestrator:
         """D-062：預估這次修改會重做哪些產物（不寫入）。只算「值真的改變」的欄位；其餘產物沿用快取。"""
         scene = project.scene(scene_id)
         cur = scene.model_dump(mode="json")
-        changed = sorted(k for k, v in fields.items() if v is not None and k in prefs.SCENE_FIELD_IMPACT
-                         and (v.model_dump(mode="json") if hasattr(v, "model_dump") else v) != cur.get(k))
-        return {"scene_id": scene_id, "changed_fields": changed, **prefs.regeneration_scope(changed)}
+        js = {k: (v.model_dump(mode="json") if hasattr(v, "model_dump") else v) for k, v in fields.items() if v is not None}
+        if "characters" in js:  # 角色子欄位逐一比對（display_name／notes／raw direction 不影響產物）
+            js["characters"] = [c.model_dump(mode="json") if hasattr(c, "model_dump") else c for c in js["characters"]]
+        try:  # 與 update_scene 同一套驗證：不合法的修改不給影響範圍（fail closed）
+            Scene.model_validate({**cur, **js})
+        except ValidationError as e:
+            raise ValueError(f"invalid scene edit: {e}") from e
+        changed = sorted(k for k, v in js.items() if k in prefs.SCENE_FIELD_IMPACT and k != "characters" and v != cur.get(k))
+        if "characters" in js:
+            changed += prefs.character_field_changes(cur.get("characters") or [], js["characters"])
+        # 被中文圖片描述蓋過的 legacy 欄位：改了也不影響圖片（prompt 來源仍是 zh_generated）
+        zh_after = (js.get("image_prompt_zh", cur.get("image_prompt_zh")) or "").strip()
+        en_after = (js.get("image_prompt_en", cur.get("image_prompt_en")) or "").strip()
+        shadowed = sorted(k for k in changed if (k == "image_prompt_en" and zh_after) or (k == "image_prompt" and (zh_after or en_after)))
+        effective = [k for k in changed if k not in shadowed]
+        return {"scene_id": scene_id, "changed_fields": changed, "shadowed_fields": shadowed, **prefs.regeneration_scope(effective)}
 
     def set_preferences(self, project: Project, preferences: PreferenceSet | None, scene_id: str | None = None) -> dict[str, object]:
         """D-062：設定 Project default（scene_id=None）或 Scene override 偏好。只有 resolved 偏好真的改變的景回到 DRAFT；

@@ -215,14 +215,35 @@ workspace/identity_refs/<people|animals|characters|backgrounds>/   Reference Lib
 | 生成前選風格 | `set_style`（`Project.style_id`，6 內建 Style Profile） | 使用者自訂／微調 Style Profile（目前只能選內建） |
 | 生成後改風格再生成 | `set_style` 使全景回 DRAFT；image fingerprint 含 style terms → 下次 build 只重做 image 與下游 | per-scene override：**DONE（D-062）** `Scene.preferences.visual_style_id` |
 | 人物外觀 | `set_character_appearance`（CharacterAppearance 錨點＋結構化 refs） | 外觀變更 → 自動標記「有此角色的景」需重生（目前靠 fingerprint 自然失效，需驗證並加報表） |
-| 單景調整 | `update_scene`／`regenerate_scene` | 構圖／鏡頭欄位（目前混在 visual_description／image_prompt_en） |
+| 單景調整 | `update_scene`／`regenerate_scene`；**D-063** 中文圖片描述 `image_prompt_zh`＋人物演出覆寫 `Scene.characters`（§13.1／§13.2） | 構圖／鏡頭欄位（目前混在 visual_description） |
 | 色彩／構圖／鏡頭／氛圍／光線 | **DONE（D-062，非 UI）**：`see/models/preferences.py` PreferenceSet（mood／lighting／color_tone／camera／composition＝preset 標籤＋custom_en 詞；generation.gen_policy） | preset → prompt 詞對照無規格（目前只有 custom_en 進 prompt；preset-only 標 `no_prompt_effect`）；UI＝DG-19 |
-| 自然語言偏好 | 無 | 需真 LLM（DG-10）把描述轉成結構化設定；轉換結果需人工確認 |
+| 自然語言偏好 | D-063：人物中文原話 `raw_character_direction_zh` 只保存 | 需真 LLM（DG-10）把描述轉成結構化設定；轉換結果需人工確認 |
 | 換模型不重建偏好 | 偏好層與 provider 已分離（style terms 由 `apply_style` 附加；checkpoint 參數在 `CheckpointSpec`） | ModelRouter（style.family → preset）未實作 |
 | 偏好版本／比較 | **DONE（D-062）**：image evidence（manifest meta）記 `preference_snapshot`（resolved＋每欄來源＋sha256＋no_prompt_effect） | 偏好歷史版本列表／回復 UI |
 | 再生成範圍 | **DONE（D-062）**：`regeneration_scope()`／`Orchestrator.edit_impact()`／`set_preferences()` 依 fingerprint 相依推導（偏好／圖片描述 → image＋clip；旁白 → narration＋subtitle＋clip；轉場 → 只重組 render）；只有 resolved 偏好真的改變的景回 DRAFT | — |
 
 **D-062 解析順序**：Project default（`Project.style_id`＋`Project.preferences`）→ Scene override（`Scene.preferences`，逐欄位）。Character default（`CharacterDefinition.default_style_profile／default_mood_profile`）**尚未參與**：多角色同景以誰為準沒有規格 → NEEDS HUMAN DECISION。Project 層 visual style 唯一來源是 `style_id`（不接受 `preferences.visual_style_id`，避免雙來源）。偏好 `extra="forbid"`：身份資料（gender、character_id、reference）不得混入。舊資料沒有這些欄位 → None → request／fingerprint 完全不變。
+
+### 13.1 中文輸入 → 模型 prompt（D-063；PROJECT_RULES §18）
+```
+一般 UI（繁中）                            內部（Advanced／evidence 才看得到）
+Scene.image_prompt_zh「圖片描述」 ──▶ PromptTranslator ──▶ 英文 base prompt ┐
+Scene.characters（表情／動作…）    ──▶ preset 直譯／自訂中文經 translator ──┼──▶ apply_style ＋ 偏好詞 ＋ 角色錨點 ──▶ ImageRequest
+（無中文描述）image_prompt_en（legacy）／image_prompt ─────────────────────┘
+```
+- `see/core/scene_prompt.py`：`PromptTranslator`（contract）；`KeywordFallbackTranslator`（預設，確定性關鍵詞，非 AI）；未來 LLM translator 實作同介面即可替換（DG-10）。
+- prompt 來源優先序：`image_prompt_zh`（zh_generated）→ `image_prompt_en`（legacy_en）→ `image_prompt`（legacy_image_prompt）。`advanced_override` 保留、未實作。
+- evidence（image manifest meta，不進 fingerprint）：`prompt_source`、`scene_characters`（applied_fields／no_prompt_effect／raw_direction_saved／raw_direction_applied=false）。
+- 舊 Scene（無 zh、無 characters）→ prompt 與 fingerprint 完全不變。
+
+### 13.2 Scene Character Override（D-063；PROJECT_RULES §17）
+| 永久（CharacterDefinition／CharacterAppearance） | 每幕（`Scene.characters: list[SceneCharacter]`） |
+|---|---|
+| 臉型、五官、髮型、髮色、基本服裝、固定特徵、default voice、default style／mood | 表情 expression、情緒 emotion、動作 action、視線 gaze（＋看誰）、姿勢 pose、本幕服裝 outfit_override、畫面位置 placement（左／中／右）、景深 depth（前／中／後）、notes、中文原話 raw_character_direction_zh |
+- 結構化欄位：preset 或「自訂」中文；只在使用者明確選擇／填寫時存在。中文原話只保存（無可靠解析前不拆欄位、不進 prompt）。
+- 驗證（fail closed）：覆寫角色 ⊆ `Scene.character_ids`、不重複、視線對象在本幕、`extra="forbid"`。
+- 再生成：`characters.<欄位>` → image＋clip（＋lipsync）；display_name／notes／raw direction → 無。旁白／字幕不受影響。
+- 與 §17 `ScenePlacement`（CharacterDefinition 路線，Layered Scene 用）並存：兩者合併需 Character Library 與 Project 綁定裁示後再做（不做不可逆遷移）。
 
 ## 14. Character Identity／Reference Image（D-046；規格入口，未實作）
 目標流程：參考照片 →（本機）擷取／維持辨識特徵 → 選風格 → 角色預覽 → 人工確認 → 跨場景保持同一角色。

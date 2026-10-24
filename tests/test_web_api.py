@@ -18,7 +18,7 @@ def client(settings: Settings) -> TestClient:
 
 
 def test_index_and_health(client: TestClient):
-    assert "建立 Preview" in client.get("/").text
+    assert "建立預覽影片" in client.get("/").text  # D-063 一般 UI 全中文
     h = client.get("/api/health").json()
     assert h["ok"] and h["ffmpeg"]
 
@@ -107,3 +107,35 @@ def test_scene_image_prompt_en_edit_rebuilds_only_visual_assets(client: TestClie
     # video_prompt 只影響 clip；visual_description 不可為空
     assert client.post(f"/api/projects/{pid}/scenes/{other}/impact", json={"video_prompt": "slow push in"}).json()["assets"][:1] == ["clip"]
     assert client.post(f"/api/projects/{pid}/scenes/{sid}", json={"visual_description": ""}).status_code == 422
+
+
+def test_scene_zh_description_and_character_override_via_api(client: TestClient, settings: Settings):
+    """D-063：一般 UI 只送中文圖片描述＋本幕人物覆寫；英文 prompt 只在 advanced（只讀）；只重做 image＋clip。"""
+    from see.storage.project_store import ProjectStore
+
+    pid = client.post("/api/projects", json={"text": TINY_STORY}).json()["project_id"]
+    s = client.get(f"/api/projects/{pid}").json()["scenes"][0]
+    sid = s["scene_id"]
+    assert s["image_prompt_zh"] == "" and s["characters"] == [] and s["advanced"]["prompt_source"]["source"] == "legacy_en"
+    opts = client.get("/api/options").json()
+    assert opts["scene_character"]["expression"]["smile"] == "微笑" and opts["camera_motion_labels"]["static"] == "固定"
+    store = ProjectStore(settings.workspace)
+    before = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    r = client.post(f"/api/projects/{pid}/scenes/{sid}", json={"image_prompt_zh": "森林裡的小貓，夜晚"})
+    assert r.status_code == 202 and r.json()["impact"]["changed_fields"] == ["image_prompt_zh"]
+    s2 = client.get(f"/api/projects/{pid}").json()["scenes"][0]
+    adv = s2["advanced"]
+    assert s2["image_prompt_zh"] == "森林裡的小貓，夜晚" and s2["image_prompt_en"] == s["image_prompt_en"]  # legacy 欄位保留不刪
+    assert adv["prompt_source"]["source"] == "zh_generated" and adv["prompt_source"]["ai_translated"] is False
+    assert "a forest" in adv["model_prompt_en"] and "a kitten" in adv["model_prompt_en"]
+    after = {k: v.fingerprint for k, v in store.load_manifest(pid, sid).entries.items()}
+    assert after["image"] != before["image"] and after["narration"] == before["narration"] and after["subtitle"] == before["subtitle"]
+    # 人物覆寫：不在本幕的角色 → 422（fail closed）；角色加入本幕後可設定，標籤不顯示內部 id
+    bad = client.post(f"/api/projects/{pid}/scenes/{sid}/impact", json={"characters": [{"character_id": "ghost"}]})
+    assert bad.status_code == 422
+    client.post(f"/api/projects/{pid}/scenes/{sid}", json={"character_ids": ["hero"]})
+    s3 = client.get(f"/api/projects/{pid}").json()["scenes"][0]
+    assert s3["character_slots"] == [{"character_id": "hero", "label": "角色 1"}]
+    imp = client.post(f"/api/projects/{pid}/scenes/{sid}/impact",
+                      json={"characters": [{"character_id": "hero", "expression": {"preset": "sad"}, "placement": "right"}]}).json()
+    assert imp["changed_fields"] == ["characters.expression", "characters.placement"] and not imp["affects_narration_audio"]

@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-063 | 客戶裁示：**一般 UI 全中文輸入**（模型語言屬內部實作）；Scene `image_prompt_zh`（圖片描述）→ prompt builder → 英文 prompt（無 AI 翻譯時標示來源，不假裝）；`image_prompt_en` 改為 internal／legacy；**Scene Character Override**（表情／情緒／動作／視線／姿勢／本幕服裝／位置／景深＋中文原話）與角色永久設定分離；Scene 卡改中文分區＋人物子卡 | 有效 | 可逆 |
 | D-062 | 不需 GPU 升級的安全工作：Preference Layer 非 UI 核心（PreferenceSet、Project→Scene override、再生成範圍、偏好快照、舊資料相容）；Web UI Scene 卡圖片描述／畫面說明／影片動態欄位＋影響範圍提示；Reference Library service、Character CRUD（無 hard delete）、Confirmation payload | 有效 | 可逆 |
 | D-061 | 客戶裁示：**Identity Preservation／Character LoRA＝HARDWARE_UPGRADE_BLOCKED**（GTX 1650 4 GB）；D-060 reference crop rerun → DEFERRED（superseded by hardware block，歷史保留）；專案繼續，改做不需 GPU 升級的安全工作；Hardware Upgrade Resume Gate | 有效 | 可逆（硬體升級後重評） |
 | D-060 | **DG-28 裁示 B**：零下載 reference crop 對照（只允許一次 controlled rerun；唯一變因＝男性 reference 改臉部大近照）；FaceID-Plus-V2 維持 research only、未核准下載；style-test identity 檔名加 reference sha（換 reference 不覆寫舊 evidence） | 有效（待真機） | 可逆 |
@@ -500,3 +501,16 @@
 - **Batch B Web UI Scene 編輯**：Scene 卡新增「圖片描述（英文）」、「畫面說明」、「影片動態描述」欄位；只送有改的欄位；儲存前呼叫 `POST /api/projects/{pid}/scenes/{sid}/impact` 顯示「將重做／不受影響」並請使用者確認；HTTP API 補 `visual_description`、`video_prompt`、`duration`；回應帶 impact。改圖片描述只重做 image＋clip，旁白／字幕沿用快取（測試以 manifest fingerprint 證明；Playwright 實測欄位渲染、無 JS 錯誤）。Scene voice／duration 的 UI 未加（voice 走既有角色／narrator 流程；duration 會被旁白長度校正，UI 語意待 DG-19）。
 - **Batch C Character／Reference 後端**：ReferenceLibrary service＋`ref` CLI；CharacterStore（create／read／update／archive／restore，無 hard delete）；`confirmation_payload()`（含 gate、`can_generate`）。全部 metadata 衝突 fail closed；私人圖片不進 Git。
 - 未做：新模型、新依賴、production default 變更、DG-19 UI 視覺／流程、DG-14、資料遷移。
+
+## D-063 2026-10-24 客戶裁示：一般 UI 全中文輸入；Scene 中文圖片描述；Scene Character Override
+- **裁示**：一般使用者 UX 以中文為主；模型語言屬內部實作細節（PROJECT_RULES §18）。人物身份永久設定與每 Scene 的表情／動作／姿勢／服裝覆寫分離（PROJECT_RULES §17）。本輪先做 UI／資料模型，Environment Bootstrap 延後。
+- **image_prompt_zh**：`Scene.image_prompt_zh`（一般 UI「圖片描述」）。`see/core/scene_prompt.py`：`PromptTranslator` contract（name／ai_translated／translate_scene／translate_terms）；預設 `KeywordFallbackTranslator`（既有 Mock 關鍵詞對照，`keyword_fallback_v1`，**不是 AI 翻譯**、會漏詞）。evidence `prompt_source`：source（zh_generated／legacy_en／legacy_image_prompt）、translator、ai_translated=false、matched_terms、generic_fallback、shadowed。
+- **image_prompt_en**：保留不刪，改為 internal／legacy 來源：無中文描述時沿用（舊 Scene prompt／fingerprint 完全不變）；有中文描述時被蓋過（edit_impact 回報 `shadowed_fields`，不誤報重做）。一般 UI 不再編輯；Advanced「模型提示詞（英文）」**只讀**。`advanced_override` 僅保留名稱：覆寫優先序無規格 → NEEDS HUMAN DECISION，不自行新增語意。HTTP API 仍接受 `image_prompt_en`（CLI／相容）。
+- **Scene Character Override**：`see/models/scene_character.py` `SceneCharacter`（character_id、display_name〔只顯示〕、expression、emotion、action、gaze〔＋target_character_id〕、pose、outfit_override〔本幕〕、placement 左／中／右、depth 前／中／後景、notes、raw_character_direction_zh）。preset＋「自訂」中文（custom 必填文字、preset 與自訂衝突 → 拒絕）；`extra="forbid"`（不得混入 gender 等身份欄位）；覆寫只能指向本幕 `character_ids`、不得重複、視線對象須在本幕 → fail closed。expression 與 emotion 是不同欄位。
+  - prompt：preset → 逐字直譯英文詞（固定順序：位置→景深→表情→情緒→動作→視線→姿勢→服裝）；自訂中文／本幕服裝經 translator，轉不到 → evidence `no_prompt_effect`；display_name／notes／raw direction 不進 prompt（`raw_direction_applied=false`）。不寫回 CharacterDefinition／CharacterVoice／Script（測試證明）。SD1.5 不保證把詞綁到正確角色（DG-24／D-061 限制）。
+  - `Horizontal`／`Depth` enum 移到 scene_character（character_definition re-export，相容）。
+- **再生成範圍**：`SCENE_FIELD_IMPACT` 加 `image_prompt_zh` 與 `characters.<子欄位>`：表情／情緒／動作／視線／姿勢／服裝／位置／景深 → image＋clip（＋lipsync）；display_name／notes／raw direction → 不重做。`character_field_changes()` 逐角色逐欄比對；`edit_impact` 先用與 `update_scene` 相同的 schema 驗證（不合法 → 422）。旁白／字幕不受影響（ffmpeg 端到端測試證明）。
+- **UI**：Scene 卡改「場景內容（劇情文字／字幕／圖片描述／場景視覺描述／影片動態描述）」「人物（每角色子卡）」「視覺（鏡頭／轉場中文標籤）」「聲音（語速）」「進階（只讀：模型提示詞英文＋來源、生成器資訊、場景代號）」；狀態、工作、確認對話框、按鈕全中文；角色名稱不顯示內部 id（本幕顯示名→角色顯示名→劇本角色名→「角色 N」）。Playwright 實測：中文欄位存檔、人物子卡存檔、無 JS 錯誤、一般區無技術名稱。
+- **未做／規格缺口（BACKLOG）**：真 AI 翻譯（DG-10）、中文原話 → 結構化解析、Advanced 英文覆寫語意、視覺偏好中文輸入（現行 custom_en 是英文，與 §18 衝突）、角色聲音／聲音情緒（DG-14／DG-15）、場景卡新增／移除登場角色。
+- 未新增依賴、未改 production default、未接 LLM、未下載模型、未做 Identity／LoRA、未做 DG-19 最終 UI。
+

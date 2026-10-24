@@ -136,7 +136,29 @@ SCENE_FIELD_IMPACT: dict[str, tuple[str, ...]] = {
     "subtitle_override": ("subtitle", "clip", "lipsync"),
     "video_prompt": ("clip", "lipsync"), "camera_motion": ("clip", "lipsync"), "duration": ("clip", "lipsync"),
     "lipsync": ("lipsync",), "transition": ("render",), "audio_cues": ("render",),
+    "image_prompt_zh": ("image", "clip", "lipsync"),  # D-063 中文圖片描述（prompt builder → image）
 }
+# D-063 Scene Character Override 子欄位（key 形如 characters.expression）：演出詞進 image prompt；
+# display_name／notes／raw_character_direction_zh 目前不進任何產物 → 空範圍（改了不重做）。
+_IMAGE_CHAIN = ("image", "clip", "lipsync")
+SCENE_FIELD_IMPACT.update({f"characters.{f}": _IMAGE_CHAIN for f in (
+    "expression", "emotion", "action", "gaze", "pose", "outfit_override", "placement", "depth")})
+SCENE_FIELD_IMPACT.update({f"characters.{f}": () for f in ("display_name", "notes", "raw_character_direction_zh")})
+SCENE_FIELD_IMPACT["characters"] = _IMAGE_CHAIN  # 整批覆寫（無法逐欄比對時的保守範圍）
+
+
+def character_field_changes(before: list[dict[str, Any]], after: list[dict[str, Any]]) -> list[str]:
+    """逐角色比對 Scene Character Override → 改變的子欄位 key（characters.<field>）。新增／移除角色＝該角色有值的子欄位。"""
+    b = {c["character_id"]: c for c in before}
+    a = {c["character_id"]: c for c in after}
+    out: set[str] = set()
+    for cid in set(a) | set(b):
+        x, y = b.get(cid, {}), a.get(cid, {})
+        for k in (set(x) | set(y)) - {"character_id"}:
+            if x.get(k) or y.get(k):
+                if x.get(k) != y.get(k):
+                    out.add(f"characters.{k}")
+    return sorted(out)
 ASSET_ORDER = ("image", "narration", "subtitle", "clip", "lipsync", "render")
 
 

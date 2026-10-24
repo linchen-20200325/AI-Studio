@@ -37,6 +37,12 @@
   .scene .actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
   .scene .actions button { padding:8px 12px; font-size:14px; }
   .muted { color:var(--muted); font-size:13px; }
+  .sec { margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); }
+  .sec > b { font-size:13px; color:var(--fg); }
+  .char { background:#12151b; border:1px solid var(--line); border-radius:8px; padding:8px; margin-top:6px; }
+  .char .row > * { flex:1 1 110px; }
+  details.adv { margin-top:8px; font-size:13px; color:var(--muted); }
+  details.adv pre { white-space:pre-wrap; word-break:break-word; background:#0c0e12; padding:6px; border-radius:6px; }
   .err { color:var(--bad); white-space:pre-wrap; font-size:13px; }
   .cost { font-size:22px; font-weight:700; }
   .list a { color:var(--accent); text-decoration:none; }
@@ -44,7 +50,7 @@
 </style>
 </head>
 <body>
-<header><h1>see <small>· 中文故事 → Preview 影片</small></h1><small id="health">…</small></header>
+<header><h1>see <small>· 中文故事 → 預覽影片</small></h1><small id="health">…</small></header>
 <main>
   <section class="card" id="create">
     <h2>1. 貼入中文故事</h2>
@@ -54,7 +60,7 @@
       <div><label>比例</label><select id="aspect"><option value="16:9">16:9 橫式</option><option value="9:16">9:16 直式</option><option value="1:1">1:1 方形</option></select></div>
       <div><label>旁白語速（影響長度）</label><select id="speed"><option value="0.85">慢</option><option value="1.0" selected>正常</option><option value="1.2">快</option></select></div>
     </div>
-    <div class="row" style="margin-top:12px"><button id="btnCreate">建立 Preview</button></div>
+    <div class="row" style="margin-top:12px"><button id="btnCreate">建立預覽影片</button></div>
     <div id="createErr" class="err"></div>
   </section>
 
@@ -72,23 +78,23 @@
   </section>
 
   <section class="card" id="previewCard" hidden>
-    <h2>3. Preview</h2>
+    <h2>3. 預覽影片</h2>
     <video id="video" controls playsinline preload="metadata"></video>
     <div class="muted" id="previewNote" style="margin-top:6px"></div>
   </section>
 
   <section class="card" id="scenesCard" hidden>
-    <h2>4. 各 Scene（修改旁白／字幕／鏡頭後只重做該景）</h2>
+    <h2>4. 各場景（修改後只重新生成受影響的部分）</h2>
     <div id="scenes"></div>
   </section>
 
   <section class="card" id="approveCard" hidden>
     <h2>5. 核准</h2>
-    <div class="muted">PREVIEW ≠ FINAL。確認內容無誤後核准，再產生 Final。任何修改都會使核准失效。</div>
+    <div class="muted">預覽不等於正式版。確認內容無誤後核准，再產生正式影片。任何修改都會使核准失效。</div>
     <div class="row" style="margin-top:10px">
       <input id="approver" placeholder="核准者名稱" value="human">
-      <button id="btnApprove" class="ok">核准此 Preview</button>
-      <button id="btnFinal" class="secondary">產生 Final</button>
+      <button id="btnApprove" class="ok">核准此預覽</button>
+      <button id="btnFinal" class="secondary">產生正式影片</button>
     </div>
     <div id="finalLink" class="muted" style="margin-top:8px"></div>
   </section>
@@ -113,10 +119,16 @@ const api = async (path, method = "GET", body) => {
   if (!r.ok) throw new Error(data.detail || r.statusText);
   return data;
 };
+// D-063：一般 UI 只顯示中文；技術值只在「進階」
+const ST = {DRAFT: "草稿", PREVIEW: "預覽", APPROVED: "已核准", FINAL: "完成"};
+const stLabel = (v) => ST[v] || v;
+const JOB = {idle: "待命", queued: "排隊中", running: "處理中", done: "完成", failed: "失敗"};
+const ASSET = {image: "圖片", narration: "旁白配音", subtitle: "字幕", clip: "影片片段", lipsync: "嘴型同步", render: "重新組裝預覽影片"};
+const assetList = (xs) => xs.map(x => ASSET[x] || x).join("、") || "（無）";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 async function init() {
-  try { const h = await api("/api/health"); $("health").textContent = `ffmpeg ${h.ffmpeg ? "✓" : "✗"} · TTS ${h.tts} · worker ${h.worker.worker_id}`; } catch (e) { $("health").textContent = "API 離線"; }
+  try { const h = await api("/api/health"); $("health").textContent = h.ffmpeg ? "系統就緒" : "缺少影片工具"; $("health").title = `ffmpeg ${h.ffmpeg ? "✓" : "✗"} · TTS ${h.tts} · worker ${h.worker.worker_id}`; } catch (e) { $("health").textContent = "服務離線"; }
   opts = await api("/api/options");
   const hash = location.hash.replace("#", "");
   if (hash) open(hash);
@@ -125,7 +137,7 @@ async function init() {
 
 async function refreshList() {
   const items = await api("/api/projects");
-  $("list").innerHTML = items.length ? items.map(p => `<div><a href="#${p.project_id}" onclick="open('${p.project_id}');return false;">${esc(p.title)}</a> <span class="pill ${p.status}">${p.status}</span> <span class="muted">${p.scenes} 景 · ${new Date(p.created_at).toLocaleString()}</span></div>`).join("") : "尚無專案";
+  $("list").innerHTML = items.length ? items.map(p => `<div><a href="#${p.project_id}" onclick="open('${p.project_id}');return false;">${esc(p.title)}</a> <span class="pill ${p.status}">${stLabel(p.status)}</span> <span class="muted">${p.scenes} 景 · ${new Date(p.created_at).toLocaleString()}</span></div>`).join("") : "尚無專案";
 }
 
 $("btnCreate").onclick = async () => {
@@ -155,9 +167,9 @@ let lastPreview = null, lastScenesKey = null;
 function render(p) {
   $("projectCard").hidden = false; $("costCard").hidden = false;
   $("pTitle").textContent = p.title; $("pid").textContent = p.project_id; $("pAspect").textContent = p.aspect;
-  $("pStatus").textContent = p.status; $("pStatus").className = `pill ${p.status}`;
+  $("pStatus").textContent = stLabel(p.status); $("pStatus").className = `pill ${p.status}`;
   const j = p.job; const busy = j.state === "running" || j.state === "queued";
-  $("jobPill").textContent = j.state === "idle" ? "待命" : `${j.state}${j.stage ? " · " + j.stage : ""}`; $("jobPill").className = `pill ${j.state}`;
+  $("jobPill").textContent = JOB[j.state] || j.state; $("jobPill").title = j.stage || ""; $("jobPill").className = `pill ${j.state}`;
   $("spin").hidden = !busy; $("jobMsg").textContent = busy ? j.message : "";
   $("jobErr").textContent = j.state === "failed" ? (j.error + "\n" + (j.message || "")) : "";
   // preview
@@ -165,21 +177,22 @@ function render(p) {
   if (p.preview_url) {
     const key = p.preview_url + "?v=" + (p.render_jobs.at(-1)?.finished_at || "");
     if (key !== lastPreview) { $("video").src = key; lastPreview = key; }
-    $("previewNote").textContent = busy ? "正在重新產生，播放的是上一版 preview。" : `${p.scenes.length} 景 · 可直接播放 / 下載`;
+    $("previewNote").textContent = busy ? "正在重新生成，播放的是上一版預覽影片。" : `${p.scenes.length} 景 · 可直接播放 / 下載`;
   }
   // scenes（只在內容變動時重繪，避免打斷使用者輸入）
   $("scenesCard").hidden = !p.scenes.length;
-  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta, s.image_prompt_en, s.visual_description, s.video_prompt])) + busy;
+  const sk = JSON.stringify(p.scenes.map(s => [s.scene_id, s.status, s.narration, s.subtitle_override, s.camera_motion, s.transition, s.image_url, s.image_meta, s.narration_meta, s.image_prompt_en, s.visual_description, s.video_prompt, s.image_prompt_zh, s.characters, s.speech_speed, s.advanced])) + busy;
   sceneOrig = Object.fromEntries(p.scenes.map(s => [s.scene_id, s]));
   if (sk !== lastScenesKey) { lastScenesKey = sk; $("scenes").innerHTML = p.scenes.map(s => sceneHtml(s, busy)).join(""); }
   // approve
   $("approveCard").hidden = !p.preview_url;
   $("btnApprove").disabled = busy || p.status !== "PREVIEW";
   $("btnFinal").disabled = busy || p.status !== "APPROVED";
-  $("finalLink").innerHTML = p.final_url ? `Final：<a href="${p.final_url}" style="color:var(--accent)">下載 final.mp4</a>` : (p.status === "FINAL" ? "" : "尚未產生 Final");
+  $("finalLink").innerHTML = p.final_url ? `正式影片：<a href="${p.final_url}" style="color:var(--accent)">下載</a>` : (p.status === "FINAL" ? "" : "尚未產生正式影片");
   // cost
   $("cost").textContent = p.cost.display;
-  $("costDetail").textContent = `預算 ${p.cost.budget_display} · ` + Object.entries(p.cost.providers).map(([k, v]) => `${k}: ${v.name} (${v.cost_tier})`).join(" · ");
+  $("costDetail").textContent = `預算 ${p.cost.budget_display}`;
+  $("costDetail").title = Object.entries(p.cost.providers).map(([k, v]) => `${k}: ${v.name} (${v.cost_tier})`).join(" · ");
 }
 
 function imageMetaHtml(m) {
@@ -204,22 +217,85 @@ function narrationMetaHtml(m) {
   return `<div class="meta" title="${esc(JSON.stringify(m))}">聲：${esc(parts.join(" · "))}</div>`;
 }
 
+const CH_FIELDS = [["expression", "表情"], ["emotion", "情緒"], ["action", "動作"], ["gaze", "視線"], ["pose", "姿勢"]];
+const SPEEDS = [["", "沿用角色／專案"], ["0.85", "慢"], ["1.0", "正常"], ["1.2", "快"]];
+function charHtml(s, slot, busy) {
+  const c = (s.characters || []).find(x => x.character_id === slot.character_id) || {};
+  const k = `${s.scene_id}-${slot.character_id}`, dis = busy ? "disabled" : "", L = opts.scene_character;
+  const pick = (f, label) => {
+    const cur = c[f] || {}, list = Object.entries(L[f]);
+    const others = s.character_slots.filter(o => o.character_id !== slot.character_id);
+    const target = f === "gaze" ? `<select id="cf-gaze-target-${k}" ${dis}><option value="">（看誰：不指定）</option>${others.map(o => `<option value="${esc(o.character_id)}" ${cur.target_character_id === o.character_id ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select>` : "";
+    return `<div><label>${label}</label><select id="cf-${f}-${k}" ${dis}><option value="">不指定</option>${list.map(([v, t]) => `<option value="${v}" ${cur.preset === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+      <input id="cf-${f}-custom-${k}" placeholder="自訂（中文）" value="${esc(cur.custom_zh || "")}" ${dis}>${target}</div>`;
+  };
+  const enumSel = (f, label) => `<div><label>${label}</label><select id="cf-${f}-${k}" ${dis}><option value="">不指定</option>${Object.entries(L[f]).map(([v, t]) => `<option value="${v}" ${c[f] === v ? "selected" : ""}>${t}</option>`).join("")}</select></div>`;
+  return `<div class="char"><b>${esc(slot.label)}</b>
+    <div class="row">${CH_FIELDS.map(([f, t]) => pick(f, t)).join("")}</div>
+    <div class="row"><div><label>本幕服裝（不改角色預設服裝）</label><input id="cf-outfit-${k}" value="${esc(c.outfit_override || "")}" ${dis}></div>
+      ${enumSel("placement", "畫面位置")}${enumSel("depth", "前／中／後景")}</div>
+    <label>人物描述（中文自由輸入）</label><textarea id="cf-raw-${k}" placeholder="例：站在左側，表情緊張、皺眉，看著女主角，右手握拳" ${dis}>${esc(c.raw_character_direction_zh || "")}</textarea>
+    <div class="meta">目前只保存這段文字，尚未自動拆成上方欄位、也不會用於生成；要影響畫面請用上方欄位。</div>
+    <label>備註</label><input id="cf-notes-${k}" value="${esc(c.notes || "")}" ${dis}></div>`;
+}
+function readChars(sid) {
+  const s = sceneOrig[sid];
+  return (s.character_slots || []).map(slot => {
+    const k = `${sid}-${slot.character_id}`, v = (id) => ($(id)?.value || "").trim();
+    const prev = (s.characters || []).find(x => x.character_id === slot.character_id) || {};
+    const o = { character_id: slot.character_id, display_name: prev.display_name || "" };
+    for (const [f] of CH_FIELDS) {
+      const preset = v(`cf-${f}-${k}`), custom = v(`cf-${f}-custom-${k}`);
+      if (!preset && !custom) continue;
+      // 選了預設選項又填自訂 → 照送，由後端拒絕（fail closed），不靜默丟掉使用者輸入
+      o[f] = !preset || preset === "custom" ? { preset: "custom", custom_zh: custom } : (custom ? { preset, custom_zh: custom } : { preset });
+      if (f === "gaze" && preset === "at_character" && v(`cf-gaze-target-${k}`)) o[f].target_character_id = v(`cf-gaze-target-${k}`);
+    }
+    o.outfit_override = v(`cf-outfit-${k}`); o.notes = v(`cf-notes-${k}`); o.raw_character_direction_zh = v(`cf-raw-${k}`);
+    for (const f of ["placement", "depth"]) if (v(`cf-${f}-${k}`)) o[f] = v(`cf-${f}-${k}`);
+    return o;
+  }).filter(o => Object.keys(o).some(x => !["character_id", "display_name"].includes(x) && o[x]));
+}
+function advHtml(s) {
+  const a = s.advanced || {}, src = a.prompt_source || {};
+  const SRC = {zh_generated: "由中文圖片描述轉換", legacy_en: "舊版英文描述（尚未填中文圖片描述）", legacy_image_prompt: "舊版提示詞"};
+  const note = src.source === "zh_generated" ? `（目前不是 AI 翻譯：${esc(src.translator)} 關鍵詞對照，可能遺漏細節${src.generic_fallback ? "；沒有對到任何關鍵詞，已改用通用描述" : ""}）` : "";
+  return `<details class="adv"><summary>進階（技術資訊，只讀）</summary>
+    <div>模型提示詞（英文）來源：${esc(SRC[src.source] || src.source || "—")}${note}</div>
+    <pre>${esc(a.model_prompt_en ?? a.error ?? "")}</pre>
+    <div>${imageMetaHtml(s.image_meta)}${narrationMetaHtml(s.narration_meta)}</div>
+    <div class="meta">場景代號 ${esc(s.scene_id)}</div></details>`;
+}
 function sceneHtml(s, busy) {
-  const sel = (name, list, val) => `<select id="${name}-${s.scene_id}" ${busy ? "disabled" : ""}>${list.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+  const dis = busy ? "disabled" : "";
+  const sel = (name, list, val, labels) => `<select id="${name}-${s.scene_id}" ${dis}>${list.map(o => `<option value="${o}" ${o === val ? "selected" : ""}>${esc((labels || {})[o] || o)}</option>`).join("")}</select>`;
+  const spd = s.speech_speed == null ? "" : String(s.speech_speed);
+  const slots = s.character_slots || [];
   return `<div class="scene" id="scene-${s.scene_id}">
-    <div>${s.image_url ? `<img src="${s.image_url}" alt="">` : ""}<div class="meta">${s.scene_id}<br>${s.duration.toFixed(1)}s</div>${imageMetaHtml(s.image_meta)}${narrationMetaHtml(s.narration_meta)}</div>
+    <div>${s.image_url ? `<img src="${s.image_url}" alt="">` : ""}<div class="meta">第 ${s.index + 1} 景<br>${s.duration.toFixed(1)} 秒</div></div>
     <div>
-      <div class="meta"><span class="pill ${s.status}">${s.status}</span> ${esc(s.visual_description)}</div>
-      <label>旁白</label><textarea id="nar-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.narration)}</textarea>
-      <label>字幕覆寫（留空＝同旁白）</label><input id="sub-${s.scene_id}" value="${esc(s.subtitle_override ?? "")}" ${busy ? "disabled" : ""}>
-      <label>圖片描述（英文；留空＝改用中文圖片描述）</label><textarea id="ipe-${s.scene_id}" ${busy ? "disabled" : ""}>${esc(s.image_prompt_en ?? "")}</textarea>
-      <div class="meta">⚠ 修改圖片描述或畫面說明會重做此景的圖片與影片片段；旁白、配音、字幕不受影響。</div>
-      <label>畫面說明</label><input id="vd-${s.scene_id}" value="${esc(s.visual_description ?? "")}" ${busy ? "disabled" : ""}>
-      <label>影片動態描述（只影響此景影片片段）</label><input id="vp-${s.scene_id}" value="${esc(s.video_prompt ?? "")}" ${busy ? "disabled" : ""}>
-      <div class="row" style="margin-top:6px"><div><label>鏡頭</label>${sel("cam", opts.camera_motions, s.camera_motion)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition)}</div></div>
+      <div class="meta"><span class="pill ${s.status}">${stLabel(s.status)}</span></div>
+      <div class="sec"><b>場景內容</b>
+        <label>劇情文字（旁白）</label><textarea id="nar-${s.scene_id}" ${dis}>${esc(s.narration)}</textarea>
+        <label>字幕（留空＝同旁白）</label><input id="sub-${s.scene_id}" value="${esc(s.subtitle_override ?? "")}" ${dis}>
+        <label>圖片描述</label><textarea id="ipz-${s.scene_id}" placeholder="例：森林裡的小狐狸抬頭看蝴蝶，黃昏，溫暖電影感。" ${dis}>${esc(s.image_prompt_zh ?? "")}</textarea>
+        <div class="meta">⚠ 修改圖片描述、場景視覺描述或人物設定，會重新生成此景的圖片與影片片段；旁白配音與字幕不受影響。系統目前以關鍵詞對照把中文轉成模型用的提示詞（不是 AI 翻譯），細節可能遺漏，可在「進階」查看。</div>
+        <label>場景視覺描述</label><input id="vd-${s.scene_id}" value="${esc(s.visual_description ?? "")}" ${dis}>
+        <label>影片動態描述（只影響此景影片片段）</label><input id="vp-${s.scene_id}" value="${esc(s.video_prompt ?? "")}" ${dis}>
+      </div>
+      <div class="sec"><b>人物</b>${slots.length ? slots.map(slot => charHtml(s, slot, busy)).join("") : `<div class="meta">此景沒有登場角色。</div>`}</div>
+      <div class="sec"><b>視覺</b>
+        <div class="row"><div><label>鏡頭</label>${sel("cam", opts.camera_motions, s.camera_motion, opts.camera_motion_labels)}</div><div><label>轉場</label>${sel("tr", opts.transitions, s.transition, opts.transition_labels)}</div></div>
+        <div class="meta">風格、氣氛、光線、色調尚未開放在場景卡設定（中文輸入與轉換規則待定）。</div>
+      </div>
+      <div class="sec"><b>聲音</b>
+        <div class="row"><div><label>語速</label><select id="spd-${s.scene_id}" ${dis}>${SPEEDS.map(([v, t]) => `<option value="${v}" ${v === spd || (v && Number(v) === s.speech_speed) ? "selected" : ""} ${!v && spd ? "disabled" : ""}>${t}</option>`).join("")}</select></div></div>
+        <div class="meta">角色聲音與聲音情緒尚未開放在場景卡設定（聲音選擇待決策）。</div>
+      </div>
+      ${advHtml(s)}
       <div class="actions">
-        <button onclick="saveScene('${s.scene_id}')" ${busy ? "disabled" : ""}>儲存並重做此景</button>
-        <button class="secondary" onclick="regenScene('${s.scene_id}')" ${busy ? "disabled" : ""}>重做此景</button>
+        <button onclick="saveScene('${s.scene_id}')" ${dis}>儲存並重新生成此景</button>
+        <button class="secondary" onclick="regenScene('${s.scene_id}')" ${dis}>重新生成此景</button>
       </div>
     </div></div>`;
 }
@@ -229,13 +305,15 @@ async function saveScene(sid) {
   const o = sceneOrig[sid] || {};
   const changed = (id, key) => { const v = $(`${id}-${sid}`).value.trim(); return v !== (o[key] ?? "").trim() ? v : null; };
   const vd = changed("vd", "visual_description");
+  const spd = $(`spd-${sid}`).value;
   const body = { narration: $(`nar-${sid}`).value.trim() || null, subtitle_override: $(`sub-${sid}`).value.trim() || null,
                  camera_motion: $(`cam-${sid}`).value, transition: $(`tr-${sid}`).value,
-                 image_prompt_en: changed("ipe", "image_prompt_en"),  // 只送有改的欄位；空字串＝改用中文圖片描述
-                 visual_description: vd || null, video_prompt: changed("vp", "video_prompt") };
+                 image_prompt_zh: changed("ipz", "image_prompt_zh"),  // 只送有改的欄位；空字串＝清除中文圖片描述
+                 visual_description: vd || null, video_prompt: changed("vp", "video_prompt"),
+                 speech_speed: spd ? parseFloat(spd) : null, characters: readChars(sid) };
   try {
     const imp = await api(`/api/projects/${current}/scenes/${sid}/impact`, "POST", body);
-    if (imp.assets.length && !confirm(`將重做：${imp.assets.join("、")}\n不受影響：${imp.unaffected.join("、")}\n確定儲存？`)) return;
+    if (imp.assets.length && !confirm(`重新生成影響\n將重新生成：${assetList(imp.assets)}\n不受影響：${assetList(imp.unaffected)}\n確定儲存？`)) return;
     await api(`/api/projects/${current}/scenes/${sid}`, "POST", body); open(current);
   } catch (e) { alert(e.message); }
 }

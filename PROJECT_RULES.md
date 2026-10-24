@@ -259,4 +259,12 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - **Character Validation Gate**：生成前檢查（ID 唯一、reference 綁定、性別欄位、placement、role、跨角色重複 reference、私人圖片只在本機、商用授權）；任何衝突 **fail closed**（不生成，顯示需要修正）。
 - **Character Confirmation Card**：正式 UI 在生成前必須顯示每個角色的名稱、性別呈現、reference、服裝、位置、style、mood、voice，且可在該步直接修改。
 - 一般使用者 UI 不暴露技術名稱（char_a、IP-Adapter、checkpoint、CUDA、model path、prompt token）；技術參數只在 Advanced／Debug。
+- **人物身份永久設定與每 Scene 演出覆寫分離（D-063）**：臉型、五官、髮型、髮色、基本服裝、固定特徵、default voice、default style／mood 屬角色永久設定（CharacterDefinition／CharacterAppearance）；表情、情緒、動作、視線、姿勢、本幕服裝、畫面位置、景深屬 Scene Character Override（`Scene.characters`）。**Scene override 不得靜默改寫角色永久設定**（本幕服裝只屬於本幕）。
 - **歷史 evidence 定義錯誤時**：不刪、不覆寫、不改名假裝正確；以 metadata／文件標記（例 `historical_reversed_character_mapping=true`）並說明可用與不可用的結論；修正後的案例定義版本 +1，新檔名不得與舊檔衝突。
+
+## 18. 一般使用者 UX 以中文為主（D-063，永久）
+- **一般使用者 UX 以中文為主；模型語言屬內部實作細節。** 使用者只需輸入繁體中文；系統內部自行轉成模型需要的英文 prompt／技術參數。
+- 一般 UI 不要求使用者編輯 `image_prompt_en`、checkpoint、CUDA、prompt token、char_a／char_b、其他模型技術名稱；這些只能出現在 Advanced／Debug、evidence、backend。一般 UI 標籤一律繁體中文（例：圖片描述、場景視覺描述、影片動態描述、重新生成影響、儲存、重新生成）。
+- 中文 → 英文 prompt 必須經明確的 translator／prompt builder service contract；**沒有真 AI 翻譯時不得假裝有**：UI 與 evidence 必須標示 prompt 來源（`zh_generated`／`legacy_en`／`legacy_image_prompt`／`advanced_override`）與 translator 名稱、`ai_translated`。
+- 中文自然語言描述（例：人物描述原文）在沒有可靠解析前只保存原文，不自動拆成結構化欄位、不宣稱已解析；結構化欄位只在使用者明確選擇／填寫時成立。
+

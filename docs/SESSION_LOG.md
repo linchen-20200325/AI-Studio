@@ -469,3 +469,10 @@
 - Result: preferences.py、edit_impact／set_preferences、Scene 卡新欄位＋impact 確認、reference_library.py＋`ref` CLI、character_store.py、confirmation_payload；ARCHITECTURE §13／§17.4.1／§18
 - Tests: 見 commit（含 Playwright UI 實測）
 - Next: Environment Bootstrap（可自主）
+
+## 2026-10-24 — Batch 52
+- Batch: Batch 52 — D-063 一般 UI 全中文輸入；Scene 中文圖片描述；Scene Character Override
+- Result: scene_character.py、scene_prompt.py（PromptTranslator＋keyword fallback）、Scene.image_prompt_zh／characters、再生成範圍子欄位、Scene 卡中文分區＋人物子卡＋進階只讀；PROJECT_RULES §17／§18；ARCHITECTURE §13.1／§13.2
+- Tests: 見 commit（含 Playwright UI 實測）
+- Next: Environment Bootstrap（可自主）
+

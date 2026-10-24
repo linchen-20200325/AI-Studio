@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from see.models.enums import CameraMotion, Status, Transition
 from see.models.preferences import PreferenceSet
+from see.models.scene_character import SceneCharacter
 
 
 class Dialogue(BaseModel):
@@ -59,9 +60,28 @@ class Scene(SceneDraft):
     lipsync: bool = Field(default=False, description="本景是否做嘴型同步（需有效 LipSyncProvider；預設 False）")
     measured_narration_duration: float | None = Field(default=None, ge=0)
     preferences: PreferenceSet | None = Field(default=None, description="D-062 Scene override（逐欄位覆寫 Project default）；None＝不覆寫")
+    image_prompt_zh: str = Field(default="", max_length=2000,
+                                 description="D-063 一般使用者的中文圖片描述（UI「圖片描述」）；非空時由 prompt builder 轉成模型英文 prompt")
+    characters: list[SceneCharacter] = Field(default_factory=list, max_length=10,
+                                             description="D-063 本幕人物演出覆寫（表情／動作／姿勢／服裝…）；不改角色永久設定")
+
+    @model_validator(mode="after")
+    def _characters_in_scene(self) -> "Scene":
+        ids = [c.character_id for c in self.characters]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"duplicate scene character override: {ids}")
+        stray = sorted(set(ids) - set(self.character_ids))
+        if stray:  # fail closed：覆寫只能指向本幕出場角色
+            raise ValueError(f"scene character overrides {stray} are not in scene.character_ids {self.character_ids}")
+        known = set(self.character_ids)
+        bad = sorted({c.gaze.target_character_id for c in self.characters if c.gaze and c.gaze.target_character_id} - known)
+        if bad:
+            raise ValueError(f"gaze target {bad} is not in scene.character_ids")
+        return self
 
     @property
     def effective_image_prompt(self) -> str:
+        """legacy 來源（無中文圖片描述時）：image_prompt_en，空則 image_prompt。中文來源由 see.core.scene_prompt 處理。"""
         return self.image_prompt_en.strip() or self.image_prompt
 
     @property

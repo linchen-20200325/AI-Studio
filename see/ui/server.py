@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from see.core.config import Settings
 from see.core.errors import InvalidTransition, SeeError
 from see.models import JobKind, OutputSpec, Project
+from see.models.scene_character import LABELS_ZH, SceneCharacter
 from see.pipeline.orchestrator import Orchestrator
 from see.providers.registry import ProviderRegistry
 from see.render.renderer import Renderer
@@ -39,7 +40,9 @@ class SceneEditIn(BaseModel):
     narration: str | None = None
     subtitle_override: str | None = None
     image_prompt: str | None = None
-    image_prompt_en: str | None = Field(default=None, max_length=2000, description="英文圖片描述；空字串＝退回 image_prompt")
+    image_prompt_en: str | None = Field(default=None, max_length=2000, description="internal／legacy 英文 prompt（一般 UI 不編輯；D-063）")
+    image_prompt_zh: str | None = Field(default=None, max_length=2000, description="中文圖片描述（一般 UI「圖片描述」）；空字串＝清除")
+    characters: list[SceneCharacter] | None = Field(default=None, max_length=10, description="本幕人物演出覆寫（D-063）；[]＝清除")
     visual_description: str | None = Field(default=None, min_length=1, max_length=1000)
     video_prompt: str | None = Field(default=None, max_length=1000)
     duration: float | None = Field(default=None, gt=0, le=60, description="規劃秒數；實際仍以旁白長度校正（下限）")
@@ -139,7 +142,11 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
                 if (store.scene_dir(project.project_id, s.scene_id) / "image.png").exists() else None,
                 "image_meta": _image_meta(project.project_id, s.scene_id),
                 "narration_meta": _narration_meta(project.project_id, s.scene_id),
-                "character_ids": s.character_ids, "lipsync": s.lipsync,
+                "character_ids": s.character_ids, "lipsync": s.lipsync, "speech_speed": s.speech_speed,
+                "image_prompt_zh": s.image_prompt_zh,
+                "characters": [c.model_dump(mode="json") for c in s.characters],
+                "character_slots": [{"character_id": cid, "label": _char_label(project, s, cid, i)} for i, cid in enumerate(s.character_ids)],
+                "advanced": _prompt_view(project, s),
             } for s in project.scenes],
             "render_jobs": [j.model_dump(mode="json") for j in project.render_jobs[-5:]],
             "approvals": [a.model_dump(mode="json") for a in project.approvals],
@@ -149,6 +156,26 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
             "audio_evidence": _audio_evidence(project.project_id),
             "style_id": project.style_id,
         }
+
+    def _char_label(project: Project, scene: Any, cid: str, i: int) -> str:
+        """一般 UI 的角色名稱（不顯示 char_xx）：本幕顯示名 → 角色顯示名 → 劇本角色名 → 「角色 N」。"""
+        sc = next((c for c in scene.characters if c.character_id == cid), None)
+        if sc is not None and sc.display_name.strip():
+            return sc.display_name.strip()
+        cv = project.characters.get(cid)
+        if cv is not None and cv.display_name.strip():
+            return cv.display_name.strip()
+        names = {c.character_id: c.name for c in (project.script.characters if project.script else [])}
+        return names.get(cid) or f"角色 {i + 1}"
+
+    def _prompt_view(project: Project, scene: Any) -> dict[str, Any]:
+        """Advanced／Debug（D-063）：模型英文提示詞（只讀）與來源。失敗照實回報，不補值。"""
+        try:
+            req, ctx = orch.image_request(project, scene)
+        except SeeError as e:
+            return {"model_prompt_en": None, "error": str(e)}
+        return {"model_prompt_en": req.prompt, "prompt_source": ctx.get("prompt_source"),
+                "scene_characters": ctx.get("scene_characters"), "legacy_image_prompt_en": scene.image_prompt_en}
 
     def _image_meta(pid: str, sid: str) -> dict[str, Any]:
         """Scene 卡顯示用的生成證據（D-021）：真正生成者、是否重生、dtype、降級／fallback。"""
@@ -202,7 +229,13 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
     def options() -> dict[str, Any]:
         return {"aspects": ["16:9", "9:16", "1:1"], "speech_speeds": [{"label": "慢", "value": 0.85}, {"label": "正常", "value": 1.0}, {"label": "快", "value": 1.2}],
                 "camera_motions": ["static", "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"],
-                "transitions": ["cut", "fade", "dissolve", "wipe_left", "slide_left", "fade_black"]}
+                "transitions": ["cut", "fade", "dissolve", "wipe_left", "slide_left", "fade_black"],
+                # D-063 一般 UI 中文標籤（技術值只當 option value）
+                "camera_motion_labels": {"static": "固定", "zoom_in": "慢慢推近", "zoom_out": "慢慢拉遠", "pan_left": "向左平移",
+                                         "pan_right": "向右平移", "pan_up": "向上平移", "pan_down": "向下平移"},
+                "transition_labels": {"cut": "直接切換", "fade": "淡入淡出", "dissolve": "交叉溶接", "wipe_left": "向左擦除",
+                                      "slide_left": "向左滑入", "fade_black": "黑場淡出"},
+                "scene_character": LABELS_ZH}
 
     @app.get("/api/projects")
     def list_projects() -> list[dict[str, Any]]:

@@ -69,7 +69,9 @@
 - [ ] 備案（D-022 C）：fp16 UNet + upcast_attention／部分層 fp32，僅在 fp32 全程太慢時評估（目前不需要）。
 - [ ] 效能：GTX 16xx 直接以 fp32 起跑（跳過每個程序一次的 fp16 失敗嘗試），或把已證明的 floor 持久化到 workspace（可自主；需真機量時間）。
 - [x] UI 顯示實際使用的 image provider 與 fallback 原因（D-021：Scene 卡 `image_meta`）。
-- [x] Web UI Scene 卡加 `image_prompt_en` 編輯欄（D-062；另加畫面說明、影片動態描述、影響範圍確認）。
+- [x] Web UI Scene 卡加 `image_prompt_en` 編輯欄（D-062；另加畫面說明、影片動態描述、影響範圍確認）。**D-063 取代**：一般 UI 改編輯中文「圖片描述」`image_prompt_zh`；英文 prompt 只在「進階」只讀。
+- [x] Scene Character Override（表情／情緒／動作／視線／姿勢／本幕服裝／位置／景深／備註／中文原話）＋Scene 卡人物子卡（D-063）。
+- [x] 一般 UI 全中文（Scene 卡分區、狀態／按鈕／確認對話框、鏡頭／轉場中文標籤；技術資訊移到「進階」）（D-063）。
 - [ ] Scene 編輯 UX：編輯欄位完整度（visual_description／video_prompt／voice／duration 已有 API）、編輯後只重做必要資產的提示。🤖🖥️（最終體驗）
 - [x] CI workflow（GitHub Actions：pytest + ffmpeg）（D-016）。
 - [x] Web UI（手機可用）：輸入文字 → 看 preview → 修改單景 → 核准。
@@ -213,6 +215,17 @@
 | Mood／Lighting／Color／Camera／Composition preset → prompt 詞對照（產品字句；或 DG-10 LLM 轉換） | NEEDS HUMAN DECISION |
 | Voice per-scene emotion（TTS 目前無情緒參數） | BLOCKED（provider 能力） |
 | GenerationSettings 品質／速度欄位 | NEEDS HUMAN DECISION（無規格值） |
+
+## 中文輸入／Scene Character Override 規格缺口（D-063；不自行決定）
+| 缺口 | 狀態 |
+|---|---|
+| 真中文 → 英文翻譯（目前 keyword_fallback_v1，會漏詞；evidence 已標 ai_translated=false） | BLOCKED（DG-10 LLM；不接 PAID） |
+| 人物中文原話 `raw_character_direction_zh` → 結構化欄位解析 | BLOCKED（需 LLM；解析結果需使用者確認） |
+| Advanced「模型提示詞（英文）」是否可覆寫、與中文描述的優先序（`advanced_override`） | NEEDS HUMAN DECISION（目前只讀） |
+| 視覺偏好（風格／氣氛／光線／色調／鏡頭）中文輸入：PreferenceTerms 目前只有英文 custom_en | NEEDS HUMAN DECISION（需 custom_zh＋translator 規格；場景卡暫不開放） |
+| 場景卡聲音區：角色聲音、聲音情緒 | BLOCKED（DG-14／DG-15；TTS 無情緒參數）；語速已開放 |
+| 場景卡新增／移除登場角色（`character_ids`）與角色顯示名來源 | NEEDS HUMAN DECISION（綁 Character Library ↔ Project 裁示） |
+| 多角色時演出詞綁到正確角色 | HARDWARE_UPGRADE_BLOCKED／模型限制（SD1.5；D-061） |
 
 ## Hardware Upgrade Resume Gate（D-061；架構見 ARCHITECTURE §18）
 | 項目 | 狀態 |

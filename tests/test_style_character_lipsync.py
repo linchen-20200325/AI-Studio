@@ -49,6 +49,8 @@ def test_old_projects_keep_image_request_identical(orchestrator):
     s = p.scenes[0]
     assert req.prompt == s.effective_image_prompt and req.negative_prompt == s.negative_prompt and req.params == {}
     snap = ctx.pop("preference_snapshot")  # D-062：偏好快照只進 evidence，不改 request／fingerprint
+    src = ctx.pop("prompt_source")  # D-063：prompt 來源只進 evidence；舊 Scene＝legacy_en
+    assert src["source"] == "legacy_en" and src["ai_translated"] is False and ctx.pop("scene_characters") == []
     assert ctx == {"style_id": "default", "style_validated": True, "character_anchors": []}
     assert snap["resolved"]["visual_style_id"] == "default" and snap["no_prompt_effect"] == []
 
