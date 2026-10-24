@@ -253,3 +253,8 @@ workspace/projects/<project_id>/
 
 ### 14.3 D-049 真機結論（D-050）
 prompt-only 文字錨點在 SD 1.5 同框時**無法綁定屬性**（眼鏡、髮色、服裝互相污染），臉部 Identity 也無法以文字表達 → 架構上 Identity 需「區域條件（regional）」＋「參考圖條件（IP-Adapter 類）」兩種 provider 能力；偏好層（CharacterTraits／reference_images）不變，能力差異屬 provider／模型層。研究見 `DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md`。
+
+### 14.4 S1／S2 prompt 條件模式（D-051；opt-in 診斷）
+- `ImageRequest.params["prompt_mode"]`：`{"long_prompt": true}` 或 `{"long_prompt": true, "regional": {"base", "regions", "layout": "columns"}}`；不帶＝既有行為與 fingerprint 完全不變。
+- 實作在 provider 層（`see/providers/image/diffusers_local.py`：`chunk_token_ids`、`encode_text_chunks`、`RegionalAttnProcessor`、`regional_processors`）；偏好層（CharacterTraits）不變 → 未來 regional 能力可由其他 provider 以不同方式實作（Provider Agnostic）。
+- regional prompt 由案例資料組裝（`regional_prompts(case)`：base 不含任何角色屬性）；產品化前需把「角色 → 畫面區域」從測試案例提升到 Scene／Storyboard 資料（BACKLOG）。

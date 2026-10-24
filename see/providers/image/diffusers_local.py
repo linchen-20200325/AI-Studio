@@ -297,6 +297,125 @@ def encode_prompt_clip_skip(pipe: Any, prompt: str, negative: str, clip_skip_a11
     return pe, npe, info
 
 
+# ---------------------------------------------------------------- D-051：S1 長 prompt 分段、S2 regional prompting（皆 opt-in）
+CHUNK_TOKENS = 75  # 每段內容 token（加 BOS/EOS＝77，SD 1.5 CLIP 上限）
+REGIONAL_BASE_RATIO = 0.2  # 共用 base prompt 權重（其餘 0.8 依區域 mask 分配；A1111 Regional Prompter 常用值）
+
+
+def chunk_token_ids(ids: list[int], bos: int, eos: int, pad: int, n_chunks: int | None = None) -> list[list[int]]:
+    """A1111 式長 prompt：內容 token（不含 BOS/EOS）每 75 一段 → 各段 [BOS]+段+[EOS]+pad 到 77。
+    單段時與標準 tokenizer 輸出（padding=max_length）逐 id 相同。`n_chunks` 指定時以空段補齊（negative 對齊用）。純函式。"""
+    body = [i for i in ids if i not in (bos, eos)] if ids[:1] == [bos] else list(ids)
+    chunks = [body[i:i + CHUNK_TOKENS] for i in range(0, len(body), CHUNK_TOKENS)] or [[]]
+    if n_chunks is not None:
+        if n_chunks < len(chunks):
+            raise ValueError(f"n_chunks {n_chunks} < required {len(chunks)}")
+        chunks += [[] for _ in range(n_chunks - len(chunks))]
+    width = CHUNK_TOKENS + 2
+    return [([bos] + c + [eos] + [pad] * width)[:width] for c in chunks]
+
+
+def latent_level_shape(hw: int, h0: int, w0: int) -> tuple[int, int]:
+    """cross-attention 的序列長 hw 對應哪一層 UNet 解析度（SD 1.5 每層 stride-2 → 尺寸 ceil(n/2)）。純函式。"""
+    h, w = h0, w0
+    for _ in range(6):
+        if h * w == hw:
+            return h, w
+        h, w = -(-h // 2), -(-w // 2)
+    raise ProviderError(f"cannot map attention length {hw} to latent {h0}x{w0}")
+
+
+def column_bounds(n: int, w: int) -> list[tuple[int, int]]:
+    """n 個角色由左到右等分欄位（整數邊界、無縫覆蓋 0..w）。純函式。"""
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    edges = [round(j * w / n) for j in range(n + 1)]
+    return [(edges[j], edges[j + 1]) for j in range(n)]
+
+
+def encode_text_chunks(pipe: Any, texts: list[str], clip_skip_a1111: int) -> tuple[list[Any], dict[str, Any]]:
+    """把每段文字分段編碼（A1111 clip skip 語意，同 D-040 驗證），**所有文字補到同樣段數** → 各自 (1, 77·c, dim)。"""
+    import torch  # type: ignore
+
+    tok, te = pipe.tokenizer, pipe.text_encoder
+    device = getattr(pipe, "_execution_device", None) or next(te.parameters()).device
+    ln = final_layer_norm_of(te)
+    num_layers = int(te.config.num_hidden_layers)
+    if not 1 <= clip_skip_a1111 <= num_layers:
+        raise ValueError(f"clip skip {clip_skip_a1111} out of range 1..{num_layers}")
+    bos, eos = int(tok.bos_token_id), int(tok.eos_token_id)
+    pad = int(tok.pad_token_id) if tok.pad_token_id is not None else eos
+    raw = [tok(t or "", add_special_tokens=False).input_ids for t in texts]
+    n_chunks = max(max(1, -(-len(r) // CHUNK_TOKENS)) for r in raw)
+    out = []
+    for r in raw:
+        ids = torch.tensor(chunk_token_ids([bos] + list(r) + [eos], bos, eos, pad, n_chunks), device=device)
+        res = te(ids, output_hidden_states=True)
+        hs = res.hidden_states
+        if hs is None or len(hs) != num_layers + 1:
+            raise ProviderError(f"unexpected hidden_states length {None if hs is None else len(hs)}")
+        if not torch.allclose(ln(hs[-1]).float(), res.last_hidden_state.float(), atol=1e-4, rtol=1e-4):
+            raise ProviderError("hidden_states ordering check failed")
+        emb = ln(hs[-clip_skip_a1111])  # (c, 77, dim)
+        out.append(emb.reshape(1, -1, emb.shape[-1]))
+    return out, {"chunks": n_chunks, "content_tokens": [len(r) for r in raw], "clip_skip_a1111": clip_skip_a1111,
+                 "method": "A1111-style 75-token chunks, each BOS+chunk+EOS, concatenated"}
+
+
+class RegionalAttnProcessor:
+    """S2：cross-attention 分區（Regional Prompter／Latent Couple 類，零新模型）。
+    encoder_hidden_states 是 [base, region_1 … region_n] 等長串接；每段各自做 attention，輸出依空間 mask 合成：
+    out = r·base + (1−r)·Σ mask_i·region_i（mask 為左→右等分欄，總和恆為 1）。CFG 的 uncond 半邊各段相同 → 合成後等於原值。
+    只裝在 attn2（cross-attention）；不支援的 Attention 變體直接 raise（fail-closed）。"""
+
+    def __init__(self, n_regions: int, latent_hw: tuple[int, int], base_ratio: float = REGIONAL_BASE_RATIO) -> None:
+        self.n, self.latent_hw, self.base_ratio = n_regions, latent_hw, base_ratio
+        self._masks: dict[tuple[int, Any, Any], list[Any]] = {}
+
+    def _masks_for(self, hw: int, device: Any, dtype: Any) -> list[Any]:
+        import torch  # type: ignore
+
+        key = (hw, device, dtype)
+        if key not in self._masks:
+            h, w = latent_level_shape(hw, *self.latent_hw)
+            ms = []
+            for a, b in column_bounds(self.n, w):
+                m = torch.zeros(h, w, device=device, dtype=dtype)
+                m[:, a:b] = 1
+                ms.append(m.reshape(1, h * w, 1))
+            self._masks[key] = ms
+        return self._masks[key]
+
+    def __call__(self, attn: Any, hidden_states: Any, encoder_hidden_states: Any = None, attention_mask: Any = None,
+                 temb: Any = None, *args: Any, **kwargs: Any) -> Any:
+        import torch  # type: ignore
+
+        if encoder_hidden_states is None or hidden_states.ndim != 3 or attention_mask is not None:
+            raise ProviderError("RegionalAttnProcessor: unsupported call (needs cross-attention, 3-D hidden states, no mask)")
+        for flag in ("spatial_norm", "group_norm", "norm_cross"):
+            if getattr(attn, flag, None) is not None:
+                raise ProviderError(f"RegionalAttnProcessor: unsupported attention variant ({flag})")
+        if getattr(attn, "residual_connection", False):
+            raise ProviderError("RegionalAttnProcessor: unsupported residual_connection")
+        segs = encoder_hidden_states.chunk(self.n + 1, dim=1)
+        q = attn.head_to_batch_dim(attn.to_q(hidden_states))
+        outs = []
+        for e in segs:
+            k, v = attn.head_to_batch_dim(attn.to_k(e)), attn.head_to_batch_dim(attn.to_v(e))
+            outs.append(attn.batch_to_head_dim(torch.bmm(attn.get_attention_scores(q, k, None), v)))
+        masks = self._masks_for(hidden_states.shape[1], hidden_states.device, outs[0].dtype)
+        mixed = sum(m * o for m, o in zip(masks, outs[1:]))
+        out = self.base_ratio * outs[0] + (1 - self.base_ratio) * mixed
+        out = attn.to_out[1](attn.to_out[0](out))
+        return out / getattr(attn, "rescale_output_factor", 1.0)
+
+
+def regional_processors(unet: Any, n_regions: int, latent_hw: tuple[int, int]) -> dict[str, Any]:
+    """attn2（cross-attention）換成 RegionalAttnProcessor，其餘保留原 processor。"""
+    proc = RegionalAttnProcessor(n_regions, latent_hw)
+    return {name: (proc if name.endswith("attn2.processor") else p) for name, p in unet.attn_processors.items()}
+
+
 def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
     """CLIP tokenizer 實際 token 數；超過 model_max_length（SD 1.5＝77，含 BOS/EOS）的部分會被 pipeline 靜默截斷。"""
     tok = getattr(pipe, "tokenizer", None)
@@ -480,17 +599,45 @@ class DiffusersImageProvider(ImageProvider):
                           **_prompt_token_info(pipe, request.prompt, request.negative_prompt)}
         gen = torch.Generator(device="cpu").manual_seed(request.seed if request.seed is not None else 0)
         _cuda_peak_mb(torch, reset=True)
+        mode = request.params.get("prompt_mode") or {}
+        long_prompt, regional = bool(mode.get("long_prompt")), mode.get("regional")
+        if long_prompt or regional:
+            self._gen_info["prompt_mode"] = "regional" if regional else "long_prompt"  # regional 隱含分段編碼
+        restore = None
         with torch.inference_mode():
-            if clip_skip:
+            if long_prompt or regional:
+                # D-051 S1／S2（opt-in）：分段編碼（regional 時一律分段，避免各區截斷）；clip skip 沿用模型 preset（base＝1）
+                cs = self.checkpoint.clip_skip_a1111 if self.checkpoint is not None else 1
+                if regional:
+                    texts = [str(regional["base"])] + [str(t) for t in regional["regions"]]
+                    embs, info = encode_text_chunks(pipe, texts + [request.negative_prompt or ""], cs)
+                    pe, neg = torch.cat(embs[:-1], dim=1), embs[-1]
+                    npe = torch.cat([neg] * len(texts), dim=1)
+                    restore = dict(pipe.unet.attn_processors)
+                    vsf = int(getattr(pipe, "vae_scale_factor", 8))  # SD 1.5＝8
+                    pipe.unet.set_attn_processor(regional_processors(pipe.unet, len(texts) - 1, (gh // vsf, gw // vsf)))
+                    info.update({"regions": len(texts) - 1, "layout": "columns", "base_ratio": REGIONAL_BASE_RATIO,
+                                 "region_prompts": texts[1:], "base_prompt": texts[0],
+                                 "note": "conditioning uses base+region prompts; request.prompt kept only for evidence"})
+                else:
+                    (pe, npe), info = encode_text_chunks(pipe, [request.prompt, request.negative_prompt or ""], cs)
+                self._gen_info["prompt_encoding"] = info
+                self._gen_info["prompt_truncated_effective"] = False
+                call_kw: dict[str, Any] = {"prompt_embeds": pe, "negative_prompt_embeds": npe}
+            elif clip_skip:
                 # D-040：自行編碼（A1111 語意、含執行期順序驗證），不用 diffusers `clip_skip=`（transformers 5.x 不相容）
                 pe, npe, cs_info = encode_prompt_clip_skip(pipe, request.prompt, request.negative_prompt or "",
                                                            self.checkpoint.clip_skip_a1111)
                 self._gen_info["clip_skip_encoding"] = cs_info
-                call_kw: dict[str, Any] = {"prompt_embeds": pe, "negative_prompt_embeds": npe}
+                call_kw = {"prompt_embeds": pe, "negative_prompt_embeds": npe}
             else:
                 call_kw = {"prompt": request.prompt, "negative_prompt": request.negative_prompt or None}
-            latents = pipe(width=gw, height=gh, num_inference_steps=self.steps, guidance_scale=self.guidance,
-                           generator=gen, output_type="latent", **call_kw).images
+            try:
+                latents = pipe(width=gw, height=gh, num_inference_steps=self.steps, guidance_scale=self.guidance,
+                               generator=gen, output_type="latent", **call_kw).images
+            finally:
+                if restore is not None:  # 快取的 pipe 必須還原，避免影響後續一般生成
+                    pipe.unet.set_attn_processor(restore)
             if not torch.isfinite(latents).all():
                 return None  # UNet 階段 NaN/Inf
             vae = pipe.vae

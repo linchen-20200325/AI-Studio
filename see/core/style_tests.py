@@ -39,6 +39,16 @@ def multi_character_prompt(chars: tuple[CaseCharacter, ...], composition: str) -
     return ", ".join([f"{count} side by side"] + [f"{c.anchor} {c.position}" for c in chars] + [composition])
 
 
+# S2（D-051）：regional 用的共用構圖（與 multi_character_prompt 的 composition 相同來源，由案例保存）
+def regional_prompts(case: "StyleTestCase") -> tuple[str, list[str]]:
+    """回傳 (base, [region_i])。base＝人數＋共用構圖（**不含任何角色屬性**，避免屬性經 base 洩漏）；
+    region_i＝該角色錨點＋共用構圖（只含自己的屬性）。Style Profile 詞由呼叫端各自附加。"""
+    if not case.characters or not case.composition_en:
+        raise ValueError(f"case {case.case_id} has no characters/composition for regional prompting")
+    count = {2: "two people", 3: "three people"}.get(len(case.characters), f"{len(case.characters)} people")
+    return f"{count} side by side, {case.composition_en}", [f"{c.anchor}, {case.composition_en}" for c in case.characters]
+
+
 @dataclass(frozen=True)
 class StyleTestCase:
     case_id: str
@@ -52,6 +62,7 @@ class StyleTestCase:
     base_prompt_en: str | None = None
     review_checklist: tuple[str, ...] = field(default_factory=tuple)  # 人工審圖項目（主觀驗收清單）
     characters: tuple[CaseCharacter, ...] = field(default_factory=tuple)  # D-049：多角色受控案例
+    composition_en: str = ""  # D-051：多角色案例的共用構圖詞（regional prompting 用）
 
 
 STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
@@ -103,19 +114,19 @@ _AB_CHARS = (
                                                         "distinctive_marks": ["round glasses"]}},
                   ("man", "short grey hair", "grey suit", "round glasses")),
 )
+_AB_COMPOSITION = "upper body, front view, looking at viewer, city at night in the background, blurred background"
 _AB = StyleTestCase(
     "two_characters_ab", "兩位東亞成年人並肩站立的正面半身近景：左邊黑長直髮紅大衣的女性、右邊灰短髮戴圓眼鏡穿灰西裝的男性，背景模糊城市夜景",
     ("two people", "woman", "man", "red coat", "grey suit", "round glasses"),
     notes="Multi-character 受控案例（D-049）：驗證 A／B 是否互換臉／髮／衣服／配件；構圖詞為 portrait 系列精簡子集（77 token 限制）",
     tags=("human", "multi_character", "identity_binding"),
     # CLIP 上限 77 token：兩組錨點較長 → 構圖詞取 portrait 系列的精簡子集，確保 Style Profile 詞不被截斷（真機 evidence 另記實測 token）
-    base_prompt_en=multi_character_prompt(_AB_CHARS, "upper body, front view, looking at viewer, "
-                                          "city at night in the background, blurred background"),
+    base_prompt_en=multi_character_prompt(_AB_CHARS, _AB_COMPOSITION),
     review_checklist=("畫面恰為兩人（無多出人物、無融合肢體）", "左＝A 女性、右＝B 男性（位置是否對調）",
                       "A：黑色長直髮；B：灰色短髮（髮色／髮長是否互換或混合）",
                       "A：紅大衣；B：灰西裝（服裝是否互換或混合）", "圓眼鏡只在 B（是否出現在 A 或兩人都有／都沒有）",
                       "兩人臉部品質（眼睛、五官）", "兩人皆為東亞外貌（主觀）", "背景未搶過人物"),
-    characters=_AB_CHARS)
+    characters=_AB_CHARS, composition_en=_AB_COMPOSITION)
 STYLE_TEST_CASES[_AB.case_id] = _AB
 DEFAULT_CASE = "kitten_butterfly"
 
@@ -168,7 +179,7 @@ def verdict_to_bool(v: str | None) -> bool | None:
 # 不能回答「兩張圖的比較是否只差一個變數」。改由兩份 evidence 逐項比對（相容舊 JSON）。
 COMPARISON_FIELDS = ("case_id", "seed", "style_id", "base_prompt", "prompt", "negative_prompt", "request_size",
                      "gen_policy", "gen_size", "crop_box", "steps", "guidance", "scheduler", "final_dtype",
-                     "model", "clip_skip_a1111")
+                     "model", "clip_skip_a1111", "prompt_mode")
 # 模型預設（D-042：模型專屬參數歸模型設定）——換 checkpoint 時隨模型改變屬「模型預設差異」，不是意外變數
 MODEL_PRESET_FIELDS = ("clip_skip_a1111",)
 BASE_MODEL = "sd15-base"
@@ -192,7 +203,9 @@ def comparison_conditions(ev: dict[str, Any]) -> dict[str, Any]:
             "crop_box": list(g["crop_box"]) if g.get("crop_box") is not None else None,
             "steps": g.get("steps"), "guidance": g.get("guidance"),
             "scheduler": g.get("scheduler_name") or g.get("scheduler"), "final_dtype": ev.get("final_dtype"),
-            "model": model, "clip_skip_a1111": clip}
+            "model": model, "clip_skip_a1111": clip,
+            # D-051：舊 JSON 沒有此欄位＝標準編碼（單段 77 token）
+            "prompt_mode": g.get("prompt_mode") or "standard"}
 
 
 def compare_conditions(a: dict[str, Any], b: dict[str, Any], intended: tuple[str, ...] = ("model",)) -> dict[str, Any]:

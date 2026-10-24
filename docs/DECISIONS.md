@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-051 | DG-24 裁示 A：S1 `--long-prompt`＋S2 `--regional`（opt-in；零下載；tiny diffusers 整合測試）；待真機受控比較 | 有效（待真機） | 可逆 |
 | D-050 | D-049 真機 scene FAIL／style PASS（主觀）＋prompt 80＞77；多角色／Identity 研究；新需求 Style/Mood Profile、Mobile-first、Env Bootstrap、Migration | 有效；DG-24 待裁示 | 可逆 |
 | D-049 | A／B 多角色同框受控案例 `two_characters_ab`（產品錨點路徑、互斥屬性、人工互換檢查；77 token 守門） | 有效（待真機） | 可逆 |
 | D-048 | 結構化 Character 設定 `CharacterTraits`（角色 A／B；舊欄位／fingerprint 相容；reference_images 只收本機路徑） | 有效 | 可逆 |
@@ -383,3 +384,11 @@
 - 研究（Project AI，非裁示）：`DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md`。
 - 新正式產品需求（客戶）：User-defined Style／Mood Profile；Mobile-first Preference Layer；Environment Bootstrap（SEE_MODELS_DIR 未設定導致既有 CyberRealistic 被誤判 provenance 不可用）；Migration／Reinstall（模型搬移後驗證、不強迫重下載；備份還原 Style／Character／Voice／Project 設定）→ BACKLOG。
 - CyberRealistic `commercial_cleared=false` 不變；production default 不變；未下載、未安裝依賴。
+
+## D-051 2026-10-24 DG-24 裁示 A：S1 長 prompt 分段＋S2 regional prompting（opt-in，已實作，待真機）
+- **客戶裁示 DG-24＝A**：先做零下載 S1＋S2；皆 opt-in 診斷，production default 不變；不以重抽 seed 為改善證據；以 D-049 同案例、同 seed、CyberRealistic 做前後受控比較；scene／style 人工判定與 technical 分開；S1／S2 不足再回 DG-24 評估 S4（不自行下載）。
+- S1（`style-test --long-prompt`）：A1111 式每 75 token 一段、各段 BOS+段+EOS 編碼後串接 embeds（clip skip 沿用模型 preset）；negative 補空段對齊；單段時與 pipeline 標準編碼**逐像素相同**（tiny diffusers 測試證明）。
+- S2（`style-test --regional`，隱含 S1）：cross-attention（attn2）換成 `RegionalAttnProcessor`；條件＝[base（人數＋共用構圖，**不含角色屬性**）, region_A, region_B]；輸出＝0.2·base＋0.8·Σ 欄位 mask·region（左→右等分欄）；各區相同時數學上等於一般 cross-attention（測試證明）；生成後還原原 processor（含 attention slicing）。只多 cross-attention 計算，UNet 前向次數不變。
+- Evidence：`prompt_mode`（standard／long_prompt／regional）、`prompt_encoding`（chunks、content_tokens、region_prompts、base_ratio）、`prompt_truncated_effective`；style-compare 新增比較欄位 `prompt_mode`（舊 JSON＝standard）。檔名加 `_longprompt`／`_regional`，不覆寫 D-049 基準。
+- 驗證：容器以暫時 venv 安裝 torch 2.14.1（CPU）＋diffusers 0.41.0＋transformers 5.20.2（同客戶 Windows 版本；**僅測試用，不加入專案依賴**），tiny 隨機權重（無任何下載）跑整合測試；CI 無 torch → 該組 skip，純函式測試照跑。
+- 未做：S3、S4、下載、production default 變更、重抽 seed。

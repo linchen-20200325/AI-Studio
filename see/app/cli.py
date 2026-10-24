@@ -361,7 +361,7 @@ STYLE_TEST_SEED = 1234
 
 
 def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, custom_prompt: bool,
-                     checkpoint_id: str | None = None, scheduler: str | None = None) -> str:
+                     checkpoint_id: str | None = None, scheduler: str | None = None, prompt_mode: str | None = None) -> str:
     """基準條件沿用舊檔名（<style>_seed<seed>）；任何診斷變數都加後綴 → 永不覆寫既有失敗證據。"""
     stem = f"{style_id}_seed{seed}"
     if case_id != "kitten_butterfly":
@@ -374,6 +374,8 @@ def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, cu
         stem += f"_ckpt-{checkpoint_id}"
     if scheduler and scheduler != "default":
         stem += f"_sched-{scheduler}"
+    if prompt_mode:
+        stem += f"_{prompt_mode}"
     return stem
 
 
@@ -443,13 +445,27 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     req_params: dict[str, object] = {"style": params} if params else {}
     if args.gen_policy != "fit":
         req_params["gen_policy"] = args.gen_policy
+    # D-051（DG-24 A）：S1／S2 皆 opt-in 診斷；不帶旗標時 params 與既有完全相同
+    if args.regional:
+        if not case.characters:
+            print(f"錯誤：--regional 需要多角色案例（例 two_characters_ab）；{case.case_id} 沒有 characters", file=sys.stderr)
+            return 2
+        from see.core.style_tests import regional_prompts
+
+        rb, rr = regional_prompts(case)
+        req_params["prompt_mode"] = {"long_prompt": True, "regional": {
+            "base": apply_style(rb, "", style, image.info.name)[0],
+            "regions": [apply_style(t, "", style, image.info.name)[0] for t in rr], "layout": "columns"}}
+    elif args.long_prompt:
+        req_params["prompt_mode"] = {"long_prompt": True}
     req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(s.width * IMAGE_SCALE), height=int(s.height * IMAGE_SCALE),
                        seed=seed, caption=f"style-test {style.style_id}", params=req_params)
     orch._gate(image.estimate_cost, _StyleTestBudget(), req)
     out_dir = s.workspace / "style_tests"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / (_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt),
-                                      args.checkpoint, args.scheduler) + ".png")
+                                      args.checkpoint, args.scheduler,
+                                      "regional" if args.regional else ("longprompt" if args.long_prompt else None)) + ".png")
     t0 = time.perf_counter()
     res = image.generate_image(req, out)
     elapsed = round(time.perf_counter() - t0, 2)
@@ -460,6 +476,7 @@ def cmd_style_test(args: argparse.Namespace) -> int:
                                           "scheduler", "prompt_tokens", "negative_tokens", "token_limit", "prompt_truncated",
                                           "negative_truncated", "weights_variant", "attempts", "scheduler_name",
                                           "clip_skip_a1111", "clip_skip_diffusers", "vram_peak_mb", "final_max_side",
+                                          "prompt_mode", "prompt_encoding", "prompt_truncated_effective",
                                           "oom_downgrade", "numeric_downgrade", "initial_plan", "final_plan") if k in res.meta}
     ev = {"style_id": style.style_id, "style_display_name": style.display_name, "case_id": case.case_id,
           "scene": scene, "seed": seed, "width": req.width, "height": req.height,
@@ -469,7 +486,8 @@ def cmd_style_test(args: argparse.Namespace) -> int:
           # D-039：checkpoint 只用於內部品質驗證；commercial_cleared 一律 false（不得用於正式商用輸出）
           "checkpoint": res.meta.get("checkpoint"), "commercial_cleared": False if args.checkpoint else None,
           "diagnostic_overrides": {"gen_policy": args.gen_policy, "base_prompt_override": bool(args.base_prompt),
-                                   "scene_override": bool(args.scene)},
+                                   "scene_override": bool(args.scene), "long_prompt": bool(args.long_prompt or args.regional),
+                                   "regional": bool(args.regional)},
           "base_prompt": base_prompt, "prompt": prompt, "negative_prompt": negative, "style_params": params,
           "provider": res.provider, "generated_by": generated_by, "final_dtype": res.meta.get("final_dtype"),
           "fallback": res.meta.get("fallback"), "fallback_from": res.meta.get("fallback_from"),
@@ -724,6 +742,10 @@ def main(argv: list[str] | None = None) -> int:
     stt.add_argument("--checkpoint", default=None, help="（內部驗證，D-039）SD 1.5 單檔 checkpoint id；不 fallback")
     stt.add_argument("--scheduler", default=None, choices=["default", "dpmpp_2m_karras", "euler_a"],
                      help="覆寫 scheduler（預設：checkpoint 建議值；base SD 1.5＝模型自帶）")
+    stt.add_argument("--long-prompt", action="store_true",
+                     help="（診斷，D-051 S1）超過 77 token 時分段編碼，不截斷；預設關閉")
+    stt.add_argument("--regional", action="store_true",
+                     help="（診斷，D-051 S2）多角色案例：每角色一欄 regional cross-attention（隱含 --long-prompt）；預設關閉")
     stt.set_defaults(fn=cmd_style_test)
     ckd = sub.add_parser("checkpoint-download", help="下載已核准的 SD 1.5 checkpoint（單檔 safetensors；核對大小＋sha256；寫 provenance）")
     ckd.add_argument("checkpoint_id"); ckd.add_argument("--check", action="store_true", help="只核對遠端檔名／大小／sha256，不下載")

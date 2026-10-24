@@ -166,7 +166,7 @@
 | Character Identity／Reference Image | 角色 A／B 定義（結構化設定，ARCHITECTURE §14.1，D-048） | DONE（非 UI） |
 | | 跨鏡頭／背景／服裝維持 Identity；Identity provider 研究（IP-Adapter／FaceID 類：授權、4 GB 可行性） | RESEARCH → NEEDS HUMAN DECISION |
 | | 真人照片 Local First／不進 Git（§16） | 規則已生效 |
-| Multi-character Scene | `two_characters_ab` 真機：scene FAIL（屬性互換／污染，D-050） | NEEDS HUMAN DECISION：DG-24 |
+| Multi-character Scene | `two_characters_ab` 真機：scene FAIL（D-050）；DG-24＝A，S1／S2 已實作（D-051） | NEXT：Windows 真機 S1 → S2 → style-compare → 人工 |
 | Image-to-Video | 人物動作／表情／鏡頭動態（超越 Ken Burns）；LOCAL_FREE＋GTX 1650 4 GB 可行性研究，不足須明說 | RESEARCH（不下載、不用付費 API）→ NEEDS HUMAN DECISION |
 | Dialogue Performance | 角色聲音接 TTS（已有基礎）；真 Lip-sync provider；多角色台詞對應；字幕／timeline 對齊 | Lip-sync：BLOCKED（未核准模型）；其餘 NEXT |
 | Audio／Editing | BGM ✅／ducking ✅；SFX 聽感未驗；ambience、轉場、自動剪輯 | NEXT |
@@ -184,8 +184,9 @@
 | 項目 | 狀態 |
 |---|---|
 | D-049 真機證據入庫（scene FAIL／style PASS，主觀） | DONE |
-| S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in） | NEEDS HUMAN DECISION（DG-24 A） |
-| S2 Regional prompting 原型（零下載；opt-in 診斷） | NEEDS HUMAN DECISION（DG-24 A） |
+| S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in `--long-prompt`） | 實作 DONE（D-051）→ NEXT：Windows 真機 |
+| S2 Regional prompting 原型（零下載；opt-in `--regional`） | 實作 DONE（D-051）→ NEXT：Windows 真機＋人工 scene 判定 |
+| 角色 → 畫面區域提升到 Scene／Storyboard 資料（regional 產品化） | 待 S2 真機結果 |
 | S3 分段生成＋合成（零下載） | RESEARCH（S2 不足再評估） |
 | S4 IP-Adapter plus-face／full-face SD1.5（≈2.67 GB；Apache-2.0；image encoder 上游授權待核；4 GB 可行性未證實） | NEEDS HUMAN DECISION（DG-24 B） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |

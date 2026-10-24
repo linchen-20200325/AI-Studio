@@ -395,3 +395,11 @@
 - Batch: Batch 40 — D-049 真機入庫＋多角色／Identity 研究＋新產品需求
 - Result: D-050；PHASE2_EVIDENCE two_characters_ab（scene FAIL／style PASS，主觀；80＞77 截斷）；DG24 研究文件＋evidence/dg24；BACKLOG：Style/Mood Profile、Mobile-first、Env Bootstrap、Migration；移除被實測推翻的 token 粗估測試
 - Next: DG-24 裁示
+
+---
+- Date: 2026-10-24
+- Start SHA: eab3860
+- Batch: Batch 41 — DG-24 A：S1 長 prompt 分段＋S2 regional prompting（opt-in）
+- Result: D-051；chunk_token_ids／encode_text_chunks／RegionalAttnProcessor；style-test --long-prompt／--regional；evidence prompt_mode；style-compare prompt_mode；暫時 venv（torch CPU＋diffusers 0.41＋transformers 5.20，tiny 隨機權重、無下載）整合測試 10 passed
+- Tests: CI 環境 172 passed、5 skipped（torch 整合測試 skip）
+- Next: Windows git pull → S1 → S2
