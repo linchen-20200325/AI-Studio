@@ -277,7 +277,8 @@
 | 綁定方案 D（revision pinning）＋顯式 fork | **客戶核可（D-067）**：預設鎖定、不自動更新、跟隨最新只能顯式 opt-in、revision 缺失／hash 不符 fail closed |
 | Batch 2：CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結＋CharacterBinding／resolve_binding 基礎 | **DONE（D-067）** |
 | Batch 3：Project `cast` schema（optional，預設空）＋`resolve_project_cast()`＋doctor／export／唯讀 CLI／API；不改 pipeline、不遷移 | **DONE（D-068）**；Project.cast exists but is not yet production source of truth |
-| Batch 4：`character-migrate <pid> --dry-run`（唯讀 mapping／conflict report；不寫任何檔） | **NEXT**（可自主；實作只產報告） |
+| Batch 4：`character-migrate <pid> --dry-run`（唯讀 mapping／conflict report；不寫任何檔） | **DONE（D-069）**；**Batch 4 only analyzes. No project has been migrated.** |
+| Batch 4.1：人工決定檔（decisions）格式＋dry-run 套用決定後重算 migration_ready（仍唯讀） | **NEXT**（可自主；需先由客戶挑一個真實舊專案跑 dry-run 審查） |
 | Batch 5：`--apply`＋backup＋verify＋rollback（逐專案、客戶確認 dry-run 後才執行） | BACKLOG（需客戶選定專案並確認報告） |
 | Batch 6：pipeline 改由 pinned revision 解析 voice／anchor／reference | BACKLOG |
 | Batch 7：角色更新 UX（保持／更新／fork）、角色庫挑選 | BACKLOG（DG-19） |

@@ -505,3 +505,10 @@
 - Result: Project.cast／cast_schema_version、see/core/cast.py、doctor project_cast、env-export cast、`cast show`、`GET /api/projects/{pid}/cast`。**Project.cast exists but is not yet production source of truth.**（production 角色來源仍是 `Project.characters`；尚未遷移任何專案）
 - Tests: 見 commit（tests/test_project_cast.py）
 - Next: Batch 4 `character-migrate --dry-run`（唯讀報告）
+
+## 2026-10-24 — Batch 58
+- Batch: Batch 58 — D-069 Batch 4：character-migrate --dry-run（只分析）
+- Result: see/core/character_migration.py、CLI character-migrate（無 --dry-run 拒絕）、tests/migration_fixture.py、docs/examples/character_migration_report.example.json；**Batch 4 only analyzes. No project has been migrated.**
+- Note: 本 session 未收到原始 Batch 4 指令的第一份訊息（上一輪回覆因此重複了 Batch 3 回報）；本批依客戶重送的 Batch 4 規格實作。
+- Tests: 見 commit（tests/test_character_migration.py）
+- Next: 客戶挑真實舊專案跑 dry-run 審查 → Batch 4.1 決定檔（唯讀）

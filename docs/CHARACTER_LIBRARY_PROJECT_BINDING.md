@@ -143,6 +143,19 @@ Voice／Style 解析鏈（設計）：`Character default（pinned revision）→
 - **需人工確認**：ID（DG-29）、名稱衝突、gender_presentation（自由文字 → enum）、age（int）、description_en／features_en、reference_images、跨專案同名角色（是否同一人）、voice 為 default 的條目是否需要 voice profile、narrator 類條目（建議成為 Project 的「旁白聲音」設定，不建 person 角色）。
 - **不可搬**：seed、adapter（模型層）、body_type（schema 無欄位）、找不到檔案的 reference 路徑、空殼條目（只有 ID 沒有任何設定）。全部保留在 `legacy_characters`，**不補造**。
 
+### 8.4 Dry-run 實作規則（D-069 Batch 4；**Batch 4 only analyzes. No project has been migrated.**）
+分類（依序判斷）：
+1. **EMPTY_UNUSED**：Project.characters 條目沒有有效資料（無名稱、voice=default、無 speed、無外觀）。被引用時仍需人工決定如何處理引用。
+2. **NARRATOR_SETTING**：只被當作 `narrator_id`、沒有畫面引用、沒有外觀、沒有 blocking conflict → 建議成為 Project 旁白設定，不建立 CharacterDefinition。
+3. **LEGACY_ONLY**：未被引用，且唯一的資料是 seed／adapter／body_type。
+4. **HUMAN_REQUIRED**：任何 blocking conflict。
+5. **AUTO_MAPPABLE**：其餘（所有資料語意明確）；proposed_character_id＝`pending_new_character_id`。
+
+Conflict code（blocking）：ID_NAMESPACE_CONFLICT、NAME_CONFLICT、MISSING_DISPLAY_NAME、GENDER_MAPPING_AMBIGUOUS、AGE_MAPPING_AMBIGUOUS、FREE_TEXT_APPEARANCE、REFERENCE_MISSING、REFERENCE_UNREGISTERED、REFERENCE_HASH_CONFLICT、MULTIPLE_LIBRARY_MATCHES、LIBRARY_MATCH_CANDIDATE、VOICE_ROLE_AMBIGUOUS、UNUSED_CHARACTER、SCRIPT_ONLY_CHARACTER、UNKNOWN_FIELD、SCENE_REFERENCE_INCONSISTENT、PROJECT_ALREADY_HAS_CAST；（info）ID_FORMAT_LEGACY、LEGACY_ONLY_FIELDS、VOICE_DEFAULT_UNSPECIFIED、VOICE_CONFIRMATION_REBIND、NARRATOR_NOT_CHARACTER、EMPTY_CHARACTER。
+
+Reference：legacy 路徑（相對路徑以 workspace 上層解析）存在 → 只讀計算 sha256；Library 唯一且未綁定、無 metadata 問題 → `mapped`（提出 binding，不寫）；唯一但已綁 Library 角色 → LIBRARY_MATCH_CANDIDATE；多筆／metadata 不一致 → REFERENCE_HASH_CONFLICT；不在 Library → REFERENCE_UNREGISTERED；不存在 → REFERENCE_MISSING（sha256=None）。
+migration_ready＝沒有 blocking conflict、沒有 requires_human_decision、專案沒有 cast、且有可分析的角色。
+
 ## 9. ID 策略與 Decision Gate（DG-29：角色 ID 命名空間）
 **發現（stop condition）**：舊 Project 的角色 ID 是「專案內」ID（Mock 依出現順序產生 `char_01`；手動設定可為 `hero`、`narrator`，可含大寫／連字號），**跨專案不唯一**，也不一定符合 CharacterDefinition 的 `^[a-z][a-z0-9_]{1,63}$`。客戶規則要求「Library／Project／Scene 使用同一穩定 ID」→ 舊專案綁到 Library 時，**專案內所有引用（Scene.character_ids、narrator_id、SceneCharacter、Dialogue、Beat、Script）都要改寫成 Library ID**；這是每個專案內的 ID 重寫（非全庫重編，但屬資料改寫）→ 需裁示。
 
@@ -184,7 +197,7 @@ Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟�
 | 1 | （本輪）設計文件 | — |
 | 2 | CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結；read_revision()；CharacterBinding／resolve_binding 基礎；不影響 pipeline | **DONE（D-067）** |
 | 3 | Project `cast` schema（cast_schema_version、pinned revision、role_label、alias、follow=pinned）＋`resolve_project_cast()`（revision 缺失 fail closed）；pipeline 仍只用 legacy `Project.characters` | **DONE（D-068）；not yet production source of truth** |
-| 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | DG-29 |
+| 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | **DONE（D-069）；only analyzes, nothing migrated** |
 | 5 | `--apply`／rollback（備份、ID 改寫、legacy_characters 保留、migration log） | Batch 4＋客戶看過 dry-run |
 | 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | Batch 5 |
 | 7 | 角色更新 UX（保持／更新／fork）、角色庫挑選 | DG-19 |

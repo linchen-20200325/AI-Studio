@@ -338,6 +338,48 @@ def cmd_cast(args: argparse.Namespace) -> int:
     return 0 if rep.status in ("not_configured", "ok") else 1
 
 
+def cmd_character_migrate(args: argparse.Namespace) -> int:
+    """D-069 Batch 4：舊 Project.characters → Character Library／Project.cast 的 dry-run 分析（只讀）。
+    Batch 4 only analyzes. No project has been migrated."""
+    from datetime import datetime, timezone
+
+    from see.core.character_migration import analyze, human_summary, workspace_digest
+
+    if not args.dry_run:
+        print("拒絕執行：實際 migration 尚未核准（Batch 5 需客戶確認 dry-run 報告後另行裁示）。請加 --dry-run 只做分析。", file=sys.stderr)
+        return 2
+    s = Settings()
+    ws = s.workspace
+    out = Path(args.out).resolve() if args.out else None
+    if out is not None and out.is_relative_to(ws.resolve()):
+        print(f"拒絕：報告不可寫進 workspace（{ws}）內，以免影響 zero-write 驗證；請指定 workspace 以外的路徑或用 stdout", file=sys.stderr)
+        return 2
+    if out is not None and out.exists():
+        print(f"拒絕：{out} 已存在（不覆寫）", file=sys.stderr)
+        return 2
+    before = workspace_digest(ws)
+    try:
+        result = analyze(args.project_id, ws)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    after = workspace_digest(ws)
+    proof = {"workspace_digest_before": before, "workspace_digest_after": after, "unchanged": before == after}
+    envelope = {"migration_report_schema_version": result["report"]["migration_report_schema_version"],
+                "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),  # 不進 report_sha256
+                "report_sha256": result["report_sha256"], "zero_write_proof": proof, "report": result["report"]}
+    text = json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) if args.json else \
+        human_summary(result) + f"\nzero-write：{'通過（workspace 前後一致）' if proof['unchanged'] else '失敗！workspace 有變動'}"
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "x", encoding="utf-8") as f:
+            f.write(text + "\n")
+        print(f"report → {out}")
+    else:
+        print(text)
+    return 0 if proof["unchanged"] else 3
+
+
 def cmd_smoke(args: argparse.Namespace) -> int:
     """D-064 Smoke test（不需 GPU；暫存 workspace；mock／placeholder／silent）。"""
     from see.core.environment import Status, smoke_test
@@ -1342,6 +1384,12 @@ def main(argv: list[str] | None = None) -> int:
     cst.add_argument("project_id")
     cst.add_argument("--json", action="store_true")
     cst.set_defaults(fn=cmd_cast)
+    cmg = sub.add_parser("character-migrate", help="（只分析）舊 Project.characters → Character Library 的 dry-run 報告；不寫任何資料")
+    cmg.add_argument("project_id")
+    cmg.add_argument("--dry-run", action="store_true", help="必填：只分析、不遷移（實際 migration 尚未核准）")
+    cmg.add_argument("--json", action="store_true", help="輸出 versioned JSON（供 Batch 5 使用）")
+    cmg.add_argument("--out", default=None, help="報告檔（必須在 workspace 外、不可已存在）；預設 stdout")
+    cmg.set_defaults(fn=cmd_character_migrate)
     sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
     hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")

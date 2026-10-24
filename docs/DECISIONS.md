@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-069 | Batch 4：`character-migrate <project_id> --dry-run`（只分析舊 Project.characters → Library／cast；versioned JSON＋中文摘要；固定分類與 conflict code；reference sha256 分析；Scene／對白／旁白引用影響；report_input_hash；zero-write proof）。Batch 4 only analyzes. No project has been migrated | 有效 | 可逆（唯讀） |
 | D-068 | Batch 3：`Project.cast`（list[CharacterBinding]，可選、預設空）＋`cast_schema_version`＋`resolve_project_cast()`（只讀 pinned revision、不 fallback latest、hash 不符 fail closed、reference 遺失 not ready）；doctor／env-export／唯讀 CLI `cast show`／唯讀 API。Project.cast exists but is not yet production source of truth | 有效 | 可逆 |
 | D-067 | **DG-29 客戶裁示 A**：全域穩定 Character Library ID（系統產生、不由 display_name 產生、rename 不變；Library／Project／Scene 最終同一 ID）；舊專案逐專案人工觸發遷移（dry-run → mapping／conflict report → 客戶確認 → backup → migration → verify → 可 rollback），不做一次性大批改寫，未遷移專案維持原行為。**核可方案 D Revision Pinning**（Project 綁 character_id＋character_revision；預設鎖定；不自動更新；跟隨最新版只能顯式 opt-in；revision 不存在或 hash 不符 → fail closed）。Batch 2：Character Store 不可變 revision history | 有效 | 可逆（遷移另過 Gate） |
 | D-066 | 客戶裁示：(1) **Project 層結構化場景預設先不做**；(2) **visual_description 與 Scene structured fields 並存、不互相自動改寫**。角色資料唯一架構設計（docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）：推薦 revision pinning（Library 單一來源＋不可變 revision history；Project 存 character_id＋revision）；發現 **DG-29 角色 ID 命名空間**（舊專案 ID 為專案內順序 ID，跨專案不唯一）待裁示 | 有效（2 項裁示）／設計待核可 | 可逆（未實作） |
@@ -584,3 +585,12 @@
 - 唯讀介面：CLI `python -m see.app.cli cast show <project_id> [--json]`；API `GET /api/projects/{pid}/cast`（回應註明 production_source=Project.characters）。沒有修改 cast 的 CLI／API／UI。
 - Production 隔離（測試證明）：有 cast（含指向不存在的 revision）時，image request、ctx、resolve_voice、voice 確認、fingerprint 與沒有 cast 時完全相同；建置不重做任何產物。
 - 未做：Project.characters 遷移、ID／Scene ID 改寫、migration report、pipeline 切換、角色庫 UI、update-to-latest、narrator／reference path 遷移。
+
+## D-069 2026-10-24 Batch 4：Character migration dry-run（只分析）
+- **Batch 4 only analyzes. No project has been migrated.**
+- CLI：`python -m see.app.cli character-migrate <project_id> --dry-run [--json] [--out <workspace 外的新檔>]`。不帶 `--dry-run` → 拒絕（exit 2，「實際 migration 尚未核准」）。`--out` 不可在 workspace 內、不可覆寫既有檔；預設 stdout。
+- 程式：`see/core/character_migration.py`（`analyze()`、`workspace_digest()`、`human_summary()`）。只讀：不寫 Project、Character Library／history、Scene、`.ref.json`，不登記／複製圖片，不 backup／rollback，不產生任何真 ID（新角色以 `pending_new_character_id` 表示）。
+- 報告（`migration_report_schema_version` 1）：每個條目（Project.characters＋只存在劇本／Scene 引用的 ID）列 legacy ID、名稱、是否旁白／voice-only、voice（voice_id、speed、provider、confirmed）、appearance、references（狀態／sha256）、usage_counts（scene_character_ids、scene_overrides、gaze_targets、dialogue、narration、voice_overrides、script_characters、script_beats）、affected_scene_ids、rewrites、rewrite_count、field_mappings（auto／human）、legacy_only_fields、proposed_action、proposed_character_id、proposed_reference_asset_ids、library_candidates、anchor_text_would_change、classification、confidence、requires_human_decision、conflicts[]；summary（各分類數、受影響場景、總改寫數、blocking 數、migration_ready＋理由）；report_input_hash；report_sha256（不含 generated_at）。
+- 分類：AUTO_MAPPABLE（所有資料語意明確、無 blocking conflict）／HUMAN_REQUIRED（任何不確定）／LEGACY_ONLY（未被引用且只有 seed／adapter／body_type）／NARRATOR_SETTING（只當旁白、無外觀；不建立 CharacterDefinition）／EMPTY_UNUSED（只有 ID 沒有有效資料）。規則與 conflict code 見 docs/CHARACTER_LIBRARY_PROJECT_BINDING.md §8.4。
+- 既有 Library 對應：不以名稱、性別、外觀文字判定；同名只產生 NAME_CONFLICT；唯一的 reference sha256 命中已綁定的 Library 角色 → LIBRARY_MATCH_CANDIDATE（仍需人工確認）；多個 → MULTIPLE_LIBRARY_MATCHES。
+- 合成測試專案：`tests/migration_fixture.py`；範例報告：`docs/examples/character_migration_report.example.json`（hash 每次不同，僅供格式審查）。

@@ -1,0 +1,1161 @@
+{
+  "_comment": "D-069 範例（合成測試專案 tests/migration_fixture.py；不含私人資料）。hash 與場景 ID 每次產生會不同，僅供人工審查格式。",
+  "report": {
+    "character_binding_state": "v0_legacy",
+    "conflict_codes": {
+      "AGE_MAPPING_AMBIGUOUS": {
+        "message": "整數年齡不自動轉成 age_impression 措辭",
+        "severity": "blocking"
+      },
+      "EMPTY_CHARACTER": {
+        "message": "只有 ID、沒有有效資料",
+        "severity": "info"
+      },
+      "FREE_TEXT_APPEARANCE": {
+        "message": "description_en／features_en 是自由文字，不自動拆欄位",
+        "severity": "blocking"
+      },
+      "GENDER_MAPPING_AMBIGUOUS": {
+        "message": "性別呈現是自由文字，不自動轉成 enum（不推論）",
+        "severity": "blocking"
+      },
+      "ID_FORMAT_LEGACY": {
+        "message": "舊 ID 不符 Library ID 格式；migration 時一律改用系統產生的新 ID",
+        "severity": "info"
+      },
+      "ID_NAMESPACE_CONFLICT": {
+        "message": "舊專案內 ID 與既有 Library character_id 字串相同（不同命名空間，不得視為同一角色）",
+        "severity": "blocking"
+      },
+      "LEGACY_ONLY_FIELDS": {
+        "message": "seed／adapter（模型設定）或 body_type（無對應欄位）只保留在 legacy",
+        "severity": "info"
+      },
+      "LIBRARY_MATCH_CANDIDATE": {
+        "message": "reference sha256 唯一對應到既有 Library 角色：可能是同一角色，需人工確認（不自動合併）",
+        "severity": "blocking"
+      },
+      "MISSING_DISPLAY_NAME": {
+        "message": "沒有任何可用的顯示名稱",
+        "severity": "blocking"
+      },
+      "MULTIPLE_LIBRARY_MATCHES": {
+        "message": "reference sha256 對應到多個既有 Library 角色",
+        "severity": "blocking"
+      },
+      "NAME_CONFLICT": {
+        "message": "名稱不一致（角色設定 vs 劇本）或與其他角色／既有 Library 角色同名；同名不代表同一角色",
+        "severity": "blocking"
+      },
+      "NARRATOR_NOT_CHARACTER": {
+        "message": "僅作旁白聲音使用：應成為 Project 旁白設定，不建立 CharacterDefinition",
+        "severity": "info"
+      },
+      "PROJECT_ALREADY_HAS_CAST": {
+        "message": "專案已有 Project.cast；不可重複遷移",
+        "severity": "blocking"
+      },
+      "REFERENCE_HASH_CONFLICT": {
+        "message": "相同 sha256 有多筆 Library asset，或 asset metadata 不一致，或已綁定其他角色",
+        "severity": "blocking"
+      },
+      "REFERENCE_MISSING": {
+        "message": "legacy reference 路徑找不到檔案",
+        "severity": "blocking"
+      },
+      "REFERENCE_UNREGISTERED": {
+        "message": "reference 檔案存在但不在 Reference Library（需使用者登記；dry-run 不登記）",
+        "severity": "blocking"
+      },
+      "SCENE_REFERENCE_INCONSISTENT": {
+        "message": "Scene／對白引用了不存在於角色設定與劇本的 ID",
+        "severity": "blocking"
+      },
+      "SCRIPT_ONLY_CHARACTER": {
+        "message": "只存在於劇本／Scene 引用、沒有角色設定；是否建立 Library 角色需人工決定",
+        "severity": "blocking"
+      },
+      "UNKNOWN_FIELD": {
+        "message": "project.json 角色資料含程式不認得的欄位",
+        "severity": "blocking"
+      },
+      "UNUSED_CHARACTER": {
+        "message": "有設定資料但從未被任何 Scene／對白／劇本引用；是否搬移需人工決定",
+        "severity": "blocking"
+      },
+      "VOICE_CONFIRMATION_REBIND": {
+        "message": "舊 voice 確認需在 migration 後綁到新 revision 重新確認",
+        "severity": "info"
+      },
+      "VOICE_DEFAULT_UNSPECIFIED": {
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      "VOICE_ROLE_AMBIGUOUS": {
+        "message": "同時作為旁白與畫面角色，或旁白條目帶有外觀；角色／旁白身分不明",
+        "severity": "blocking"
+      }
+    },
+    "conflicts": [
+      {
+        "code": "VOICE_ROLE_AMBIGUOUS",
+        "detail": "旁白＋畫面角色",
+        "legacy_id": "both",
+        "message": "同時作為旁白與畫面角色，或旁白條目帶有外觀；角色／旁白身分不明",
+        "severity": "blocking"
+      },
+      {
+        "code": "SCRIPT_ONLY_CHARACTER",
+        "detail": "小貓咪",
+        "legacy_id": "char_01",
+        "message": "只存在於劇本／Scene 引用、沒有角色設定；是否建立 Library 角色需人工決定",
+        "severity": "blocking"
+      },
+      {
+        "code": "UNKNOWN_FIELD",
+        "detail": "mood_hint",
+        "legacy_id": "clean",
+        "message": "project.json 角色資料含程式不認得的欄位",
+        "severity": "blocking"
+      },
+      {
+        "code": "REFERENCE_HASH_CONFLICT",
+        "detail": "sha256 38bfaca7b921… → ['dup_a', 'dup_b']",
+        "legacy_id": "dupref",
+        "message": "相同 sha256 有多筆 Library asset，或 asset metadata 不一致，或已綁定其他角色",
+        "severity": "blocking"
+      },
+      {
+        "code": "VOICE_DEFAULT_UNSPECIFIED",
+        "detail": "",
+        "legacy_id": "dupref",
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      {
+        "code": "EMPTY_CHARACTER",
+        "detail": "未被引用",
+        "legacy_id": "ghost",
+        "message": "只有 ID、沒有有效資料",
+        "severity": "info"
+      },
+      {
+        "code": "VOICE_DEFAULT_UNSPECIFIED",
+        "detail": "",
+        "legacy_id": "ghost",
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      {
+        "code": "AGE_MAPPING_AMBIGUOUS",
+        "detail": "30",
+        "legacy_id": "hero",
+        "message": "整數年齡不自動轉成 age_impression 措辭",
+        "severity": "blocking"
+      },
+      {
+        "code": "GENDER_MAPPING_AMBIGUOUS",
+        "detail": "man",
+        "legacy_id": "hero",
+        "message": "性別呈現是自由文字，不自動轉成 enum（不推論）",
+        "severity": "blocking"
+      },
+      {
+        "code": "NAME_CONFLICT",
+        "detail": "既有 Library 角色同名「阿明」：['char_abef6ed02781']（同名不代表同一角色）",
+        "legacy_id": "hero",
+        "message": "名稱不一致（角色設定 vs 劇本）或與其他角色／既有 Library 角色同名；同名不代表同一角色",
+        "severity": "blocking"
+      },
+      {
+        "code": "VOICE_CONFIRMATION_REBIND",
+        "detail": "confirmed_at=None",
+        "legacy_id": "hero",
+        "message": "舊 voice 確認需在 migration 後綁到新 revision 重新確認",
+        "severity": "info"
+      },
+      {
+        "code": "REFERENCE_MISSING",
+        "detail": "<使用者本機 reference 資料夾>/gone.png",
+        "legacy_id": "heroine",
+        "message": "legacy reference 路徑找不到檔案",
+        "severity": "blocking"
+      },
+      {
+        "code": "VOICE_DEFAULT_UNSPECIFIED",
+        "detail": "",
+        "legacy_id": "heroine",
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      {
+        "code": "LIBRARY_MATCH_CANDIDATE",
+        "detail": "char_abef6ed02781",
+        "legacy_id": "match",
+        "message": "reference sha256 唯一對應到既有 Library 角色：可能是同一角色，需人工確認（不自動合併）",
+        "severity": "blocking"
+      },
+      {
+        "code": "VOICE_DEFAULT_UNSPECIFIED",
+        "detail": "",
+        "legacy_id": "match",
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      {
+        "code": "LEGACY_ONLY_FIELDS",
+        "detail": "appearance.seed, appearance.adapter",
+        "legacy_id": "model_only",
+        "message": "seed／adapter（模型設定）或 body_type（無對應欄位）只保留在 legacy",
+        "severity": "info"
+      },
+      {
+        "code": "VOICE_DEFAULT_UNSPECIFIED",
+        "detail": "",
+        "legacy_id": "model_only",
+        "message": "voice_id 為 default：不建立 voice profile（不補值）",
+        "severity": "info"
+      },
+      {
+        "code": "NARRATOR_NOT_CHARACTER",
+        "detail": "",
+        "legacy_id": "narrator",
+        "message": "僅作旁白聲音使用：應成為 Project 旁白設定，不建立 CharacterDefinition",
+        "severity": "info"
+      },
+      {
+        "code": "SCENE_REFERENCE_INCONSISTENT",
+        "detail": "stranger 不在 Project.characters 也不在劇本",
+        "legacy_id": "stranger",
+        "message": "Scene／對白引用了不存在於角色設定與劇本的 ID",
+        "severity": "blocking"
+      }
+    ],
+    "entries": [
+      {
+        "affected_scene_ids": [
+          "scene_001",
+          "scene_002"
+        ],
+        "anchor_text_would_change": null,
+        "appearance": {},
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "VOICE_ROLE_AMBIGUOUS",
+            "detail": "旁白＋畫面角色",
+            "message": "同時作為旁白與畫面角色，或旁白條目帶有外觀；角色／旁白身分不明",
+            "severity": "blocking"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "老師"
+          },
+          {
+            "source": "voice_id",
+            "status": "auto",
+            "target": "voice_profile.voice_id",
+            "value": "zm_011"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "老師",
+        "legacy_id": "both",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": true,
+        "rewrite_count": 3,
+        "rewrites": [
+          {
+            "field": "character_ids[2]",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "narrator_id",
+            "scene_id": "scene_002"
+          },
+          {
+            "field": "characters[both]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 1,
+          "scene_character_ids": 1,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "zm_011"
+        }
+      },
+      {
+        "affected_scene_ids": [],
+        "anchor_text_would_change": null,
+        "appearance": {},
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "SCRIPT_ONLY_CHARACTER",
+            "detail": "小貓咪",
+            "message": "只存在於劇本／Scene 引用、沒有角色設定；是否建立 Library 角色需人工決定",
+            "severity": "blocking"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "script.characters.name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "小貓咪"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": null,
+        "legacy_id": "char_01",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": true,
+        "rewrite_count": 2,
+        "rewrites": [
+          {
+            "field": "script.beats[0].character_ids[0]"
+          },
+          {
+            "field": "script.characters[0].character_id"
+          }
+        ],
+        "script_name": "小貓咪",
+        "source": "script",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 0,
+          "scene_overrides": 0,
+          "script_beats": 1,
+          "script_characters": 1,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": null,
+          "provider": null,
+          "speed": null,
+          "voice_id": null
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_002"
+        ],
+        "anchor_text_would_change": false,
+        "appearance": {
+          "adapter": {},
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "blue jacket",
+          "seed": null,
+          "traits": {
+            "age": null,
+            "age_range": "",
+            "appearance_region": "",
+            "body_type": "",
+            "distinctive_marks": [],
+            "facial_features": [],
+            "gender_presentation": "",
+            "hair_color": "black",
+            "hair_style": ""
+          }
+        },
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "UNKNOWN_FIELD",
+            "detail": "mood_hint",
+            "message": "project.json 角色資料含程式不認得的欄位",
+            "severity": "blocking"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "阿華"
+          },
+          {
+            "source": "appearance.traits.hair_color",
+            "status": "auto",
+            "target": "hair_color",
+            "value": "black"
+          },
+          {
+            "source": "appearance.outfit_en",
+            "status": "auto",
+            "target": "outfit",
+            "value": "blue jacket"
+          },
+          {
+            "source": "voice_id",
+            "status": "auto",
+            "target": "voice_profile.voice_id",
+            "value": "zm_009"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "阿華",
+        "legacy_id": "clean",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [
+          "free_face"
+        ],
+        "references": [
+          {
+            "legacy_path": "<使用者本機 reference 資料夾>/clean.png",
+            "library_matches": [
+              "free_face"
+            ],
+            "sha256": "d8ebba28299c2e8541fa13fba21163e7619a7f816f0ead2aec07ec7ce289eb81",
+            "status": "mapped"
+          }
+        ],
+        "requires_human_decision": true,
+        "rewrite_count": 2,
+        "rewrites": [
+          {
+            "field": "character_ids[0]",
+            "scene_id": "scene_002"
+          },
+          {
+            "field": "characters[clean]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 1,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "zm_009"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_002"
+        ],
+        "anchor_text_would_change": false,
+        "appearance": {
+          "adapter": {},
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "",
+          "seed": null,
+          "traits": null
+        },
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "REFERENCE_HASH_CONFLICT",
+            "detail": "sha256 38bfaca7b921… → ['dup_a', 'dup_b']",
+            "message": "相同 sha256 有多筆 Library asset，或 asset metadata 不一致，或已綁定其他角色",
+            "severity": "blocking"
+          },
+          {
+            "code": "VOICE_DEFAULT_UNSPECIFIED",
+            "detail": "",
+            "message": "voice_id 為 default：不建立 voice profile（不補值）",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "小強"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "小強",
+        "legacy_id": "dupref",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [
+          {
+            "legacy_path": "<使用者本機 reference 資料夾>/dup.png",
+            "library_matches": [
+              "dup_a",
+              "dup_b"
+            ],
+            "sha256": "38bfaca7b921bec368eb2e121ec361fb9ba6c4997fb38e034d3341f9740caa59",
+            "status": "conflict"
+          }
+        ],
+        "requires_human_decision": true,
+        "rewrite_count": 2,
+        "rewrites": [
+          {
+            "field": "character_ids[2]",
+            "scene_id": "scene_002"
+          },
+          {
+            "field": "characters[dupref]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 1,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "default"
+        }
+      },
+      {
+        "affected_scene_ids": [],
+        "anchor_text_would_change": null,
+        "appearance": {},
+        "classification": "EMPTY_UNUSED",
+        "confidence": "high",
+        "conflicts": [
+          {
+            "code": "EMPTY_CHARACTER",
+            "detail": "未被引用",
+            "message": "只有 ID、沒有有效資料",
+            "severity": "info"
+          },
+          {
+            "code": "VOICE_DEFAULT_UNSPECIFIED",
+            "detail": "",
+            "message": "voice_id 為 default：不建立 voice profile（不補值）",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": null,
+        "legacy_id": "ghost",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "keep_in_legacy_no_library_character",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": false,
+        "rewrite_count": 0,
+        "rewrites": [],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 0,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "default"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_001"
+        ],
+        "anchor_text_would_change": true,
+        "appearance": {
+          "adapter": {},
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "grey suit",
+          "seed": null,
+          "traits": {
+            "age": 30,
+            "age_range": "",
+            "appearance_region": "",
+            "body_type": "",
+            "distinctive_marks": [],
+            "facial_features": [],
+            "gender_presentation": "man",
+            "hair_color": "",
+            "hair_style": "short"
+          }
+        },
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "AGE_MAPPING_AMBIGUOUS",
+            "detail": "30",
+            "message": "整數年齡不自動轉成 age_impression 措辭",
+            "severity": "blocking"
+          },
+          {
+            "code": "GENDER_MAPPING_AMBIGUOUS",
+            "detail": "man",
+            "message": "性別呈現是自由文字，不自動轉成 enum（不推論）",
+            "severity": "blocking"
+          },
+          {
+            "code": "NAME_CONFLICT",
+            "detail": "既有 Library 角色同名「阿明」：['char_abef6ed02781']（同名不代表同一角色）",
+            "message": "名稱不一致（角色設定 vs 劇本）或與其他角色／既有 Library 角色同名；同名不代表同一角色",
+            "severity": "blocking"
+          },
+          {
+            "code": "VOICE_CONFIRMATION_REBIND",
+            "detail": "confirmed_at=None",
+            "message": "舊 voice 確認需在 migration 後綁到新 revision 重新確認",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "appearance.traits.age",
+            "status": "human",
+            "target": "age_impression",
+            "value": 30
+          },
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "阿明"
+          },
+          {
+            "source": "appearance.traits.gender_presentation",
+            "status": "human",
+            "target": "gender_presentation",
+            "value": "man"
+          },
+          {
+            "source": "appearance.traits.hair_style",
+            "status": "auto",
+            "target": "hair_style",
+            "value": "short"
+          },
+          {
+            "source": "appearance.outfit_en",
+            "status": "auto",
+            "target": "outfit",
+            "value": "grey suit"
+          },
+          {
+            "source": "speed",
+            "status": "auto",
+            "target": "voice_profile.speed",
+            "value": 1.1
+          },
+          {
+            "source": "voice_id",
+            "status": "auto",
+            "target": "voice_profile.voice_id",
+            "value": "zm_010"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "阿明",
+        "legacy_id": "hero",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": true,
+        "rewrite_count": 4,
+        "rewrites": [
+          {
+            "field": "character_ids[0]",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "characters[0].character_id",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "dialogue[0].character_id",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "characters[hero]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 1,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 1,
+          "scene_overrides": 1,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": true,
+          "provider": "",
+          "speed": 1.1,
+          "voice_id": "zm_010"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_001"
+        ],
+        "anchor_text_would_change": false,
+        "appearance": {
+          "adapter": {},
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "red coat",
+          "seed": null,
+          "traits": null
+        },
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "REFERENCE_MISSING",
+            "detail": "<使用者本機 reference 資料夾>/gone.png",
+            "message": "legacy reference 路徑找不到檔案",
+            "severity": "blocking"
+          },
+          {
+            "code": "VOICE_DEFAULT_UNSPECIFIED",
+            "detail": "",
+            "message": "voice_id 為 default：不建立 voice profile（不補值）",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "小美"
+          },
+          {
+            "source": "appearance.outfit_en",
+            "status": "auto",
+            "target": "outfit",
+            "value": "red coat"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "小美",
+        "legacy_id": "heroine",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [
+          {
+            "legacy_path": "<使用者本機 reference 資料夾>/gone.png",
+            "sha256": null,
+            "status": "missing"
+          }
+        ],
+        "requires_human_decision": true,
+        "rewrite_count": 3,
+        "rewrites": [
+          {
+            "field": "character_ids[1]",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "characters[0].gaze.target_character_id",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "characters[heroine]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 1,
+          "narration": 0,
+          "scene_character_ids": 1,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "default"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_002"
+        ],
+        "anchor_text_would_change": false,
+        "appearance": {
+          "adapter": {},
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "",
+          "seed": null,
+          "traits": null
+        },
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "LIBRARY_MATCH_CANDIDATE",
+            "detail": "char_abef6ed02781",
+            "message": "reference sha256 唯一對應到既有 Library 角色：可能是同一角色，需人工確認（不自動合併）",
+            "severity": "blocking"
+          },
+          {
+            "code": "VOICE_DEFAULT_UNSPECIFIED",
+            "detail": "",
+            "message": "voice_id 為 default：不建立 voice profile（不補值）",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "大雄"
+          }
+        ],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": "大雄",
+        "legacy_id": "match",
+        "legacy_only_fields": [],
+        "library_candidates": [
+          "char_abef6ed02781"
+        ],
+        "proposed_action": "review_existing_library_candidate",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [
+          {
+            "legacy_path": "<使用者本機 reference 資料夾>/match.png",
+            "library_character_ids": [
+              "char_abef6ed02781"
+            ],
+            "library_matches": [
+              "lib_face"
+            ],
+            "sha256": "2559c2e6cf55ff1392cf6683e9e7f89a92b28e78f7a7c9001850cd943c129957",
+            "status": "bound_to_library_character"
+          }
+        ],
+        "requires_human_decision": true,
+        "rewrite_count": 2,
+        "rewrites": [
+          {
+            "field": "character_ids[1]",
+            "scene_id": "scene_002"
+          },
+          {
+            "field": "characters[match]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 1,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "default"
+        }
+      },
+      {
+        "affected_scene_ids": [],
+        "anchor_text_would_change": null,
+        "appearance": {
+          "adapter": {
+            "lora": "x"
+          },
+          "description_en": "",
+          "features_en": [],
+          "outfit_en": "",
+          "seed": 42,
+          "traits": null
+        },
+        "classification": "LEGACY_ONLY",
+        "confidence": "high",
+        "conflicts": [
+          {
+            "code": "LEGACY_ONLY_FIELDS",
+            "detail": "appearance.seed, appearance.adapter",
+            "message": "seed／adapter（模型設定）或 body_type（無對應欄位）只保留在 legacy",
+            "severity": "info"
+          },
+          {
+            "code": "VOICE_DEFAULT_UNSPECIFIED",
+            "detail": "",
+            "message": "voice_id 為 default：不建立 voice profile（不補值）",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": null,
+        "legacy_id": "model_only",
+        "legacy_only_fields": [
+          "appearance.adapter",
+          "appearance.seed"
+        ],
+        "library_candidates": [],
+        "proposed_action": "keep_in_legacy_only",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": false,
+        "rewrite_count": 0,
+        "rewrites": [],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 0,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "default"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_001"
+        ],
+        "anchor_text_would_change": null,
+        "appearance": {},
+        "classification": "NARRATOR_SETTING",
+        "confidence": "high",
+        "conflicts": [
+          {
+            "code": "NARRATOR_NOT_CHARACTER",
+            "detail": "",
+            "message": "僅作旁白聲音使用：應成為 Project 旁白設定，不建立 CharacterDefinition",
+            "severity": "info"
+          }
+        ],
+        "field_mappings": [
+          {
+            "source": "display_name",
+            "status": "auto",
+            "target": "display_name",
+            "value": "旁白"
+          },
+          {
+            "source": "voice_id",
+            "status": "auto",
+            "target": "voice_profile.voice_id",
+            "value": "zm_010"
+          }
+        ],
+        "is_narrator_or_voice_only": true,
+        "legacy_display_name": "旁白",
+        "legacy_id": "narrator",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "propose_project_narrator_setting",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": false,
+        "rewrite_count": 2,
+        "rewrites": [
+          {
+            "field": "narrator_id",
+            "scene_id": "scene_001"
+          },
+          {
+            "field": "characters[narrator]"
+          }
+        ],
+        "script_name": null,
+        "source": "project.characters",
+        "usage_counts": {
+          "dialogue": 0,
+          "gaze_targets": 0,
+          "narration": 1,
+          "scene_character_ids": 0,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 1
+        },
+        "voice": {
+          "confirmed": false,
+          "provider": "",
+          "speed": null,
+          "voice_id": "zm_010"
+        }
+      },
+      {
+        "affected_scene_ids": [
+          "scene_001"
+        ],
+        "anchor_text_would_change": null,
+        "appearance": {},
+        "classification": "HUMAN_REQUIRED",
+        "confidence": "needs_review",
+        "conflicts": [
+          {
+            "code": "SCENE_REFERENCE_INCONSISTENT",
+            "detail": "stranger 不在 Project.characters 也不在劇本",
+            "message": "Scene／對白引用了不存在於角色設定與劇本的 ID",
+            "severity": "blocking"
+          }
+        ],
+        "field_mappings": [],
+        "is_narrator_or_voice_only": false,
+        "legacy_display_name": null,
+        "legacy_id": "stranger",
+        "legacy_only_fields": [],
+        "library_candidates": [],
+        "proposed_action": "needs_human_decision",
+        "proposed_character_id": null,
+        "proposed_reference_asset_ids": [],
+        "references": [],
+        "requires_human_decision": true,
+        "rewrite_count": 1,
+        "rewrites": [
+          {
+            "field": "dialogue[1].character_id",
+            "scene_id": "scene_001"
+          }
+        ],
+        "script_name": null,
+        "source": "scene_reference_only",
+        "usage_counts": {
+          "dialogue": 1,
+          "gaze_targets": 0,
+          "narration": 0,
+          "scene_character_ids": 0,
+          "scene_overrides": 0,
+          "script_beats": 0,
+          "script_characters": 0,
+          "voice_overrides": 0
+        },
+        "voice": {
+          "confirmed": null,
+          "provider": null,
+          "speed": null,
+          "voice_id": null
+        }
+      }
+    ],
+    "kind": "character_migration_dry_run",
+    "migration_report_schema_version": 1,
+    "notice": "Batch 4 only analyzes. No project has been migrated.",
+    "project_id": "mig_fixture",
+    "report_input_hash": "290d601227083af1b79cbcbc230f0ba559adbf6c10fa66dbaf4cd91d3b8b70da",
+    "rules": {
+      "library_matching": "只接受唯一的 reference sha256 證據且仍需人工確認；不以名稱、性別或外觀文字判定同一角色",
+      "new_id": "pending_new_character_id（正式 ID 只在 Batch 5 apply 時由系統產生）",
+      "relative_reference_paths": "相對 workspace 上層（repo 根）解析"
+    },
+    "summary": {
+      "affected_scene_count": 2,
+      "affected_scenes": [
+        "scene_001",
+        "scene_002"
+      ],
+      "auto_mappable": 0,
+      "blocking_conflicts": 10,
+      "empty_unused": 1,
+      "human_required": 8,
+      "legacy_only": 1,
+      "migration_ready": false,
+      "narrator_settings": 1,
+      "not_ready_reasons": [
+        "10 個未解決的 blocking conflict",
+        "8 個角色需要人工決定（本輪沒有人工決定資料）"
+      ],
+      "script_or_scene_only": 2,
+      "total_entries": 11,
+      "total_legacy_characters": 9,
+      "total_rewrite_references": 21
+    }
+  },
+  "report_sha256": "dce706372921cb7e2b43e6a1e609291c25282a252f0d6d348f0ca7318753684f"
+}
