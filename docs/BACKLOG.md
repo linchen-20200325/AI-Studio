@@ -193,13 +193,17 @@
 | S4 PoC：每角色 reference image＋IP-Adapter mask | 實作 DONE（D-054）；真機一次：2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分（主觀，scene FAIL，D-056） |
 | S4 A／B binding 追溯 | DONE（D-056）：mapping verified、非程式 bug；加 position 排序／mask 幾何自檢／`identity_region_map`＋疊圖 |
 | S4 同 seed 重跑取 evidence | DONE（D-057）：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 只作研究證據，不升格 production；不再以調 scale 為主解法 |
-| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | 研究 DONE；Route A PoC 程式 DONE（零下載）；`ab_background` 真機已完成（保留、不重跑）→ NEXT：Windows `ab_char_a_isolated`（A＝男）→ `ab_char_b_isolated`（B＝女）→ compose-scene → compose-review（D-058 修正後恢復） |
+| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | **PAUSED（D-059）**：`ab_background` 與 A isolated（identity FAIL）保留為 evidence；B isolated、compose-scene、Route C、去背優化暫停，待 identity preservation 解決 |
+| **DG-28 Identity Preservation Research**（DG28_IDENTITY_PRESERVATION_RESEARCH.md） | 研究 DONE（D-059）→ **NEEDS HUMAN DECISION**：Top 1 FaceID-Plus-V2 SD1.5（研究用、≈0.53 GB、InsightFace 非商用、pickle 例外）／Top 2 SD1.5 角色 LoRA（訓練 Gate） |
+| 零下載 reference 裁臉對照（手動裁成臉部大近照，同 seed 重跑 A isolated） | 可選（未排程；分離前處理因素） |
+| Reference Quality Check UI（ARCHITECTURE §17.7） | BACKLOG（規格 DONE） |
+| Identity Consistency 跨 Scene 驗收矩陣（ARCHITECTURE §17.8） | 規格 DONE；待 identity 路線確定後執行 |
 | DG-26 Route C：合成後只修接縫（4-ch inpaint 或低 strength img2img，既有權重） | BACKLOG（Route A 真機後評估） |
 | DG-26 Route B：inpaint 依序合成 | 不優先（D-057） |
 | DG-27 去背／segmentation 模型（若單色背景鍵控不足） | 未觸發；需授權審查＋Gate，不得自行下載 |
 | Face crop（參考圖目前為 CLIP 中心裁切、無人臉偵測） | RESEARCH（若 Identity 不足再評估，不新增 insightface） |
 | ControlNet（openpose 等）兩人佈局控制 | RESEARCH（需另下載；S4 後評估） |
-| S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
+| S5 IP-Adapter-FaceID | D-053 不建議（pickle＋InsightFace 非商用＋新依賴）；**D-059 重新評估**：FaceID-Plus-V2 SD1.5 為 DG-28 Top 1（研究用），仍需客戶裁示 pickle 例外、InsightFace 非商用、新依賴 |
 | 重抽 seed | 非解法（客戶裁示） |
 
 ## Character Identity Definition／角色 UI（D-058；規格：ARCHITECTURE §17；規則：PROJECT_RULES §17）

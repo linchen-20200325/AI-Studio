@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-059 | v2 A 男主角 isolated 真機：**identity fidelity FAIL**（主觀；單人也不像）→ DG-26 Route A 後續暫停（B、compose、Route C、去背優化）；啟動 **DG-28 Identity Preservation Research**（研究完成、未下載）；Reference Quality Check 與 Identity Consistency 驗收標準入規格 | 有效；DG-28 待裁示 | 可逆 |
 | D-058 | 角色身份定義治理：客戶裁示 **A＝男、B＝女**（v1 寫反）→ A／B 案例 v2＋舊 evidence `historical_reversed_character_mapping`；character_id ≠ 性別／位置／style／voice；Character Definition／Reference Asset schema、Reference Library 主路徑 `reference_library/`、Character Validation Gate、Confirmation Card、Style／Voice 解耦、Layered Scene 以 character_id 綁定 | 有效 | 可逆（治理） |
 | D-057 | S4 同 seed 重跑：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 僅研究證據；啟動 DG-26 角色分開生成再合成（Route A 零下載 PoC：`ab_*` 層案例＋`compose-scene`／`compose-review`）；Layered Scene 架構原則入庫 | 有效（待 Windows PoC） | 可逆 |
 | D-056 | S4 真機人工結果入庫（2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分，主觀；scene FAIL）；A／B binding 全鏈追溯＝**mapping verified（非程式 bug）**；加 position→region 明確排序、執行期 mask 幾何自檢、region map／疊圖 evidence；Reference Library `workspace/identity_refs/` 規格 | 有效 | 可逆 |
@@ -459,3 +460,13 @@
 - **UI／UX 需求**（ARCHITECTURE §17.6、BACKLOG）：角色建立／編輯頁 A～H、Character Confirmation Card、Advanced／Debug 分離；Style 拆 Visual Style／Mood／Lighting／Color Tone／Camera 並可 Scene override；Voice 預設＋Scene override。
 - **Windows Route A**：D-058 合併且 CI 綠前暫停；之後以 v2 案例重新開始（`ab_background` 沿用）。
 - 未做：新模型、新依賴、ControlNet、segmentation、付費、production default 變更、不可逆 migration、刪除舊 evidence。
+
+## D-059 2026-10-24 A 男主角 isolated identity fidelity FAIL；DG-26 暫停；DG-28 Identity Preservation Research
+- **真機（客戶，single-user subjective）**：`ab_char_a_isolated` v2（A＝男主角）、seed 1234、cyberrealistic_final、dpmpp_2m_karras、ip_adapter_plus_face_sd15、單一 reference＝客戶舊本機男性照片、單色背景。單角色成功、男性呈現成立、灰西裝／圓眼鏡被採用；**identity fidelity FAIL**（臉型、眼／鼻／嘴型、年齡感不同，像另一個人）→ `identity_validated=false`。technical 數值未回報 → 不補造。
+- **推論**：問題不只是雙人同框污染；單人 isolated 也不像 → `IP-Adapter plus-face＋SD1.5＋CyberRealistic` 不足以支撐真人角色一致性。可歸因因素之一：現行前處理無人臉偵測（CLIP 中心裁切），reference 臉部佔比小；但不全歸咎 reference（plus-face 本質是 CLIP 外觀 embedding，不是身份 embedding）。
+- **DG-26 暫停**：不生成 `ab_char_b_isolated`、不進 compose-scene／Route C／segmentation／去背優化；`ab_background` 與 A isolated 圖保留為 evidence。
+- **DG-28 研究**（DG-27 已保留給去背模型；canonical：[`DG28_IDENTITY_PRESERVATION_RESEARCH.md`](DG28_IDENTITY_PRESERVATION_RESEARCH.md)，一手來源 `docs/evidence/dg28/`）：研究 InstantID、IP-Adapter FaceID 系列、PhotoMaker、PuLID、LoRA／DreamBooth／TI、Arc2Face、ConsistentID、InfiniteYou。InsightFace 獨立 Gate：code MIT，但**所有預訓練模型 non-commercial research only**。SDXL／FLUX 系全部 4 GB ❌。
+  - **Top 1（研究用）**：IP-Adapter **FaceID-Plus-V2 SD1.5**（4 GB ✅；新增 ≈0.53 GB；需 insightface＋onnxruntime；權重 pickle .bin 需例外裁示；commercial_cleared=false）。
+  - **Top 2（長期商用候選）**：SD1.5 角色 LoRA（授權最乾淨、per-character；但 4 GB 本機訓練不實際、客戶目前禁止訓練）。
+- **規格入庫**：Reference Quality Check（ARCHITECTURE §17.7）、Identity Consistency 驗收（§17.8：character_id 跨背景／服裝／表情／角度／鏡頭／Style 仍可辨識）。
+- 本輪未做：任何下載、安裝 InsightFace／ControlNet、SDXL／FLUX、LoRA 訓練、付費、生成 B、reroll、production default 變更。下一步＝**DG-28 客戶裁示**。

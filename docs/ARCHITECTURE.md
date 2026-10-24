@@ -350,3 +350,19 @@ character_id 唯一｜asset_id 唯一｜角色用途 reference 必須綁定存�
 - H Scene Placement：左／中／右、前景／中景／後景、景別、動作、姿勢。
 - **Character Confirmation Card**（生成前必經）：每角色一行，例「男主角｜男性｜hero_male_v1.jpg｜灰西裝｜左側｜寫實｜冷色｜Voice A」「女主角｜女性｜heroine_v1.jpg｜紅大衣｜右側｜寫實｜暖色｜Voice B」；至少顯示 display_name、gender_presentation、reference image、outfit、position、style、mood、voice；任一不一致可在此步直接修改；Gate 有衝突時不能按「生成」。目的：杜絕「reference 綁對但角色定義錯」。
 - 一般 UI 不顯示 char_a／IP-Adapter／checkpoint／CUDA／model path／prompt token；技術參數放 Advanced／Debug。
+
+### 17.7 Reference Quality Check（D-059；UI 規格，尚未實作；不做自動臉辨識）
+上傳／選取 reference 時，UI 以檢查清單引導（目前由使用者自評勾選；日後若導入人臉偵測，需另經授權 Gate，且不得輸出性別／年齡等敏感推論）：
+- 臉部尺寸：臉部高度建議 ≥ 圖片高度的 40%（近照）；過小 → 建議裁切或換圖。
+- 遮擋：口罩、墨鏡、手、頭髮遮臉 → 警告。
+- 模糊／過暗／過曝 → 警告。
+- 多人：畫面有其他人 → 必須裁成只剩本人，或換圖。
+- 角度：至少一張正面；建議再補 1～2 張側面／半側面。
+- 張數：建議 2～5 張（不同光線／角度），並指定一張主要 reference。
+- 每張圖仍需 ReferenceAsset metadata（綁定角色、用途、來源、商用授權）；私人圖只在本機。
+
+### 17.8 Identity Consistency 驗收標準（D-059）
+- 驗收單位是 **character_id 跨 Scene**，不是「生成一張像」：同一角色在 **不同背景、不同服裝、不同表情、不同角度、不同鏡頭、不同 Style** 下，仍可被人工辨識為同一角色。
+- 判定欄位分離：`technical_valid`（自動）≠ `identity_validated`（人工，single-user subjective）≠ scene／style；不可由 technical_valid 或畫面好看推論 identity pass。
+- 最小驗收矩陣（建議）：每個角色 ≥ 6 張（背景×2、服裝×2、表情／角度×2，至少一張不同 Style），逐張人工判定「像／不像」，並記錄 reference asset sha256 與生成條件。
+- 單張 PoC 只能證明「可能像」，不能證明 Identity Consistency。

@@ -451,3 +451,9 @@
 - Result: D-058；PROJECT_RULES §17；ARCHITECTURE §16 欄位＋§17；`see/models/character_definition.py`；A／B 案例 v2；舊 evidence `historical_reversed_character_mapping`
 - Tests: 見 commit
 - Next: Windows git pull → ab_char_a_isolated（A＝男）→ ab_char_b_isolated（B＝女）→ compose-scene
+
+## 2026-10-24 — Batch 49
+- Batch: Batch 49 — A 男主角 isolated identity FAIL 入庫；DG-26 暫停；DG-28 Identity Preservation 研究
+- Result: D-059；DG28 研究文件＋docs/evidence/dg28（官方 README／LICENSE／HF API／PyPI，MANIFEST.sha256）；ARCHITECTURE §17.7／§17.8
+- Tests: 無程式變更
+- Next: 等 DG-28 裁示（不下載、不給 Windows 指令）

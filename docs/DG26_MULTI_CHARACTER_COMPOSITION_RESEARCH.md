@@ -1,5 +1,7 @@
 # DG-26 Multi-character Composition Route（D-057；研究＋零下載 PoC）
 
+> **⏸ PAUSED（D-059）**：v2 `ab_char_a_isolated`（A＝男主角）單人生成 identity fidelity FAIL（single-user subjective）→ 單人本身就不像，blocker 提前出現。暫停 B isolated、compose-scene、Route C、去背優化；`ab_background` 與 A isolated 圖保留為 evidence。恢復條件：DG-28（[`DG28_IDENTITY_PRESERVATION_RESEARCH.md`](DG28_IDENTITY_PRESERVATION_RESEARCH.md)）選定並驗證 identity 路線後。Route A 程式（compose-scene）保留可用。
+
 > 起因：S4（D-054／D-056）同 seed 重跑，mapping PASS（`identity_region_map`＋疊圖證明 char_a→left、char_b→right）、兩人分離改善，但 **identity fidelity FAIL**（single-user subjective）。
 > 結論方向：不要求 SD1.5 一次同時完成 A／B identity、性別、服裝、位置、背景、構圖；改為**每個角色獨立生成／驗證，再合成到共同 Scene**。
 > **D-058 修正**：上述 S4 結果屬 two_characters_ab v1（`historical_reversed_character_mapping=true`：當時 char_a＝女、char_b＝男，與客戶 A＝男、B＝女相反），只作模型能力證據。Route A 角色層一律用 v2：`ab_char_a_isolated`＝A 男主角、`ab_char_b_isolated`＝B 女主角；角色層以 character_id 綁定（ARCHITECTURE §16／§17）。
