@@ -160,6 +160,7 @@ workspace/projects/<project_id>/
   input.txt
   scenes/<scene_id>/{image.png, narration.wav, subtitles.srt, clip.mp4, manifest.json}
   renders/{preview.mp4, preview.json(timeline), final.mp4}
+workspace/identity_refs/<people|animals|characters|backgrounds>/   Reference Library（D-056，§14.6；不進 Git）
 ```
 
 ## 10. 借鏡（video-autopilot-kit，MIT；只借思路不複製碼）
@@ -263,3 +264,18 @@ prompt-only 文字錨點在 SD 1.5 同框時**無法綁定屬性**（眼鏡、�
 - `ImageRequest.params["identity"]＝{adapter_id, references:[{character_id, path, sha256, bytes, source}], layout:"columns"}`；不帶＝既有行為。
 - Provider（`diffusers_local.py`）：image encoder 在 CPU 產生 embeddings（快取鍵＝encoder sha＋參考圖 sha）→ `load_ip_adapter(image_encoder_folder=None)` → 每角色一張分欄 mask（IP-Adapter 內建 masking）→ 生成 → `unload_ip_adapter`＋還原 processors。不與 S2 regional 疊加。
 - Adapter 型錄／下載／provenance：`see/providers/image/adapters.py`（模型層；偏好層只持有 reference_images）。
+- **Binding 鏈（D-056 已追溯驗證）**：character `position` →`region_of`→ 左→右排序 → refs[i] ↔ `ip_adapter_image_embeds[0][:, i]` ↔ `ip_adapter_masks[0][:, i]`（adapter 0）。執行期自檢 mask 幾何；evidence 記 `assigned_region`／`adapter_index`／`image_index`／`mask_bounds_gen_px`，style-test 另記 `identity_region_map`（輸出圖座標）＋本機疊圖 `<stem>_identity_regions.png`。
+- 已知限制：mask 只限制臉部特徵殘差的作用區，**不控制人物站位或性別呈現**（站位仍由文字＋模型決定）；位置控制另走 DG-26。
+
+### 14.6 Reference Library（D-056；客戶裁示）
+```
+workspace/identity_refs/        （本機、不進 Git；workspace/ 已 gitignore）
+  people/        人物 identity／face reference   ← 目前 S4 --identity 唯一支援
+  animals/       動物外觀 reference              ← taxonomy only（未支援）
+  characters/    虛構角色／角色設計 reference     ← taxonomy only（未支援）
+  backgrounds/   場景／環境 reference            ← taxonomy only（未支援）
+```
+- 引用：`--ref <character_id>=<category>/<檔名>`（相對 Library 根、不得跳出根目錄）；evidence 記 `source=reference_library`、`library_category`、sha256、bytes，不記內容、不複製圖片。
+- 不同類別接**不同 conditioning**（人物＝face identity adapter；動物／虛構角色／背景各自另行研究），不共用 face-only pipeline；非 people 類別目前 CLI 明確拒絕。
+- UI 最終從 Library 選圖（BACKLOG）；Library metadata sidecar schema 待設計。
+- GitHub 只存規則、schema、路徑慣例與 provenance metadata；私人參考圖一律不進 Git（PROJECT_RULES §16）。

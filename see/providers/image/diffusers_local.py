@@ -362,6 +362,7 @@ def encode_text_chunks(pipe: Any, texts: list[str], clip_skip_a1111: int) -> tup
                  "method": "A1111-style 75-token chunks, each BOS+chunk+EOS, concatenated"}
 
 
+REGION_RANK = {"left": 0, "center": 1, "right": 2}
 IDENTITY_SCALE = 0.6  # IP-Adapter 臉部條件權重（文字 prompt 仍有效；常用 0.5–0.7）
 
 
@@ -712,6 +713,9 @@ class DiffusersImageProvider(ImageProvider):
         refs = list(identity.get("references") or [])
         if len(refs) < 1:
             raise ProviderError("identity conditioning needs at least one reference image")
+        regions = [r.get("region") for r in refs]
+        if all(regions) and [REGION_RANK[g] for g in regions] != sorted(REGION_RANK[g] for g in regions):
+            raise ProviderError(f"identity references must be ordered left→right to match column masks, got {regions}")
         from diffusers.image_processor import IPAdapterMaskProcessor  # type: ignore
 
         emb, cache_hit = self._identity_embeds(refs, torch)
@@ -726,15 +730,25 @@ class DiffusersImageProvider(ImageProvider):
                              image_encoder_folder=None, local_files_only=True)
         scale = float(identity.get("scale", IDENTITY_SCALE))
         pipe.set_ip_adapter_scale([[scale] * len(refs)])
+        bounds = column_bounds(len(refs), gw)
         masks = IPAdapterMaskProcessor().preprocess(identity_column_masks(len(refs), gw, gh), height=gh, width=gw)
         masks = masks.reshape(1, masks.shape[0], masks.shape[2], masks.shape[3])
+        # D-056 執行期自檢：第 i 張 mask 的非零欄位必須恰為 bounds[i]（防轉置／翻轉／broadcast）
+        for i, (a, b) in enumerate(bounds):
+            cols = (masks[0, i].amax(dim=0) > 0.5).nonzero().flatten()
+            if cols.numel() == 0 or int(cols[0]) != a or int(cols[-1]) != b - 1 or masks.shape[2:] != (gh, gw):
+                raise ProviderError(f"identity mask {i} geometry check failed (expected columns {a}..{b - 1})")
         dtype = next(pipe.unet.parameters()).dtype
         kw = {"ip_adapter_image_embeds": [emb.to(dtype=dtype)], "cross_attention_kwargs": {"ip_adapter_masks": [masks]}}
         info = {"adapter_id": spec.adapter_id, "adapter_sha256": spec.weight_file.sha256,
                 "image_encoder_sha256": spec.encoder_file.sha256, "image_encoder_device": "cpu", "scale": scale,
-                "mask": {"layout": "columns", "order": [r.get("character_id") for r in refs]},
-                "references": [{k: r.get(k) for k in ("character_id", "sha256", "bytes", "source", "source_evidence")}
-                               for r in refs],
+                "mask": {"layout": "columns", "order": [r.get("character_id") for r in refs],
+                         "binding": "refs[i] ↔ ip_adapter_image_embeds[0][:, i] ↔ ip_adapter_masks[0][:, i] (adapter 0)"},
+                "references": [{**{k: r.get(k) for k in ("character_id", "sha256", "bytes", "source", "source_evidence",
+                                                     "library_category", "position")},
+                                "assigned_region": r.get("region") or (("left", "right")[i] if len(refs) == 2 else None),
+                                "adapter_index": 0, "image_index": i, "mask_bounds_gen_px": [a, 0, b, gh]}
+                               for i, (r, (a, b)) in enumerate(zip(refs, bounds))],
                 "face_crop": "CLIP center crop (no face detector)", "embeds_cache_hit": cache_hit,
                 "combined_with_regional": False, "attn1_processor_during_identity": "AttnProcessor2_0 (SDPA)"}
         return kw, info

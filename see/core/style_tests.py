@@ -33,6 +33,19 @@ class CaseCharacter:
         return CharacterAppearance(**self.appearance).anchor_text
 
 
+# D-056：構圖位置 → 左→右欄位順序。S4 identity 的 mask 由此「明確」決定，不依賴 characters tuple 的排列順序。
+REGION_ORDER = {"on the left": ("left", 0), "in the center": ("center", 1), "in the middle": ("center", 1),
+                "on the right": ("right", 2)}
+
+
+def region_of(position: str) -> tuple[str, int]:
+    """位置描述 → (region 名稱, 左→右排序鍵)；未知位置 fail-closed（不猜）。"""
+    key = (position or "").strip().lower()
+    if key not in REGION_ORDER:
+        raise ValueError(f"unknown character position '{position}'; known: {sorted(REGION_ORDER)}")
+    return REGION_ORDER[key]
+
+
 def multi_character_prompt(chars: tuple[CaseCharacter, ...], composition: str) -> str:
     """確定性組裝：人數 → 每個角色「錨點 + 位置」→ 共用構圖詞。"""
     count = {2: "two people", 3: "three people"}.get(len(chars), f"{len(chars)} people")

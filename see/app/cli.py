@@ -533,6 +533,9 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     from see.core.style_tests import comparison_conditions
 
     ev["comparison_conditions"] = comparison_conditions(ev)
+    if args.identity and isinstance(diag.get("identity"), dict):  # D-056：角色 ↔ 區域對照（含輸出圖座標）＋人工審圖疊圖
+        ev["identity_region_map"] = identity_region_map(diag["identity"], diag.get("crop_box"))
+        ev["identity_region_overlay"] = str(_identity_overlay(Path(res.path), ev["identity_region_map"]))
     out.with_suffix(".json").write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(ev, ensure_ascii=False, indent=2))
     if not ev["technical_valid"]:
@@ -540,6 +543,45 @@ def cmd_style_test(args: argparse.Namespace) -> int:
         return 3
     print("注意：technical_valid=true 只代表技術上有效；scene／style 是否通過須人工 style-review。", file=sys.stderr)
     return 0
+
+
+# D-056 Reference Library（workspace/identity_refs/<category>/；私人素材只在本機，不進 Git）
+REFERENCE_CATEGORIES = {"people": "人物 identity／face reference（S4 --identity 目前唯一支援）",
+                        "animals": "動物外觀 reference（未支援）", "characters": "虛構角色／角色設計 reference（未支援）",
+                        "backgrounds": "場景／環境 reference（未支援）"}
+
+
+def identity_region_map(identity: dict, crop_box: list | None) -> list[dict]:
+    """生成座標的 mask 欄位 → 最終輸出圖座標（native 會中心裁切）。純函式，可測。"""
+    left = int(crop_box[0]) if crop_box else 0
+    out = []
+    for r in identity.get("references") or []:
+        x0, y0, x1, y1 = r["mask_bounds_gen_px"]
+        if crop_box:
+            cx0, cy0, cx1, cy1 = (int(v) for v in crop_box)
+            x0, x1 = max(x0, cx0) - left, min(x1, cx1) - left
+            y0, y1 = max(y0, cy0) - cy0, min(y1, cy1) - cy0
+        out.append({"character_id": r["character_id"], "reference_sha256": r["sha256"], "assigned_region": r["assigned_region"],
+                    "adapter_index": r["adapter_index"], "image_index": r["image_index"],
+                    "mask_bounds_gen_px": r["mask_bounds_gen_px"], "mask_bounds_output_px": [x0, y0, x1, y1]})
+    return out
+
+
+def _identity_overlay(img_path: Path, region_map: list[dict]) -> Path:
+    """人工審圖用：在輸出圖副本上框出每個角色的 identity 區域並標 character_id（只存本機 workspace，不進 Git）。"""
+    from PIL import Image, ImageDraw
+
+    im = Image.open(img_path).convert("RGB")
+    d = ImageDraw.Draw(im)
+    colors = [(255, 64, 64), (64, 160, 255), (64, 220, 120), (255, 200, 0)]
+    for k, r in enumerate(region_map):
+        x0, y0, x1, y1 = r["mask_bounds_output_px"]
+        col = colors[k % len(colors)]
+        d.rectangle([x0 + 2, y0 + 2, x1 - 3, y1 - 3], outline=col, width=4)
+        d.text((x0 + 10, y0 + 10), f"{r['character_id']} ({r['assigned_region']}) ref {r['reference_sha256'][:8]}", fill=col)
+    out = img_path.with_name(img_path.stem + "_identity_regions.png")
+    im.save(out)
+    return out
 
 
 def _identity_references(s: Settings, case, ref_args: list[str]) -> tuple[list[dict], str | None]:
@@ -558,18 +600,40 @@ def _identity_references(s: Settings, case, ref_args: list[str]) -> tuple[list[d
     need = [c.character_id for c in case.characters]
     if sorted(given) != sorted(need):
         return [], f"每個角色需要一張獨立參考圖：需要 {need}，收到 {sorted(given)}"
+    from see.core.style_tests import region_of
+
+    try:  # D-056：依角色 position 明確排成左→右（mask 欄位 i ↔ refs[i]），不依賴 tuple／dict 順序
+        ordered = sorted(case.characters, key=lambda c: region_of(c.position)[1])
+    except ValueError as e:
+        return [], str(e)
+    if len({region_of(c.position)[0] for c in ordered}) != len(ordered):
+        return [], "兩個角色的 position 相同，無法分配獨立 identity 區域"
     refs = []
-    for cid in need:
+    for c in ordered:
+        cid = c.character_id
         v = given[cid]
         if "://" in v:
             return [], f"參考圖只接受本機檔案（PROJECT_RULES §16）：{v}"
         st = s.workspace / "style_tests" / f"{v}.png"
-        path, source, src_ev = (st, "style_test_output", f"{v}.json") if st.exists() else (Path(v), "local_file", None)
+        lib_root = s.workspace / "identity_refs"  # D-056 Reference Library：<category>/<檔名>（相對路徑）
+        lib = lib_root / v
+        category = None
+        if st.exists():
+            path, source, src_ev = st, "style_test_output", f"{v}.json"
+        elif not Path(v).is_absolute() and lib.is_file() and lib.resolve().is_relative_to(lib_root.resolve()):
+            category = Path(v).parts[0]
+            if category not in REFERENCE_CATEGORIES:
+                return [], f"Reference Library 類別未知：{category}（可用 {list(REFERENCE_CATEGORIES)}）"
+            if category != "people":  # 目前 S4 只做人物臉部 identity；不得假裝支援其他類別
+                return [], f"--identity 目前只支援 people/ 人物參考圖；{category}/ 尚未支援（BACKLOG，D-056）"
+            path, source, src_ev = lib, "reference_library", None
+        else:
+            path, source, src_ev = Path(v), "local_file", None
         if not path.is_file():
             have = sorted(p.stem for p in (s.workspace / "style_tests").glob("*.png")) if (s.workspace / "style_tests").exists() else []
             return [], f"找不到參考圖 {v}（可用 style-test 產出：{have}）"
         refs.append({"character_id": cid, "path": str(path), "sha256": file_sha256(path), "bytes": path.stat().st_size,
-                     "source": source, "source_evidence": src_ev})
+                     "source": source, "source_evidence": src_ev, "library_category": category, "position": c.position, "region": region_of(c.position)[0]})
     if len({r["sha256"] for r in refs}) != len(refs):
         return [], "A／B 參考圖相同：每個角色必須使用不同的參考圖"
     return refs, None

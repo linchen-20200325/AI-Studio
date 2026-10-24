@@ -433,3 +433,9 @@
 - Result: D-055；PROJECT_RULES §12 永久判定＋§12.5 七項還原／治理缺口／完成定義；§12.1、§11.5 擴充；HANDOFF 入口指向 §12.5
 - Tests: 無程式變更
 - Next: 不變——Windows git pull → adapter-download --check
+
+## 2026-10-24 — Batch 46
+- Batch: Batch 46 — S4 真機人工結果入庫＋A／B binding 追溯＋Reference Library 規格
+- Result: D-056；mapping verified（非 bug）；position→region 明確排序、mask 幾何自檢、identity_region_map＋疊圖；`workspace/identity_refs/` taxonomy（只 people 支援）
+- Tests: 見 commit（CI＋venv 真實 diffusers region-swap 測試）
+- Next: Windows git pull → 同 seed S4 重跑取 evidence

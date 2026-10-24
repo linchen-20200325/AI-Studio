@@ -248,3 +248,4 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - Character Preference／Identity 屬偏好層（§15），**Provider Agnostic**：換 image model 原則上沿用；model-specific 參數（adapter 權重、clip skip 等）放模型層。
 - **使用者真人照片＝敏感素材**：不得提交 GitHub、不得做測試 fixture、不得上傳第三方 provider（除非使用者另行明確同意）；Local First，只存本機 workspace（不進 Git）。
 - Reference Image 技術（IP-Adapter／FaceID 類）下載、導入前須另做授權、硬體可行性、品質研究並經 Decision Gate。
+- **Reference Library（D-056）**：所有 reference assets 統一放 `workspace/identity_refs/{people,animals,characters,backgrounds}/`（本機、不進 Git）。GitHub 只保存規則、schema、路徑慣例與 provenance metadata（sha256／bytes／類別），不得提交任何私人參考圖。某類別尚無對應 conditioning 時必須明確拒絕，不得假裝支援。

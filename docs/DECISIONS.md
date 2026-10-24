@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-056 | S4 真機人工結果入庫（2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分，主觀；scene FAIL）；A／B binding 全鏈追溯＝**mapping verified（非程式 bug）**；加 position→region 明確排序、執行期 mask 幾何自檢、region map／疊圖 evidence；Reference Library `workspace/identity_refs/` 規格 | 有效 | 可逆 |
 | D-055 | 治理：GitHub Alone Recovery——GitHub 是專案記憶本體非備份；AI 記憶／聊天只是暫時 context；新 AI 只靠 GitHub 須還原七項；完成定義增加三種接續情境（PROJECT_RULES §12／§12.5） | 有效 | 治理，可修訂（需裁示） |
 | D-054 | **DG-25 核准** IP-Adapter plus-face SD1.5＋ViT-H（≈2.63 GB，內部 PoC，commercial_cleared=false）；adapter-download、style-test --identity（每角色參考圖＋分欄 mask、encoder 在 CPU）；修 slicing×load_ip_adapter | 有效（待真機） | 可逆 |
 | D-053 | S2 真機 FAIL（單人融合，主觀）；prompt-only 路線結案、不 reroll；S4 研究＋adapter 型錄骨架（未核准）；DG-25 待裁示 | 有效 | 可逆 |
@@ -422,3 +423,19 @@
 - 永久判定：**GitHub 不是備份，而是專案記憶本體；AI 對話只是暫時工作介面。** ChatGPT／Claude／其他 AI 的 Memory、聊天紀錄、口頭回報不得作正式狀態來源。
 - 落地：`PROJECT_RULES.md` §12 加永久判定；新增 §12.5（七項還原清單、依賴聊天＝治理缺口先補 GitHub、完成定義增加三種接續情境）；§12.1 Knowledge Persistence Check 擴至每個 Batch／Decision／真機驗證／重大需求；§11.5 Recovery Protocol 加 §12.5 自檢步驟；`HANDOFF.md` 閱讀入口指向 §12.5。
 - 範圍：只改治理文件；不改功能、不改 production default。擴充 D-025，不取代。
+
+## D-056 2026-10-24 S4 真機人工結果；A／B binding 追溯（mapping verified）；Reference Library 規格
+- **S4 真機（客戶，single-user subjective）**：two_characters_ab、seed 1234、cyberrealistic_final、dpmpp_2m_karras、native、identity＝ip_adapter_plus_face_sd15、A／B＝客戶自備本機參考圖。相較 S2 恢復為 2 個獨立人物（未融合）；identity 對兩張臉都有影響；**A／B 身分位置疑似顛倒**（右側橘色衣物人物吸收較多女角特徵；A 女角應在左）；男角影響較弱；fidelity「部分相似、未達高 fidelity」。scene_validated=false；style 未填（不由 scene FAIL 推論）。technical 數值、reference sha256 對照未回報 → 不補造。不重抽 seed。
+- **A／B binding 全鏈追溯（容器，diffusers 0.41.0 原始碼＋tiny 真實 processor）**：
+  1. `case.characters`（tuple，固定序 A=on the left、B=on the right）→ `_identity_references` 以 `need`（tuple）迭代，`--ref` 的 dict 只作查表 → **無 dict／set 排序不穩定**。
+  2. refs[i] → `_identity_embeds`：`fx(images=[...])` 保序 → `pos[None]`＝(1, n, 257, 1280)，neg 在前 cat 成 (2, n, …)；pipeline `chunk(2)` 切 neg／pos，`MultiIPAdapterImageProjection` 以 (batch·n) reshape 投影後還原 (batch, n, …) → image index i 保序。
+  3. mask i＝`column_bounds` 第 i 欄（i=0 左）；`IPAdapterMaskProcessor.preprocess` → (n,1,H,W) → reshape (1,n,H,W)，`ip_adapter_masks=[masks]`（外層 list＝adapter 0）。
+  4. `IPAdapterAttnProcessor2_0`：`for i in range(mask.shape[1])` 取 `ip_hidden_states[:, i]` 配 `mask[:, i]` → **refs[i] ↔ embeds[:, i] ↔ mask[:, i]**，nesting 與 0.41 要求一致。
+  5. `downsample`：768×512（及 OOM 576×384）在 1/8～1/64 各層 `mask_h×mask_w` 恰等於 latent h×w（ratio 1.5 整除），row-major 與 hidden_states 相同 → **無轉置、翻轉或 broadcast 錯位**；768 寬各層欄數皆偶數 → 左右恰 0／1；576 寬最深層 9 欄 → 正中一欄跨界（已知、輕微）。
+  6. native 中心裁切只裁上下（768×512→16:9），左右欄位不變。
+  - tiny 真實 diffusers 測試：攔截第一個 attn2（輸入與 IP 無關），比較 [A,B]／[A,A]／[B,B]／[B,A] → 左欄只受 refs[0]、右欄只受 refs[1]，**交換 A／B 時區域跟著交換**（tiny VAE 只縮 2 倍，交界欄 bicubic overshoot 已排除；SD1.5 倍率無此現象另有測試）。
+  - **結論：mapping verified，非程式 bug**。真機「位置顛倒」可能原因（未證實，不硬改）：(a) 該次 `--ref` 指派與預期不同（缺 JSON 無法核對）；(b) 模型能力限制：IP-Adapter mask 只限制臉部特徵殘差的作用區，**不控制人物站位／性別呈現**；SD 依文字自行佈局，若把女性身體畫在右側，右側人物仍會因文字＋殘差呈現女性特徵；plus-face 在半身雙人構圖臉部佔比小 → fidelity 有限；男角弱可能與參考圖臉部佔比（無人臉偵測，中心裁切）有關。
+- **強化（不改行為、只加可追溯與防呆）**：`--ref` 依角色 `position`（`region_of`，未知位置 fail-closed、同位置拒絕）明確排成左→右，不依 tuple 順序；provider 拒絕非左→右的 refs；執行期檢查每張 mask 非零欄＝預期 bounds；identity evidence 每張參考圖記 `character_id`、`sha256`、`position`、`assigned_region`、`adapter_index`、`image_index`、`mask_bounds_gen_px`；style-test evidence 新增 `identity_region_map`（含 `mask_bounds_output_px`）與本機疊圖 `<stem>_identity_regions.png`（框出 A／B 區域＋ref sha 前 8 碼，供人工審圖，不進 Git）。
+- **Reference Library（客戶裁示，規格入庫）**：`workspace/identity_refs/{people,animals,characters,backgrounds}/`；`--ref char_a=people/<檔名>` 可直接引用（source＝`reference_library`，記 `library_category`）。**S4 `--identity` 目前只支援 people/**；animals／characters／backgrounds 只有 taxonomy＋BACKLOG，CLI 明確拒絕（不得假裝支援）；未來各類型接各自 conditioning（不共用 face-only pipeline）；UI 最終從 Library 選圖；私人圖不得進 GitHub（GitHub 只存規則、schema、路徑慣例、provenance metadata）→ ARCHITECTURE §14.6、PROJECT_RULES §16、BACKLOG。
+- **下一個最小可逆方案**：同 seed 1234、同條件 S4 重跑一次（不是 reroll：唯一差異是新增 evidence 欄位，生成條件不變），取得 JSON（technical、VRAM、elapsed、`identity_region_map`）＋疊圖，判定 (a)／(b)。若確認 (b)，再提 DG-26：位置控制需 ControlNet（另下載、需 Gate）或 S3 分段生成＋合成（零下載）——總管推薦先 S3 研究（NT$0、無新模型）。
+- 未做：production default 變更、新模型、ControlNet、付費。
