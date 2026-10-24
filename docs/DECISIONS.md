@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-072 | 客戶裁示：PR #2 rebase merge；Batch 5 v1 維持 `Project.characters` 與 `narrator_setting` fail closed（APPLY_UNSUPPORTED_IN_BATCH5，待 Batch 6／Audio architecture）；rollback 後封存角色規則定為正式規格 | 有效 | 可逆 |
 | D-071 | **客戶裁示進入 Batch 5**；本輪只完成 migration engine：`character-migrate <pid> --apply --decisions <file> --confirm <token>`（preflight 16 項、atomic backup、staged transaction、post-verify、自動 rollback、`--rollback <migration_id>`、`--list-migrations`）。Batch 5 engine implemented ≠ any real project migrated | 有效 | 可逆（backup＋rollback；新角色 archive 不 hard delete） |
 | D-070 | Batch 4.1：Migration Human Decisions Layer（versioned 決定檔 `character_migration_decisions` v1；5 種 action；stale／任何錯誤 fail closed；重算 migration_ready＋proposed rewrite plan；create_new 只用 placeholder；zero-write）。Batch 4.1 remains analysis-only. No project has been migrated. | 有效 | 可逆（唯讀） |
 | D-069 | Batch 4：`character-migrate <project_id> --dry-run`（只分析舊 Project.characters → Library／cast；versioned JSON＋中文摘要；固定分類與 conflict code；reference sha256 分析；Scene／對白／旁白引用影響；report_input_hash；zero-write proof）。Batch 4 only analyzes. No project has been migrated | 有效 | 可逆（唯讀） |
@@ -628,3 +629,9 @@
 - Idempotency：已 committed → ALREADY_MIGRATED／PROJECT_ALREADY_HAS_CAST，不建第二組 ID；同一 intent＝同一 plan_sha256。
 - Production boundary：pipeline（TTS／image prompt／voice 確認／fingerprint）仍只讀 `Project.characters`；測試證明 script-only 專案遷移後 fingerprint 不變、image request 不讀 cast。不做 Batch 6。
 - 測試：`tests/test_character_migration_apply.py`（happy path 4 create_new、idempotent、confirm token、stale project／library、not ready／rejected、revision 竄改、reference hash mismatch、已有 cast、location changed／missing、count mismatch、backup failure、ID collision、staged write failure、post-verify failure、rollback＋重複 rollback、rollback 拒絕已修改專案、共用角色保留、bind_existing pinned、CLI、fingerprint 不變、CRLF bytes 還原）。全套 351 passed、10 skipped。
+
+## D-072 2026-10-24 客戶裁示：Batch 5 收尾與規格缺口
+- 裁示 1：PR #2 採方案 A（rebase merge，main 線性歷史）。本次 PR 流程只是既有 PR 的收尾，**不永久改變** PROJECT_RULES 的 Git 工作流程。
+- 裁示 2：`Project.characters` 條目本輪**不支援** migration，維持 `APPLY_UNSUPPORTED_IN_BATCH5`（Batch 6 前 production 仍依賴其 voice／appearance 語意），等 Batch 6 規劃 production source-of-truth 切換時一起設計。`narrator_setting` 同樣維持拒絕；**不得自行新增 Project narrator schema**，等 Batch 6／Audio architecture 一起裁示。兩項不影響 sd15test。
+- 裁示 3（正式規格，不需另開 Decision Gate）：migration 新建 Character 在 rollback／auto-recovery 時 archive、不 hard delete；已被其他 Project 使用 → 保持 active；rollback 後重新 dry-run 因封存同名角色出現 NAME_CONFLICT → 使用者必須在決定檔明確提供 `display_name`，不可自動沿用 archived identity，不可自動刪除 archived Character。
+- 不開始 Batch 6；不對任何 Windows project 代執行 `--apply`。
