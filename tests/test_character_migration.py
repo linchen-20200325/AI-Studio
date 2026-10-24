@@ -161,7 +161,7 @@ def test_cli_dry_run_guard_json_and_proof(mig, monkeypatch, capsys, tmp_path):
     orch, pid = mig
     monkeypatch.setenv("SEE_WORKSPACE", str(orch.settings.workspace))
     assert main(["character-migrate", pid]) == 2
-    assert "實際 migration 尚未核准" in capsys.readouterr().err
+    assert "請只選一種模式" in capsys.readouterr().err
     assert main(["character-migrate", pid, "--dry-run", "--json"]) == 0
     env = json.loads(capsys.readouterr().out)
     assert env["migration_report_schema_version"] == 1 and env["zero_write_proof"]["unchanged"] is True and "generated_at" in env

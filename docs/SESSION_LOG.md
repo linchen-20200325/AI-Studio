@@ -519,3 +519,10 @@
 - Result: see/core/migration_decisions.py、CLI `--decisions-template`／`--decisions`、docs/examples/character_migration_decisions.example.json；analyze() 未改。**Batch 4.1 remains analysis-only. No project has been migrated.**
 - Tests: tests/test_migration_decisions.py；全套 328 passed、10 skipped
 - Next: 客戶在 Windows 對 sd15test 產生並填寫決定檔、`--decisions` 重跑審查；Batch 5 需另行裁示
+
+## 2026-10-24 — Batch 60
+- Batch: Batch 60 — D-071 Batch 5：character migration apply engine
+- Start: main `5d81917`（Open PR 0）；客戶回報 sd15test Batch 4.1 真機 migration_ready=true（未遷移）
+- Result: see/core/character_migration_apply.py、CLI `--apply --decisions --confirm`／`--rollback`／`--list-migrations`、apply_confirmation_token。**Batch 5 engine implemented ≠ any real project migrated.**
+- Tests: tests/test_character_migration_apply.py；全套 351 passed、10 skipped
+- Next: 客戶 Windows `--dry-run --decisions` 取得 token；是否 `--apply` 由客戶決定；Batch 6 需另行裁示
