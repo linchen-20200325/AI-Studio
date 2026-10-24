@@ -156,6 +156,24 @@ Conflict code（blocking）：ID_NAMESPACE_CONFLICT、NAME_CONFLICT、MISSING_DI
 Reference：legacy 路徑（相對路徑以 workspace 上層解析）存在 → 只讀計算 sha256；Library 唯一且未綁定、無 metadata 問題 → `mapped`（提出 binding，不寫）；唯一但已綁 Library 角色 → LIBRARY_MATCH_CANDIDATE；多筆／metadata 不一致 → REFERENCE_HASH_CONFLICT；不在 Library → REFERENCE_UNREGISTERED；不存在 → REFERENCE_MISSING（sha256=None）。
 migration_ready＝沒有 blocking conflict、沒有 requires_human_decision、專案沒有 cast、且有可分析的角色。
 
+### 8.5 人工決定檔（D-070 Batch 4.1；**Batch 4.1 remains analysis-only. No project has been migrated.**）
+- 指令：`character-migrate <pid> --dry-run --decisions-template --out <workspace 外>` → 人工填 action → `character-migrate <pid> --dry-run --decisions <file> [--json]`。
+- schema v1（`character_migration_decisions`）：project_id、source_report_input_hash、source_report_sha256、decisions[{legacy_id, action, note?, display_name?, library_character_id?, library_revision?}]；未知欄位拒絕。範例：`docs/examples/character_migration_decisions.example.json`。
+- action 與適用條件：
+
+| action | 適用 | 效果（只在報告中；不寫入） |
+|---|---|---|
+| create_new | 任何條目 | placeholder `pending_new_character_id`；缺名稱或名稱衝突時必須給 display_name；**不產生正式 ID** |
+| bind_existing | 任何條目 | pinned `character_id@revision`；角色須存在、未封存、revision 存在且 hash 通過；legacy 資料不合併 |
+| keep_legacy | 來源為 Project.characters 且無任何引用 | 留在 legacy_characters，不建 Library 角色 |
+| narrator_setting | 有旁白引用、無畫面引用 | `pending_project_narrator_setting`，不建 CharacterDefinition |
+| ignore_unused | 無任何 Scene／對白／旁白／beat 引用 | 不建 Library 角色；legacy 資料（若有）原樣保留，不刪除 |
+
+- Fail closed：stale（兩個 source hash 任一不符）或任何驗證錯誤 → 整份不採用、migration_ready=false（CLI exit 4）。
+- 決定只解決處置類衝突；create_new 不解決欄位層級衝突（GENDER／AGE／FREE_TEXT_APPEARANCE／REFERENCE_*／UNKNOWN_FIELD）與 VOICE_ROLE_AMBIGUOUS → 需決定檔 v2（BACKLOG）。PROJECT_ALREADY_HAS_CAST 永不解決。
+- migration_ready=true＝ready for reviewed migration planning only；不代表已遷移、不代表 Batch 5 已核准。
+- 例：sd15test 的 char_01～char_04（SCRIPT_ONLY_CHARACTER）全選 create_new → migration_ready=true、4 個 placeholder、計畫改寫引用數＝基礎報告的 total_rewrite_references。
+
 ## 9. ID 策略與 Decision Gate（DG-29：角色 ID 命名空間）
 **發現（stop condition）**：舊 Project 的角色 ID 是「專案內」ID（Mock 依出現順序產生 `char_01`；手動設定可為 `hero`、`narrator`，可含大寫／連字號），**跨專案不唯一**，也不一定符合 CharacterDefinition 的 `^[a-z][a-z0-9_]{1,63}$`。客戶規則要求「Library／Project／Scene 使用同一穩定 ID」→ 舊專案綁到 Library 時，**專案內所有引用（Scene.character_ids、narrator_id、SceneCharacter、Dialogue、Beat、Script）都要改寫成 Library ID**；這是每個專案內的 ID 重寫（非全庫重編，但屬資料改寫）→ 需裁示。
 
@@ -198,6 +216,7 @@ Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟�
 | 2 | CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結；read_revision()；CharacterBinding／resolve_binding 基礎；不影響 pipeline | **DONE（D-067）** |
 | 3 | Project `cast` schema（cast_schema_version、pinned revision、role_label、alias、follow=pinned）＋`resolve_project_cast()`（revision 缺失 fail closed）；pipeline 仍只用 legacy `Project.characters` | **DONE（D-068）；not yet production source of truth** |
 | 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | **DONE（D-069）；only analyzes, nothing migrated** |
-| 5 | `--apply`／rollback（備份、ID 改寫、legacy_characters 保留、migration log） | Batch 4＋客戶看過 dry-run |
+| 4.1 | 人工決定檔（versioned）＋重算 migration_ready／rewrite plan（只讀；§8.5） | **DONE（D-070）；analysis-only, nothing migrated** |
+| 5 | `--apply`／rollback（備份、ID 改寫、legacy_characters 保留、migration log） | Batch 4.1＋客戶審查套用決定後的報告＋**另行裁示** |
 | 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | Batch 5 |
 | 7 | 角色更新 UX（保持／更新／fork）、角色庫挑選 | DG-19 |

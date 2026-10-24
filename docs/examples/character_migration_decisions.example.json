@@ -1,0 +1,38 @@
+{
+  "migration_decisions_schema_version": 1,
+  "kind": "character_migration_decisions",
+  "project_id": "sd15test",
+  "source_report_input_hash": "<copy report.report_input_hash from the dry-run report>",
+  "source_report_sha256": "<copy report_sha256 from the dry-run report>",
+  "note": "Batch 4.1 remains analysis-only. No project has been migrated.",
+  "decisions": [
+    {
+      "legacy_id": "char_01",
+      "action": "create_new",
+      "note": "新角色；正式 ID 只在 Batch 5 由系統產生"
+    },
+    {
+      "legacy_id": "char_02",
+      "action": "create_new",
+      "display_name": "人工指定名稱（名稱衝突或缺名稱時必填）"
+    },
+    {
+      "legacy_id": "char_03",
+      "action": "bind_existing",
+      "library_character_id": "char_0123456789ab",
+      "library_revision": 1
+    },
+    {
+      "legacy_id": "narrator",
+      "action": "narrator_setting"
+    },
+    {
+      "legacy_id": "unused_entry",
+      "action": "keep_legacy"
+    },
+    {
+      "legacy_id": "unused_script_only",
+      "action": "ignore_unused"
+    }
+  ]
+}
