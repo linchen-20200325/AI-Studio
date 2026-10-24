@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-057 | S4 同 seed 重跑：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 僅研究證據；啟動 DG-26 角色分開生成再合成（Route A 零下載 PoC：`ab_*` 層案例＋`compose-scene`／`compose-review`）；Layered Scene 架構原則入庫 | 有效（待 Windows PoC） | 可逆 |
 | D-056 | S4 真機人工結果入庫（2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分，主觀；scene FAIL）；A／B binding 全鏈追溯＝**mapping verified（非程式 bug）**；加 position→region 明確排序、執行期 mask 幾何自檢、region map／疊圖 evidence；Reference Library `workspace/identity_refs/` 規格 | 有效 | 可逆 |
 | D-055 | 治理：GitHub Alone Recovery——GitHub 是專案記憶本體非備份；AI 記憶／聊天只是暫時 context；新 AI 只靠 GitHub 須還原七項；完成定義增加三種接續情境（PROJECT_RULES §12／§12.5） | 有效 | 治理，可修訂（需裁示） |
 | D-054 | **DG-25 核准** IP-Adapter plus-face SD1.5＋ViT-H（≈2.63 GB，內部 PoC，commercial_cleared=false）；adapter-download、style-test --identity（每角色參考圖＋分欄 mask、encoder 在 CPU）；修 slicing×load_ip_adapter | 有效（待真機） | 可逆 |
@@ -439,3 +440,11 @@
 - **Reference Library（客戶裁示，規格入庫）**：`workspace/identity_refs/{people,animals,characters,backgrounds}/`；`--ref char_a=people/<檔名>` 可直接引用（source＝`reference_library`，記 `library_category`）。**S4 `--identity` 目前只支援 people/**；animals／characters／backgrounds 只有 taxonomy＋BACKLOG，CLI 明確拒絕（不得假裝支援）；未來各類型接各自 conditioning（不共用 face-only pipeline）；UI 最終從 Library 選圖；私人圖不得進 GitHub（GitHub 只存規則、schema、路徑慣例、provenance metadata）→ ARCHITECTURE §14.6、PROJECT_RULES §16、BACKLOG。
 - **下一個最小可逆方案**：同 seed 1234、同條件 S4 重跑一次（不是 reroll：唯一差異是新增 evidence 欄位，生成條件不變），取得 JSON（technical、VRAM、elapsed、`identity_region_map`）＋疊圖，判定 (a)／(b)。若確認 (b)，再提 DG-26：位置控制需 ControlNet（另下載、需 Gate）或 S3 分段生成＋合成（零下載）——總管推薦先 S3 研究（NT$0、無新模型）。
 - 未做：production default 變更、新模型、ControlNet、付費。
+
+## D-057 2026-10-24 S4 identity fidelity FAIL；啟動 DG-26 Multi-character Composition Route（Route A 零下載 PoC）；Layered Scene 原則
+- **S4 同 seed 重跑（客戶，single-user subjective）**：同 two_characters_ab／seed 1234／cyberrealistic_final／dpmpp_2m_karras／native／ip_adapter_plus_face_sd15、客戶本機人物 reference。`identity_region_map`＋疊圖證明 char_a→left、char_b→right → **mapping PASS**（D-056 推論 (a) 排除）。兩角色分離（無 S2 融合）→ separation 改善。**identity fidelity FAIL**：女角只保留部分臉型／髮型／氣質、已像另一人；男角更弱（臉型、五官、性別呈現不可靠）；「完全不像」、右側有陌生卡通／模板感。scene_validated=false；style_validated 不由 scene FAIL 推論。technical 數值未回報 → 不補造。
+- **裁示**：不 reroll；**不再以微調 IP-Adapter scale／權重為主要解法**；S4 保留為研究證據，**不升格**為 Character Consistency production route（`--identity` 仍為 opt-in 診斷）。
+- **DG-26 研究**（canonical：[`DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md`](DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md)）：Route A 分開生成＋鍵控去背合成（推薦，先做）／Route B inpaint 依序合成（不優先：臉更小、改 A 牽動 B）／Route C 合成後只修接縫（第二步）。現有環境：PIL／numpy 足以完成去背（單色背景鍵控）、羽化、擺位、色彩平移、陰影；無 segmentation 模型；diffusers 0.41 的 inpaint pipeline 可用 4-channel UNet（既有 CyberRealistic）但專案未接、品質低於專用 inpaint 權重。
+- **PoC（零下載、零新依賴）**：`see/core/compose.py`；案例 `ab_background`、`ab_char_a_isolated`、`ab_char_b_isolated`（沿用 two_characters_ab 同一份角色設定）；CLI `compose-scene`（只吃 technical_valid 的 style-test 產出、不改原 evidence、每層 provenance、mask／cutout／composite 存 `workspace/compositions/<name>/`）與 `compose-review`（scene／各角色 identity／貼上感，主觀）。改 A 只重做 A 層（測試證明 B 層位元不變）。只做 people。
+- **Layered Scene 架構原則（客戶裁示，永久方向）**：角色一致性不靠「一個模型一次畫完整 Scene」；Scene＝Background／Character A／Character B／Props／Effects／Text-Subtitles 各層，修改單一元素只重做受影響層 → ARCHITECTURE §16、BACKLOG。
+- 未做：ControlNet、SAM／RMBG／segmentation 下載、FaceID、InsightFace、LoRA、付費、production default 變更。鍵控不足 → DG-27（去背模型，需授權審查）。

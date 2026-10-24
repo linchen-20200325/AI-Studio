@@ -766,6 +766,156 @@ def cmd_style_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def _compose_load_layer(d: Path, stem: str, role: str) -> tuple[dict, Path]:
+    """合成來源只收 style-test 產出（有 evidence JSON、technical_valid=true）→ 每層 provenance 可追溯到生成條件。"""
+    img, evp = d / f"{stem}.png", d / f"{stem}.json"
+    if not img.is_file() or not evp.is_file():
+        raise ValueError(f"{role}：找不到 style-test 產出 {stem}（.png＋.json）")
+    ev = json.loads(evp.read_text(encoding="utf-8"))
+    if not ev.get("technical_valid"):
+        raise ValueError(f"{role}：{stem} technical_valid=false，不能作為合成來源")
+    return ev, img
+
+
+def cmd_compose_scene(args: argparse.Namespace) -> int:
+    """D-057（DG-26 Route A）：背景層＋各角色層（各自 style-test 單獨生成）→ 去背 → 擺位 → 合成。
+    不生成、不下載、不改任何 style-test evidence；重做某角色＝只重跑該角色的 style-test 再重新合成。"""
+    import numpy as np
+    from PIL import Image
+
+    import hashlib
+
+    from see.core import compose as cp
+    from see.core.hashing import file_sha256
+    from see.core.image_qa import image_stats
+
+    s = Settings()
+    d = s.workspace / "style_tests"
+    try:
+        bg_ev, bg_img = _compose_load_layer(d, args.background, "background")
+        specs = []
+        for item in args.layer or []:
+            if "=" not in item:
+                raise ValueError(f"--layer 格式應為 <layer_id>=<style-test stem>：{item}")
+            lid, stem = (x.strip() for x in item.split("=", 1))
+            specs.append((lid, stem))
+        if not specs:
+            raise ValueError("至少需要一個 --layer")
+        ids = [lid for lid, _ in specs]
+        if len(set(ids)) != len(ids):
+            raise ValueError(f"layer_id 重複：{ids}")
+        places = {}
+        for item in args.place or []:
+            lid, txt = item.split("=", 1)
+            places[lid.strip()] = cp.Placement.parse(txt)
+        if set(places) != set(ids):
+            raise ValueError(f"每個 layer 都需要 --place（需要 {ids}，收到 {sorted(places)}）")
+        order = [x.strip() for x in args.order.split(",")] if args.order else ids
+        if sorted(order) != sorted(ids):
+            raise ValueError(f"--order 必須恰好列出所有 layer：{ids}")
+    except ValueError as e:
+        print(f"錯誤：{e}", file=sys.stderr)
+        return 2
+    key = json.dumps([args.background, sorted(specs), order, {k: vars(v) for k, v in sorted(places.items())}])
+    name = args.name or "compose_" + hashlib.sha256(key.encode()).hexdigest()[:10]  # 同輸入＝同資料夾（可重現）
+    out = s.workspace / "compositions" / name
+    (out / "layers").mkdir(parents=True, exist_ok=True)
+    background = np.asarray(Image.open(bg_img).convert("RGB"))
+    layers, layer_ev = [], []
+    for lid in order:
+        stem = dict(specs)[lid]
+        try:
+            ev, img = _compose_load_layer(d, stem, lid)
+        except ValueError as e:
+            print(f"錯誤：{e}", file=sys.stderr)
+            return 2
+        rgb = np.asarray(Image.open(img).convert("RGB"))
+        alpha, matte = cp.key_matte(rgb, tolerance=args.key_tolerance, feather=args.feather)
+        Image.fromarray((alpha * 255).astype(np.uint8)).save(out / "layers" / f"{lid}_mask.png")
+        rgba = np.dstack([rgb, (alpha * 255).astype(np.uint8)])
+        Image.fromarray(rgba, "RGBA").save(out / "layers" / f"{lid}_cutout.png")
+        layers.append({"layer_id": lid, "rgb": rgb, "alpha": alpha, "placement": places[lid]})
+        ident = ((ev.get("generation") or {}).get("identity") or {}).get("references") or []
+        layer_ev.append({"layer_id": lid, "kind": "people", "source_stem": stem, "source_image_sha256": file_sha256(img),
+                         "source_evidence": f"{stem}.json", "source_case_id": ev.get("case_id"), "source_seed": ev.get("seed"),
+                         "source_checkpoint": ev.get("checkpoint"), "source_technical_valid": ev.get("technical_valid"),
+                         "identity_references": [{k: r.get(k) for k in ("character_id", "sha256", "source", "library_category")}
+                                                 for r in ident],
+                         "matte": matte, "mask_file": f"layers/{lid}_mask.png", "cutout_file": f"layers/{lid}_cutout.png"})
+    try:
+        result, placed = cp.composite_layers(background, layers, color_strength=args.color_match, shadow_opacity=args.shadow)
+    except ValueError as e:
+        print(f"錯誤：{e}", file=sys.stderr)
+        return 2
+    comp = out / "composite.png"
+    Image.fromarray(result).save(comp)
+    for le, pl in zip(layer_ev, placed):
+        le.update(pl)
+    boxes = [p["visible_box"] for p in placed]
+    stats = image_stats(comp).to_dict()
+    reasons = [r for r in (["black image"] if stats.get("is_black") else []) + (["flat image"] if stats.get("is_flat") else [])]
+    suspects = [le["layer_id"] for le in layer_ev if le["matte"]["matte_suspect"]]
+    ev = {"composition": name, "route": "DG-26 Route A (separate generation + key matte + alpha composite)",
+          "background": {"source_stem": args.background, "source_image_sha256": file_sha256(bg_img),
+                         "source_evidence": f"{args.background}.json", "source_case_id": bg_ev.get("case_id"),
+                         "source_seed": bg_ev.get("seed"), "source_checkpoint": bg_ev.get("checkpoint"), "size": list(background.shape[1::-1])},
+          "layers": layer_ev, "depth_order": order,
+          "overlap": {f"{order[i]}|{order[j]}": cp.overlap_ratio(boxes[i], boxes[j])
+                      for i in range(len(order)) for j in range(i + 1, len(order))},
+          "harmonization": {"color_match": args.color_match, "shadow_opacity": args.shadow, "feather_px": args.feather,
+                            "img2img_or_inpaint": False},
+          "composite_file": "composite.png", "composite_sha256": file_sha256(comp), "image_stats": stats,
+          # 分層判定：technical 自動；scene／identity／「貼上感」只能人工（single-user subjective）
+          "technical_valid": not reasons, "technical_reasons": reasons, "matte_suspect_layers": suspects,
+          "scene_validated": None, "identity_validated": {lid: None for lid in order}, "pasted_look": None,
+          "commercial_cleared": False, "cost": "NT$0", "generated_new_images": False,
+          "human_review": {"status": "pending", "subjective": "single-user subjective",
+                           "how": f"python -m see.app.cli compose-review {name} --scene pass|fail "
+                                  + " ".join(f"--identity {lid}=pass|fail" for lid in order) + " --pasted yes|no --note \"...\""}}
+    (out / "composite.json").write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(ev, ensure_ascii=False, indent=2))
+    if suspects:
+        print(f"警告：去背可能不可靠（{suspects}）：角色層背景不夠單純；請看 layers/*_mask.png", file=sys.stderr)
+    print("注意：technical_valid 只代表技術有效；scene／identity／是否像貼上去，須人工 compose-review。", file=sys.stderr)
+    return 0 if not reasons else 3
+
+
+def cmd_compose_review(args: argparse.Namespace) -> int:
+    """合成圖人工審查（scene、各角色 identity、貼上感；主觀、單一審查者）。"""
+    from datetime import datetime, timezone
+
+    from see.core.style_tests import verdict_to_bool
+
+    path = Settings().workspace / "compositions" / args.name / "composite.json"
+    if not path.exists():
+        print(f"找不到 {path}；請先執行 compose-scene", file=sys.stderr)
+        return 2
+    ev = json.loads(path.read_text(encoding="utf-8"))
+    if not ev.get("technical_valid"):
+        print("此張 technical_valid=false，不能做人工審查", file=sys.stderr)
+        return 3
+    try:
+        ident = {k.strip(): verdict_to_bool(v.strip()) for k, v in (x.split("=", 1) for x in args.identity or [])}
+        if args.scene:
+            ev["scene_validated"] = verdict_to_bool(args.scene)
+    except ValueError as e:
+        print(f"錯誤：{e}", file=sys.stderr)
+        return 2
+    unknown = set(ident) - set(ev["identity_validated"])
+    if unknown:
+        print(f"錯誤：未知 layer {sorted(unknown)}", file=sys.stderr)
+        return 2
+    ev["identity_validated"].update(ident)
+    if args.pasted:
+        ev["pasted_look"] = args.pasted == "yes"
+    ev["human_review"] = {**ev.get("human_review", {}), "status": "reviewed", "note": args.note or "", "reviewer": args.by,
+                          "subjective": True, "reviewed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    path.write_text(json.dumps(ev, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({k: ev[k] for k in ("composition", "technical_valid", "scene_validated", "identity_validated", "pasted_look",
+                                         "human_review")}, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_style_compare(args: argparse.Namespace) -> int:
     """D-043：兩份 style-test evidence 逐項比對生成條件，判定是否為單一變數比較（相容舊 JSON；唯讀）。"""
     from see.core.style_tests import compare_conditions
@@ -946,6 +1096,23 @@ def main(argv: list[str] | None = None) -> int:
     scp.add_argument("--intended", default=None,
                      help="刻意改變的條件（逗號分隔）；預設自動：model 或 prompt_mode 恰好一個不同時視為 intended")
     scp.set_defaults(fn=cmd_style_compare)
+    csc = sub.add_parser("compose-scene", help="（診斷，D-057 DG-26 Route A）背景層＋角色層（style-test 產出）去背擺位合成；不生成新圖")
+    csc.add_argument("--background", required=True, help="背景層 style-test stem（例 ab_background 的產出）")
+    csc.add_argument("--layer", action="append", help="<layer_id>=<style-test stem>（每個角色一層，可重複）")
+    csc.add_argument("--place", action="append", help="<layer_id>=center_x[,bottom[,height]]（相對背景 0..1；例 char_a=0.3,1.0,0.9）")
+    csc.add_argument("--order", default=None, help="深度順序，先列者在後方（例 char_b,char_a）；預設＝--layer 順序")
+    csc.add_argument("--name", default=None, help="輸出資料夾名（workspace/compositions/<name>/）")
+    csc.add_argument("--key-tolerance", type=float, default=38.0)
+    csc.add_argument("--feather", type=float, default=2.0)
+    csc.add_argument("--color-match", type=float, default=0.25)
+    csc.add_argument("--shadow", type=float, default=0.25)
+    csc.set_defaults(fn=cmd_compose_scene)
+    crv = sub.add_parser("compose-review", help="合成圖人工審查：scene／各角色 identity／是否像貼上去（主觀）")
+    crv.add_argument("name")
+    crv.add_argument("--scene", choices=["pass", "fail"])
+    crv.add_argument("--identity", action="append", help="<layer_id>=pass|fail")
+    crv.add_argument("--pasted", choices=["yes", "no"], help="是否看起來像貼上去")
+    crv.add_argument("--note"); crv.add_argument("--by", default="customer"); crv.set_defaults(fn=cmd_compose_review)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")
     app_.add_argument("--description"); app_.add_argument("--outfit"); app_.add_argument("--feature", action="append")

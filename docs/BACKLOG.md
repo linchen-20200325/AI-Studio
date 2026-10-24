@@ -192,12 +192,25 @@
 | S4 IP-Adapter plus-face SD1.5＋ViT-H image encoder（2,626,557,296 bytes ≈2.63 GB） | DG-25 已核准（D-054）；程式 DONE；NEXT：Windows `adapter-download --check`→`--yes`→真機 |
 | S4 PoC：每角色 reference image＋IP-Adapter mask | 實作 DONE（D-054）；真機一次：2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分（主觀，scene FAIL，D-056） |
 | S4 A／B binding 追溯 | DONE（D-056）：mapping verified、非程式 bug；加 position 排序／mask 幾何自檢／`identity_region_map`＋疊圖 |
-| S4 同 seed 重跑取 evidence（JSON＋`_identity_regions.png`），判定 ref 指派 vs 模型佈局限制 | NEXT（Windows） |
-| DG-26 位置／站位控制（S3 分段生成＋合成〔零下載，總管推薦〕 vs ControlNet〔需下載＋Gate〕） | 待 S4 重跑 evidence 後提出 |
+| S4 同 seed 重跑取 evidence | DONE（D-057）：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 只作研究證據，不升格 production；不再以調 scale 為主解法 |
+| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | 研究 DONE；Route A PoC 程式 DONE（零下載）→ NEXT：Windows 真機（背景＋A＋B 各一張＋compose-scene＋compose-review） |
+| DG-26 Route C：合成後只修接縫（4-ch inpaint 或低 strength img2img，既有權重） | BACKLOG（Route A 真機後評估） |
+| DG-26 Route B：inpaint 依序合成 | 不優先（D-057） |
+| DG-27 去背／segmentation 模型（若單色背景鍵控不足） | 未觸發；需授權審查＋Gate，不得自行下載 |
 | Face crop（參考圖目前為 CLIP 中心裁切、無人臉偵測） | RESEARCH（若 Identity 不足再評估，不新增 insightface） |
 | ControlNet（openpose 等）兩人佈局控制 | RESEARCH（需另下載；S4 後評估） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
 | 重抽 seed | 非解法（客戶裁示） |
+
+## Layered Scene（D-057；客戶裁示；架構見 ARCHITECTURE §16）
+| 層 | 狀態 |
+|---|---|
+| Background Layer | PoC（style-test 背景案例＋compose-scene） |
+| Character Layer（people） | PoC（單人 style-test＋可選 `--identity` 單一 reference） |
+| Animal／Fictional character／Environment layer conditioning | BACKLOG（Reference Library 類別已定義；conditioning 未做） |
+| Props Layer、Effects Layer | BACKLOG |
+| Text／Subtitles Layer | 既有字幕燒錄（影片管線），尚未納入 Scene layer 資料模型 |
+| Scene layer 資料模型（每層 provenance、placement、只重做受影響層、沿用 per-scene fingerprint） | BACKLOG（PoC 證據後設計） |
 
 ## Reference Library（D-056；客戶裁示；規格見 ARCHITECTURE §14.6）
 | 項目 | 狀態 |

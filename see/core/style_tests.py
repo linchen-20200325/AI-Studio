@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -141,6 +142,30 @@ _AB = StyleTestCase(
                       "兩人臉部品質（眼睛、五官）", "兩人皆為東亞外貌（主觀）", "背景未搶過人物"),
     characters=_AB_CHARS, composition_en=_AB_COMPOSITION)
 STYLE_TEST_CASES[_AB.case_id] = _AB
+
+# D-057（DG-26 Route A）：A／B 各自「單人」生成（單色背景 → 可鍵控去背）＋無人背景，之後 compose-scene 合成。
+# 角色定義沿用 _AB_CHARS（同一份結構化設定），只把位置改成 in the center；位置改由合成時的 placement 決定。
+_ISO_COMPOSITION = "solo, upper body, front view, looking at viewer, plain light grey background, simple background, studio portrait"
+for _c in _AB_CHARS:
+    _iso = dataclasses.replace(_c, position="in the center")
+    _case = StyleTestCase(
+        f"ab_{_c.character_id}_isolated", f"two_characters_ab 的 {_c.character_id} 單人生成（單色背景，供去背合成）",
+        tuple(_c.swap_checks) + ("solo", "plain light grey background"),
+        notes="DG-26 Route A 角色層（D-057）：單人 identity fidelity 對照雙人 S4；背景必須單純才能零下載鍵控去背",
+        tags=("human", "portrait", "layer", "identity_binding"),
+        base_prompt_en=f"one person, {_iso.anchor}, {_ISO_COMPOSITION}",
+        review_checklist=("畫面只有一人", "臉部是否像本角色 reference（identity fidelity，主觀）", "性別呈現／髮型／服裝符合本角色",
+                          "背景是否為單純淺灰（影響去背）"),
+        characters=(_iso,), composition_en=_ISO_COMPOSITION)
+    STYLE_TEST_CASES[_case.case_id] = _case
+_BG = StyleTestCase(
+    "ab_background", "two_characters_ab 的背景層：無人的模糊城市夜景",
+    ("city at night", "no people"),
+    notes="DG-26 Route A 背景層（D-057）：不含人物，供 compose-scene 放置角色層",
+    tags=("background", "layer"),
+    base_prompt_en="city street at night, blurred background, bokeh lights, empty street, no people, nobody, eye level view",
+    review_checklist=("畫面沒有人物", "城市夜景、背景模糊（角色貼上後不搶戲）"))
+STYLE_TEST_CASES[_BG.case_id] = _BG
 DEFAULT_CASE = "kitten_butterfly"
 
 

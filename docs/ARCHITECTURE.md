@@ -279,3 +279,18 @@ workspace/identity_refs/        （本機、不進 Git；workspace/ 已 gitignor
 - 不同類別接**不同 conditioning**（人物＝face identity adapter；動物／虛構角色／背景各自另行研究），不共用 face-only pipeline；非 people 類別目前 CLI 明確拒絕。
 - UI 最終從 Library 選圖（BACKLOG）；Library metadata sidecar schema 待設計。
 - GitHub 只存規則、schema、路徑慣例與 provenance metadata；私人參考圖一律不進 Git（PROJECT_RULES §16）。
+
+## 16. Layered Scene（D-057；客戶裁示的正式產品方向；PoC 見 DG26 研究）
+角色一致性**不靠「一個模型一次畫完整 Scene」**。Scene 由獨立層組成，各層各自生成／驗證／保存 provenance，最後合成：
+```
+Scene
+ ├─ Background Layer          （環境；Reference Library backgrounds/ 未來接入）
+ ├─ Character Layer A／B／…    （people／animals／characters 各自 conditioning；目前只 people）
+ ├─ Props Layer               （BACKLOG）
+ ├─ Effects Layer             （BACKLOG）
+ └─ Text／Subtitles Layer      （既有字幕燒錄；尚未納入 layer 模型）
+```
+- 修改單一人物或元素時**只重做受影響的層**再重新合成，不整張 Scene／整支影片重生（與 §13「生成後調整→再生成」、per-scene fingerprint 一致）。
+- 每層輸出＝圖片＋mask＋evidence（來源 stem、sha256、case、seed、checkpoint、identity reference sha256）；合成 evidence 記 placement、深度、重疊、harmonization 參數。
+- 判定分層：technical（自動）與 scene／identity／貼上感（人工）分開；commercial_cleared 隨模型走，與技術品質分開。
+- 現行實作（D-057 PoC）：`see/core/compose.py`（鍵控去背、擺位、色彩平移、接觸陰影）＋CLI `compose-scene`／`compose-review`；輸出 `workspace/compositions/<name>/`（不進 Git）。

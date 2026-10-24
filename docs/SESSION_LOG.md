@@ -439,3 +439,9 @@
 - Result: D-056；mapping verified（非 bug）；position→region 明確排序、mask 幾何自檢、identity_region_map＋疊圖；`workspace/identity_refs/` taxonomy（只 people 支援）
 - Tests: 見 commit（CI＋venv 真實 diffusers region-swap 測試）
 - Next: Windows git pull → 同 seed S4 重跑取 evidence
+
+## 2026-10-24 — Batch 47
+- Batch: Batch 47 — S4 identity fidelity FAIL 入庫＋DG-26 角色分開生成再合成（Route A 零下載 PoC）
+- Result: D-057；DG26 研究文件（三 route 比較、環境盤點）；`see/core/compose.py`、`compose-scene`／`compose-review`、`ab_*` 層案例；Layered Scene → ARCHITECTURE §16
+- Tests: 見 commit
+- Next: Windows git pull → ab_background → A／B 單人層 → compose-scene
