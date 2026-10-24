@@ -16,6 +16,8 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Any
 
+from see.models.character_definition import CharacterDefinition, GenderPresentation
+
 
 @dataclass(frozen=True)
 class CaseCharacter:
@@ -23,12 +25,15 @@ class CaseCharacter:
     測試的就是產品實際送進模型的錨點，不另寫一套 prompt。`swap_checks`＝只屬於此角色、不得出現在另一角色身上的屬性。"""
 
     character_id: str
-    position: str  # 構圖位置描述（英文），例 "on the left"
-    appearance: dict[str, Any]  # CharacterAppearance kwargs；traits 以 dict 給
+    position: str  # 構圖位置描述（英文），例 "on the left"；與 character_id 無關（D-058）
+    appearance: dict[str, Any]  # CharacterAppearance kwargs；traits 以 dict 給（舊式；有 definition 時忽略）
     swap_checks: tuple[str, ...]
+    definition: Any = None  # D-058：CharacterDefinition（正式 schema；性別／外觀全部顯式欄位）
 
     @property
     def anchor(self) -> str:
+        if self.definition is not None:
+            return self.definition.to_appearance().anchor_text
         from see.models.project import CharacterAppearance
 
         return CharacterAppearance(**self.appearance).anchor_text
@@ -77,6 +82,12 @@ class StyleTestCase:
     review_checklist: tuple[str, ...] = field(default_factory=tuple)  # 人工審圖項目（主觀驗收清單）
     characters: tuple[CaseCharacter, ...] = field(default_factory=tuple)  # D-049：多角色受控案例
     composition_en: str = ""  # D-051：多角色案例的共用構圖詞（regional prompting 用）
+    # D-058：案例定義版本。角色定義改變（例 A／B 性別對調修正）→ 版本 +1 → 檔名加 -v<n>，舊 evidence 永不被覆寫
+    definition_version: int = 1
+
+    @property
+    def stem_id(self) -> str:
+        return self.case_id if self.definition_version == 1 else f"{self.case_id}-v{self.definition_version}"
 
 
 STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
@@ -114,33 +125,36 @@ STYLE_TEST_CASES: dict[str, StyleTestCase] = {c.case_id: c for c in [
            "an East Asian adult man", "東亞男性"))],
 ]}
 
-# D-049：A／B 雙人同框受控案例。兩人屬性刻意「互斥」（性別呈現、髮長、髮色、服裝顏色與款式、眼鏡只在 B），
+# D-049：A／B 雙人同框受控案例。兩人屬性刻意「互斥」（性別呈現、髮長、髮色、服裝顏色與款式、眼鏡只在一人），
 # 人工審圖才判斷得出是否互換／混合；構圖詞取 portrait 系列子集（正面、半身、看鏡頭、模糊城市夜景）以減少變因。
 # 只是受控測試設定：不代表產品預設角色、性別、族群或外觀（PROJECT_RULES §16）。
+# D-058 客戶裁示：**A＝男、B＝女**。v1（D-049～D-057）把 char_a 定義成女性、char_b 定義成男性，與客戶 reference 指派相反
+# → v1 evidence 一律 historical_reversed_character_mapping（見 HISTORICAL_REVERSED_CASES）。character_id 本身不代表性別／位置（§17）。
+AB_DEFINITION_VERSION = 2
+_AB_DEFS = (
+    CharacterDefinition(character_id="char_a", display_name="男主角（測試槽位 A）", gender_presentation=GenderPresentation.male,
+                        appearance_region="East Asian", hair_style="short", hair_color="grey",
+                        distinctive_marks=["round glasses"], outfit="grey suit"),
+    CharacterDefinition(character_id="char_b", display_name="女主角（測試槽位 B）", gender_presentation=GenderPresentation.female,
+                        appearance_region="East Asian", hair_style="long straight", hair_color="black", outfit="red coat"),
+)
 _AB_CHARS = (
-    CaseCharacter("char_a", "on the left",
-                  {"outfit_en": "red coat", "traits": {"gender_presentation": "woman", "appearance_region": "East Asian",
-                                                       "hair_style": "long straight", "hair_color": "black"}},
-                  ("woman", "long straight black hair", "red coat")),
-    CaseCharacter("char_b", "on the right",
-                  {"outfit_en": "grey suit", "traits": {"gender_presentation": "man", "appearance_region": "East Asian",
-                                                        "hair_style": "short", "hair_color": "grey",
-                                                        "distinctive_marks": ["round glasses"]}},
-                  ("man", "short grey hair", "grey suit", "round glasses")),
+    CaseCharacter("char_a", "on the left", {}, ("man", "short grey hair", "grey suit", "round glasses"), definition=_AB_DEFS[0]),
+    CaseCharacter("char_b", "on the right", {}, ("woman", "long straight black hair", "red coat"), definition=_AB_DEFS[1]),
 )
 _AB_COMPOSITION = "upper body, front view, looking at viewer, city at night in the background, blurred background"
 _AB = StyleTestCase(
-    "two_characters_ab", "兩位東亞成年人並肩站立的正面半身近景：左邊黑長直髮紅大衣的女性、右邊灰短髮戴圓眼鏡穿灰西裝的男性，背景模糊城市夜景",
-    ("two people", "woman", "man", "red coat", "grey suit", "round glasses"),
-    notes="Multi-character 受控案例（D-049）：驗證 A／B 是否互換臉／髮／衣服／配件；構圖詞為 portrait 系列精簡子集（77 token 限制）",
+    "two_characters_ab", "兩位東亞成年人並肩站立的正面半身近景：左邊灰短髮戴圓眼鏡穿灰西裝的男性（A）、右邊黑長直髮紅大衣的女性（B），背景模糊城市夜景",
+    ("two people", "man", "woman", "grey suit", "red coat", "round glasses"),
+    notes="Multi-character 受控案例（D-049；v2＝D-058 修正 A＝男、B＝女）：驗證 A／B 是否互換臉／髮／衣服／配件；構圖詞為 portrait 系列精簡子集（77 token 限制）",
     tags=("human", "multi_character", "identity_binding"),
     # CLIP 上限 77 token：兩組錨點較長 → 構圖詞取 portrait 系列的精簡子集，確保 Style Profile 詞不被截斷（真機 evidence 另記實測 token）
     base_prompt_en=multi_character_prompt(_AB_CHARS, _AB_COMPOSITION),
-    review_checklist=("畫面恰為兩人（無多出人物、無融合肢體）", "左＝A 女性、右＝B 男性（位置是否對調）",
-                      "A：黑色長直髮；B：灰色短髮（髮色／髮長是否互換或混合）",
-                      "A：紅大衣；B：灰西裝（服裝是否互換或混合）", "圓眼鏡只在 B（是否出現在 A 或兩人都有／都沒有）",
+    review_checklist=("畫面恰為兩人（無多出人物、無融合肢體）", "左＝A 男性、右＝B 女性（位置是否對調）",
+                      "A：灰色短髮；B：黑色長直髮（髮色／髮長是否互換或混合）",
+                      "A：灰西裝；B：紅大衣（服裝是否互換或混合）", "圓眼鏡只在 A（是否出現在 B 或兩人都有／都沒有）",
                       "兩人臉部品質（眼睛、五官）", "兩人皆為東亞外貌（主觀）", "背景未搶過人物"),
-    characters=_AB_CHARS, composition_en=_AB_COMPOSITION)
+    characters=_AB_CHARS, composition_en=_AB_COMPOSITION, definition_version=AB_DEFINITION_VERSION)
 STYLE_TEST_CASES[_AB.case_id] = _AB
 
 # D-057（DG-26 Route A）：A／B 各自「單人」生成（單色背景 → 可鍵控去背）＋無人背景，之後 compose-scene 合成。
@@ -149,15 +163,23 @@ _ISO_COMPOSITION = "solo, upper body, front view, looking at viewer, plain light
 for _c in _AB_CHARS:
     _iso = dataclasses.replace(_c, position="in the center")
     _case = StyleTestCase(
-        f"ab_{_c.character_id}_isolated", f"two_characters_ab 的 {_c.character_id} 單人生成（單色背景，供去背合成）",
+        f"ab_{_c.character_id}_isolated", f"two_characters_ab 的 {_c.character_id}（{_c.definition.display_name}）單人生成（單色背景，供去背合成）",
         tuple(_c.swap_checks) + ("solo", "plain light grey background"),
         notes="DG-26 Route A 角色層（D-057）：單人 identity fidelity 對照雙人 S4；背景必須單純才能零下載鍵控去背",
         tags=("human", "portrait", "layer", "identity_binding"),
         base_prompt_en=f"one person, {_iso.anchor}, {_ISO_COMPOSITION}",
         review_checklist=("畫面只有一人", "臉部是否像本角色 reference（identity fidelity，主觀）", "性別呈現／髮型／服裝符合本角色",
                           "背景是否為單純淺灰（影響去背）"),
-        characters=(_iso,), composition_en=_ISO_COMPOSITION)
+        characters=(_iso,), composition_en=_ISO_COMPOSITION, definition_version=AB_DEFINITION_VERSION)
     STYLE_TEST_CASES[_case.case_id] = _case
+# D-058：v1 定義與客戶 A＝男／B＝女相反的案例；ab_background 無角色、不受影響
+HISTORICAL_REVERSED_CASES = frozenset({"two_characters_ab", "ab_char_a_isolated", "ab_char_b_isolated"})
+
+
+def historical_reversed_character_mapping(ev: dict[str, Any]) -> bool:
+    """舊 evidence（未記 case_definition_version 或 <2）的 A／B 性別定義與客戶裁示相反：可作模型能力證據，
+    但不可用來判定 A／B 性別 assignment 是否正確（D-058）。evidence 檔案本身不改寫。"""
+    return ev.get("case_id") in HISTORICAL_REVERSED_CASES and int(ev.get("case_definition_version") or 1) < AB_DEFINITION_VERSION
 _BG = StyleTestCase(
     "ab_background", "two_characters_ab 的背景層：無人的模糊城市夜景",
     ("city at night", "no people"),

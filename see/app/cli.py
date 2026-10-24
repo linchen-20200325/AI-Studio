@@ -486,7 +486,7 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     orch._gate(image.estimate_cost, _StyleTestBudget(), req)
     out_dir = s.workspace / "style_tests"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / (_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt),
+    out = out_dir / (_style_test_stem(style.style_id, case.stem_id, seed, args.gen_policy, bool(args.base_prompt),
                                       args.checkpoint, args.scheduler,
                                       "regional" if args.regional else ("longprompt" if args.long_prompt else None))
            + (f"_identity-{args.identity}" if args.identity else "") + ".png")
@@ -523,6 +523,11 @@ def cmd_style_test(args: argparse.Namespace) -> int:
           "scene_validated": None, "style_validated": None,
           "prompt_source": prompt_source,
           # D-049：多角色案例的角色錨點與「不得互換」屬性（人工審圖用；不是自動判定）
+          # D-058：案例定義版本（A／B 性別修正後＝2）；舊 JSON 無此欄位＝v1＝historical_reversed_character_mapping
+          "case_definition_version": case.definition_version,
+          "historical_reversed_character_mapping": False,
+          **({"character_definitions": [c.definition.model_dump(mode="json") for c in case.characters if c.definition is not None]}
+             if case.characters else {}),
           **({"case_characters": [{"character_id": c.character_id, "position": c.position, "anchor": c.anchor,
                                    "swap_checks": list(c.swap_checks)} for c in case.characters]} if case.characters else {}),
           "human_review": {"status": "pending", "checklist": list(case.review_checklist or case.expected_subjects_en),
@@ -546,9 +551,12 @@ def cmd_style_test(args: argparse.Namespace) -> int:
 
 
 # D-056 Reference Library（workspace/identity_refs/<category>/；私人素材只在本機，不進 Git）
-REFERENCE_CATEGORIES = {"people": "人物 identity／face reference（S4 --identity 目前唯一支援）",
-                        "animals": "動物外觀 reference（未支援）", "characters": "虛構角色／角色設計 reference（未支援）",
-                        "backgrounds": "場景／環境 reference（未支援）"}
+# D-058：主路徑 workspace/reference_library/，舊 workspace/identity_refs/ 為 legacy 相容；類別存在 ≠ 功能完成
+REFERENCE_CATEGORIES = {"people": "人物身份／臉／全身／服裝／pose（identity_face：S4 --identity 研究用；其他用途 not yet supported）",
+                        "animals": "動物外觀 reference（not yet supported）",
+                        "characters": "虛構角色／角色設計 reference（not yet supported）",
+                        "backgrounds": "場景／環境 reference（not yet supported）",
+                        "styles": "風格／色調／畫風 reference（not yet supported）"}
 
 
 def identity_region_map(identity: dict, crop_box: list | None) -> list[dict]:
@@ -615,28 +623,88 @@ def _identity_references(s: Settings, case, ref_args: list[str]) -> tuple[list[d
         if "://" in v:
             return [], f"參考圖只接受本機檔案（PROJECT_RULES §16）：{v}"
         st = s.workspace / "style_tests" / f"{v}.png"
-        lib_root = s.workspace / "identity_refs"  # D-056 Reference Library：<category>/<檔名>（相對路徑）
-        lib = lib_root / v
+        lib_root = next((r for r in _library_roots(s) if (r / v).is_file()), None) if not Path(v).is_absolute() else None
+        lib = lib_root / v if lib_root is not None else None
         category = None
         if st.exists():
             path, source, src_ev = st, "style_test_output", f"{v}.json"
-        elif not Path(v).is_absolute() and lib.is_file() and lib.resolve().is_relative_to(lib_root.resolve()):
+        elif lib is not None and lib.resolve().is_relative_to(lib_root.resolve()):
             category = Path(v).parts[0]
             if category not in REFERENCE_CATEGORIES:
                 return [], f"Reference Library 類別未知：{category}（可用 {list(REFERENCE_CATEGORIES)}）"
             if category != "people":  # 目前 S4 只做人物臉部 identity；不得假裝支援其他類別
-                return [], f"--identity 目前只支援 people/ 人物參考圖；{category}/ 尚未支援（BACKLOG，D-056）"
-            path, source, src_ev = lib, "reference_library", None
+                return [], f"--identity 目前只支援 people/ 人物參考圖；{category}/ not yet supported（BACKLOG，D-056／D-058）"
+            path, source, src_ev = lib, "reference_library" if lib_root.name == "reference_library" else "reference_library_legacy", None
         else:
             path, source, src_ev = Path(v), "local_file", None
         if not path.is_file():
             have = sorted(p.stem for p in (s.workspace / "style_tests").glob("*.png")) if (s.workspace / "style_tests").exists() else []
             return [], f"找不到參考圖 {v}（可用 style-test 產出：{have}）"
-        refs.append({"character_id": cid, "path": str(path), "sha256": file_sha256(path), "bytes": path.stat().st_size,
-                     "source": source, "source_evidence": src_ev, "library_category": category, "position": c.position, "region": region_of(c.position)[0]})
-    if len({r["sha256"] for r in refs}) != len(refs):
-        return [], "A／B 參考圖相同：每個角色必須使用不同的參考圖"
+        sha = file_sha256(path)
+        meta, err = _reference_sidecar(path, cid, sha)
+        if err:
+            return [], err
+        refs.append({"character_id": cid, "path": str(path), "sha256": sha, "bytes": path.stat().st_size,
+                     "source": source, "source_evidence": src_ev, "library_category": category, "position": c.position,
+                     "region": region_of(c.position)[0], "asset_metadata": meta})
+    err = _character_gate(case, refs)
+    if err:
+        return [], err
     return refs, None
+
+
+def _library_roots(s: Settings) -> list[Path]:
+    """D-058：Reference Library 主路徑 workspace/reference_library/；workspace/identity_refs/ 為 legacy 相容路徑（D-056）。"""
+    return [s.workspace / "reference_library", s.workspace / "identity_refs"]
+
+
+def _reference_sidecar(path: Path, character_id: str, sha: str) -> tuple[dict | None, str | None]:
+    """選用 metadata sidecar `<圖檔>.ref.json`（ReferenceAsset schema）。存在時必須與本次綁定一致，否則 fail closed。
+    不存在時，綁定只來自使用者顯式的 `--ref <character_id>=…`（不從檔名或資料夾猜身份）。"""
+    side = path.with_name(path.name + ".ref.json")
+    if not side.is_file():
+        return None, None
+    from see.models.character_definition import ReferenceAsset
+
+    try:
+        asset = ReferenceAsset.model_validate_json(side.read_text(encoding="utf-8"))
+    except ValueError as e:
+        return None, f"reference metadata 格式錯誤（{side.name}）：{e}"
+    if asset.character_id != character_id:
+        return None, f"reference metadata 衝突：{path.name} 綁定 {asset.character_id}，但 --ref 指給 {character_id}"
+    if asset.sha256 != sha:
+        return None, f"reference metadata 衝突：{path.name} 的 sha256 與 metadata 不符（檔案被換過？）"
+    if asset.role.value != "identity_face":
+        return None, f"reference 用途不符：{path.name} 為 {asset.role.value}，--identity 需要 identity_face"
+    return asset.model_dump(mode="json"), None
+
+
+def _character_gate(case, refs: list[dict]) -> str | None:
+    """D-058 Character Validation Gate（--identity 路徑）：任何 blocking 衝突 → 不生成。"""
+    from see.core.style_tests import region_of
+    from see.models.character_definition import (CharacterDefinition, CommercialClearance, RefCategory, ReferenceAsset, RefRole,
+                                                 ScenePlacement, SourceType, blocking, validate_characters)
+
+    defs = [c.definition if c.definition is not None else CharacterDefinition(character_id=c.character_id, display_name=c.character_id)
+            for c in case.characters]
+    for d, r in zip(sorted(defs, key=lambda d: d.character_id), sorted(refs, key=lambda r: r["character_id"])):
+        if r["character_id"] != d.character_id:
+            return f"reference 綁定不一致：{r['character_id']} vs {d.character_id}"
+    assets = []
+    for r in refs:
+        m = r.get("asset_metadata") or {}
+        assets.append(ReferenceAsset(
+            asset_id=m.get("asset_id") or f"ref_{r['character_id']}", category=RefCategory.people, file_path=r["path"],
+            character_id=r["character_id"], role=RefRole.identity_face, sha256=r["sha256"],
+            source_type=SourceType(m["source_type"]) if m.get("source_type") else
+            (SourceType.generated if r["source"] == "style_test_output" else SourceType.user_supplied),
+            commercial_clearance_status=CommercialClearance(m.get("commercial_clearance_status") or "unknown")))
+    placements = [ScenePlacement(character_id=c.character_id, horizontal=region_of(c.position)[0]) for c in case.characters]
+    issues = validate_characters(defs, assets, placements, repo_root=Path(__file__).resolve().parents[2])
+    hard = blocking(issues)
+    if hard:
+        return "Character Validation Gate 未通過（不生成，請修正）：" + "；".join(i.message for i in hard)
+    return None
 
 
 def cmd_adapter_download(args: argparse.Namespace) -> int:
@@ -774,7 +842,21 @@ def _compose_load_layer(d: Path, stem: str, role: str) -> tuple[dict, Path]:
     ev = json.loads(evp.read_text(encoding="utf-8"))
     if not ev.get("technical_valid"):
         raise ValueError(f"{role}：{stem} technical_valid=false，不能作為合成來源")
+    from see.core.style_tests import historical_reversed_character_mapping
+
+    if historical_reversed_character_mapping(ev):
+        raise ValueError(f"{role}：{stem} 屬 historical_reversed_character_mapping（舊 A／B 定義相反，D-058），不能作為角色層")
     return ev, img
+
+
+def _layer_character_id(ev: dict, layer_id: str) -> str:
+    """角色層以穩定 character_id 綁定（D-058）：來源 evidence 只能有一個角色，且必須等於 layer_id；不以 A／B、左右或性別推論。"""
+    chars = [c.get("character_id") for c in ev.get("case_characters") or []]
+    if len(chars) != 1:
+        raise ValueError(f"layer {layer_id}：來源必須是單人角色層（evidence case_characters={chars}）")
+    if chars[0] != layer_id:
+        raise ValueError(f"layer {layer_id}：來源圖片屬於 {chars[0]}，與 layer 的 character_id 不符（不生成）")
+    return chars[0]
 
 
 def cmd_compose_scene(args: argparse.Namespace) -> int:
@@ -829,6 +911,11 @@ def cmd_compose_scene(args: argparse.Namespace) -> int:
         except ValueError as e:
             print(f"錯誤：{e}", file=sys.stderr)
             return 2
+        try:
+            character_id = _layer_character_id(ev, lid)
+        except ValueError as e:
+            print(f"錯誤：{e}", file=sys.stderr)
+            return 2
         rgb = np.asarray(Image.open(img).convert("RGB"))
         alpha, matte = cp.key_matte(rgb, tolerance=args.key_tolerance, feather=args.feather)
         Image.fromarray((alpha * 255).astype(np.uint8)).save(out / "layers" / f"{lid}_mask.png")
@@ -836,7 +923,10 @@ def cmd_compose_scene(args: argparse.Namespace) -> int:
         Image.fromarray(rgba, "RGBA").save(out / "layers" / f"{lid}_cutout.png")
         layers.append({"layer_id": lid, "rgb": rgb, "alpha": alpha, "placement": places[lid]})
         ident = ((ev.get("generation") or {}).get("identity") or {}).get("references") or []
-        layer_ev.append({"layer_id": lid, "kind": "people", "source_stem": stem, "source_image_sha256": file_sha256(img),
+        layer_ev.append({"layer_id": lid, "layer_type": "character", "character_id": character_id, "kind": "people",
+                         "style_override": ev.get("style_id"), "regeneration_scope": f"only layer {lid}（其他層原樣重用）",
+                         "character_definition": next(iter(ev.get("character_definitions") or []), None),
+                         "source_case_definition_version": ev.get("case_definition_version"), "source_stem": stem, "source_image_sha256": file_sha256(img),
                          "source_evidence": f"{stem}.json", "source_case_id": ev.get("case_id"), "source_seed": ev.get("seed"),
                          "source_checkpoint": ev.get("checkpoint"), "source_technical_valid": ev.get("technical_valid"),
                          "identity_references": [{k: r.get(k) for k in ("character_id", "sha256", "source", "library_category")}
@@ -856,7 +946,8 @@ def cmd_compose_scene(args: argparse.Namespace) -> int:
     reasons = [r for r in (["black image"] if stats.get("is_black") else []) + (["flat image"] if stats.get("is_flat") else [])]
     suspects = [le["layer_id"] for le in layer_ev if le["matte"]["matte_suspect"]]
     ev = {"composition": name, "route": "DG-26 Route A (separate generation + key matte + alpha composite)",
-          "background": {"source_stem": args.background, "source_image_sha256": file_sha256(bg_img),
+          "background": {"layer_id": "background", "layer_type": "background", "style_override": bg_ev.get("style_id"),
+                         "regeneration_scope": "only background layer", "source_stem": args.background, "source_image_sha256": file_sha256(bg_img),
                          "source_evidence": f"{args.background}.json", "source_case_id": bg_ev.get("case_id"),
                          "source_seed": bg_ev.get("seed"), "source_checkpoint": bg_ev.get("checkpoint"), "size": list(background.shape[1::-1])},
           "layers": layer_ev, "depth_order": order,
@@ -918,7 +1009,7 @@ def cmd_compose_review(args: argparse.Namespace) -> int:
 
 def cmd_style_compare(args: argparse.Namespace) -> int:
     """D-043：兩份 style-test evidence 逐項比對生成條件，判定是否為單一變數比較（相容舊 JSON；唯讀）。"""
-    from see.core.style_tests import compare_conditions
+    from see.core.style_tests import compare_conditions, historical_reversed_character_mapping
 
     d = Settings().workspace / "style_tests"
     evs = []
@@ -934,7 +1025,9 @@ def cmd_style_compare(args: argparse.Namespace) -> int:
     res = compare_conditions(evs[0], evs[1], intended)
     res = {"a": args.stem_a, "b": args.stem_b, **res,
            "technical_valid": [evs[0].get("technical_valid"), evs[1].get("technical_valid")],
-           "image_sha256": [evs[0].get("image_sha256"), evs[1].get("image_sha256")]}
+           "image_sha256": [evs[0].get("image_sha256"), evs[1].get("image_sha256")],
+           # D-058：舊 A／B 定義相反 → 不可用來判定 A／B 性別 assignment（仍可作模型能力證據）
+           "historical_reversed_character_mapping": [historical_reversed_character_mapping(e) for e in evs]}
     print(json.dumps(res, ensure_ascii=False, indent=2))
     return 0 if res["verdict"] != "not_comparable" else 4
 

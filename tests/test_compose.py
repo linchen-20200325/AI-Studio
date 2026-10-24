@@ -76,15 +76,17 @@ def test_isolated_and_background_cases_reuse_ab_characters():
         iso = get_case(f"ab_{c.character_id}_isolated")
         assert [x.character_id for x in iso.characters] == [c.character_id]
         assert iso.characters[0].anchor == c.anchor and iso.characters[0].position == "in the center"
+        assert iso.definition_version == 2 and iso.stem_id == f"{iso.case_id}-v2"
         assert "plain light grey background" in iso.base_prompt_en and "solo" in iso.base_prompt_en
     bg = get_case("ab_background")
     assert not bg.characters and "no people" in bg.base_prompt_en
 
 
-def _write_layer(d, stem, arr, valid=True, case_id="x", refs=None):
+def _write_layer(d, stem, arr, valid=True, case_id="x", refs=None, char=None, version=2):
     Image.fromarray(arr).save(d / f"{stem}.png")
     ev = {"case_id": case_id, "seed": 1234, "checkpoint": {"checkpoint_id": "cyberrealistic_final"}, "technical_valid": valid,
-          "generation": {"identity": {"references": refs or []}}}
+          "generation": {"identity": {"references": refs or []}}, "case_definition_version": version,
+          **({"case_characters": [{"character_id": char, "position": "in the center"}]} if char else {})}
     (d / f"{stem}.json").write_text(json.dumps(ev), encoding="utf-8")
 
 
@@ -99,10 +101,10 @@ def test_compose_scene_cli_layers_provenance_and_redo_one_layer(tmp_path, monkey
     d = tmp_path / "ws" / "style_tests"
     d.mkdir(parents=True)
     _write_layer(d, "bg", np.full((90, 160, 3), (20, 20, 60), np.uint8), case_id="ab_background")
-    _write_layer(d, "a1", _person((220, 30, 30)), case_id="ab_char_a_isolated",
+    _write_layer(d, "a1", _person((220, 30, 30)), case_id="ab_char_a_isolated", char="char_a",
                  refs=[{"character_id": "char_a", "sha256": "a" * 64, "source": "reference_library", "library_category": "people"}])
-    _write_layer(d, "a2", _person((230, 90, 30)), case_id="ab_char_a_isolated")
-    _write_layer(d, "b1", _person((30, 30, 220)), case_id="ab_char_b_isolated")
+    _write_layer(d, "a2", _person((230, 90, 30)), case_id="ab_char_a_isolated", char="char_a")
+    _write_layer(d, "b1", _person((30, 30, 220)), case_id="ab_char_b_isolated", char="char_b")
     before = {p.name: _sha(p) for p in d.iterdir()}
     base = ["compose-scene", "--background", "bg", "--layer", "char_a=a1", "--layer", "char_b=b1",
             "--place", "char_a=0.3", "--place", "char_b=0.7,1.0,0.85", "--name", "v1"]
@@ -138,8 +140,10 @@ def test_compose_scene_rejects_invalid_inputs(tmp_path, monkeypatch, capsys):
     d = tmp_path / "ws" / "style_tests"
     d.mkdir(parents=True)
     _write_layer(d, "bg", np.full((90, 160, 3), (20, 20, 60), np.uint8))
-    _write_layer(d, "bad", _person(), valid=False)
-    _write_layer(d, "a", _person())
+    _write_layer(d, "bad", _person(), valid=False, char="char_a")
+    _write_layer(d, "a", _person(), char="char_a")
+    _write_layer(d, "b", _person(), char="char_b")
+    _write_layer(d, "old", _person(), case_id="ab_char_a_isolated", char="char_a", version=None)
     assert main(["compose-scene", "--background", "bg", "--layer", "char_a=bad", "--place", "char_a=0.3"]) == 2  # technical_valid=false
     assert main(["compose-scene", "--background", "bg", "--layer", "char_a=a"]) == 2  # 缺 --place
     assert main(["compose-scene", "--background", "bg", "--layer", "char_a=missing", "--place", "char_a=0.3"]) == 2
@@ -147,6 +151,12 @@ def test_compose_scene_rejects_invalid_inputs(tmp_path, monkeypatch, capsys):
                  "--place", "char_a=0.3"]) == 2  # layer_id 重複
     assert main(["compose-scene", "--background", "bg", "--layer", "char_a=a", "--place", "char_a=0.3",
                  "--order", "char_a,char_b"]) == 2
+    # D-058：角色層以 character_id 綁定——把 char_b 的圖放到 char_a 層 → fail closed
+    assert main(["compose-scene", "--background", "bg", "--layer", "char_a=b", "--place", "char_a=0.3"]) == 2
+    assert "與 layer 的 character_id 不符" in capsys.readouterr().err
+    # 舊 A／B 定義（historical_reversed_character_mapping）不可作角色層
+    assert main(["compose-scene", "--background", "bg", "--layer", "char_a=old", "--place", "char_a=0.3"]) == 2
+    assert "historical_reversed_character_mapping" in capsys.readouterr().err
 
 
 def test_isolated_case_identity_single_reference_full_frame(tmp_path, monkeypatch):

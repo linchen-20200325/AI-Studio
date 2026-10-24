@@ -163,7 +163,7 @@ def test_reference_library_people_only(tmp_path, monkeypatch):
     from see.core.style_tests import get_case
 
     _ws(tmp_path, monkeypatch)
-    lib = tmp_path / "ws" / "identity_refs"
+    lib = tmp_path / "ws" / "reference_library"
     for sub, color in (("people", (10, 20, 30)), ("animals", (30, 20, 10))):
         (lib / sub).mkdir(parents=True)
         Image.new("RGB", (32, 32), color).save(lib / sub / "x.png")
@@ -171,7 +171,13 @@ def test_reference_library_people_only(tmp_path, monkeypatch):
     refs, err = _identity_references(Settings(), case, ["char_a=people/x.png", "char_b=ref_male"])
     assert err is None and refs[0]["source"] == "reference_library" and refs[0]["library_category"] == "people"
     _, err = _identity_references(Settings(), case, ["char_a=animals/x.png", "char_b=ref_male"])
-    assert err and "people" in err  # 動物／角色／背景尚未支援，不得假裝
+    assert err and "not yet supported" in err  # 動物／角色／背景／風格尚未支援，不得假裝
+    # legacy identity_refs/ 仍可用（相容路徑）
+    legacy = tmp_path / "ws" / "identity_refs" / "people"
+    legacy.mkdir(parents=True)
+    Image.new("RGB", (32, 32), (90, 10, 10)).save(legacy / "y.png")
+    refs, err = _identity_references(Settings(), case, ["char_a=people/y.png", "char_b=ref_male"])
+    assert err is None and refs[0]["source"] == "reference_library_legacy"
 
 
 def test_identity_overlay_written_next_to_output(tmp_path):

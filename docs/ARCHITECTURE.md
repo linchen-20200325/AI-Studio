@@ -267,18 +267,8 @@ prompt-only 文字錨點在 SD 1.5 同框時**無法綁定屬性**（眼鏡、�
 - **Binding 鏈（D-056 已追溯驗證）**：character `position` →`region_of`→ 左→右排序 → refs[i] ↔ `ip_adapter_image_embeds[0][:, i]` ↔ `ip_adapter_masks[0][:, i]`（adapter 0）。執行期自檢 mask 幾何；evidence 記 `assigned_region`／`adapter_index`／`image_index`／`mask_bounds_gen_px`，style-test 另記 `identity_region_map`（輸出圖座標）＋本機疊圖 `<stem>_identity_regions.png`。
 - 已知限制：mask 只限制臉部特徵殘差的作用區，**不控制人物站位或性別呈現**（站位仍由文字＋模型決定）；位置控制另走 DG-26。
 
-### 14.6 Reference Library（D-056；客戶裁示）
-```
-workspace/identity_refs/        （本機、不進 Git；workspace/ 已 gitignore）
-  people/        人物 identity／face reference   ← 目前 S4 --identity 唯一支援
-  animals/       動物外觀 reference              ← taxonomy only（未支援）
-  characters/    虛構角色／角色設計 reference     ← taxonomy only（未支援）
-  backgrounds/   場景／環境 reference            ← taxonomy only（未支援）
-```
-- 引用：`--ref <character_id>=<category>/<檔名>`（相對 Library 根、不得跳出根目錄）；evidence 記 `source=reference_library`、`library_category`、sha256、bytes，不記內容、不複製圖片。
-- 不同類別接**不同 conditioning**（人物＝face identity adapter；動物／虛構角色／背景各自另行研究），不共用 face-only pipeline；非 people 類別目前 CLI 明確拒絕。
-- UI 最終從 Library 選圖（BACKLOG）；Library metadata sidecar schema 待設計。
-- GitHub 只存規則、schema、路徑慣例與 provenance metadata；私人參考圖一律不進 Git（PROJECT_RULES §16）。
+### 14.6 Reference Library（D-056；D-058 升級 → 見 §17.3）
+- 舊路徑 `workspace/identity_refs/` 保留為 **legacy 相容路徑**；主路徑與 metadata 規格見 §17.3。
 
 ## 16. Layered Scene（D-057；客戶裁示的正式產品方向；PoC 見 DG26 研究）
 角色一致性**不靠「一個模型一次畫完整 Scene」**。Scene 由獨立層組成，各層各自生成／驗證／保存 provenance，最後合成：
@@ -292,5 +282,71 @@ Scene
 ```
 - 修改單一人物或元素時**只重做受影響的層**再重新合成，不整張 Scene／整支影片重生（與 §13「生成後調整→再生成」、per-scene fingerprint 一致）。
 - 每層輸出＝圖片＋mask＋evidence（來源 stem、sha256、case、seed、checkpoint、identity reference sha256）；合成 evidence 記 placement、深度、重疊、harmonization 參數。
+- **每層欄位（D-058）**：`layer_id`、`layer_type`（background／character／props／effects／text）、source asset（stem＋sha256）、`character_id`（角色層必填；**身份主鍵一律是穩定 character_id，不用 A／B、左右或男女**）、provenance、placement、`style_override`、`regeneration_scope`。`compose-scene` 會驗證角色層來源 evidence 的 character_id 等於 layer_id，否則 fail closed；舊 A／B 定義（historical_reversed_character_mapping）的來源拒收。
 - 判定分層：technical（自動）與 scene／identity／貼上感（人工）分開；commercial_cleared 隨模型走，與技術品質分開。
 - 現行實作（D-057 PoC）：`see/core/compose.py`（鍵控去背、擺位、色彩平移、接觸陰影）＋CLI `compose-scene`／`compose-review`；輸出 `workspace/compositions/<name>/`（不進 Git）。
+
+## 17. Character Definition、Reference Asset、Reference Library 與角色 UI（D-058；PROJECT_RULES §17）
+起因：v1 測試案例把 char_a 定義為女性、char_b 為男性，與客戶「A＝男、B＝女」及 reference 指派相反——reference 綁對了，角色定義卻錯（隱性錯誤）。修正方向：身份鍵與所有屬性分離、全部顯式、生成前 gate＋人工確認卡。
+
+### 17.1 Character Definition Schema（`see/models/character_definition.py:CharacterDefinition`）
+| 欄位 | 型別／規則 |
+|---|---|
+| `character_id` | 穩定 slug（`^[a-z][a-z0-9_]{1,63}$`，產品建議 `char_001`）；**不隱含性別／位置／style／voice／類型** |
+| `display_name` | 使用者看到的名稱（例「男主角」） |
+| `character_type` | `person`／`animal`／`fictional_character` |
+| `gender_presentation` | `male`／`female`／`nonbinary`／`unspecified`（預設 unspecified；≠ biological sex；unspecified 時 prompt 不輸出性別詞） |
+| `age_impression`、`appearance_region` | 自由文字；appearance_region 只有使用者明確指定才填，空＝unspecified；**不從圖片推論** |
+| `face_shape`、`facial_features[]`、`hair_style`、`hair_color`、`distinctive_marks[]`、`outfit`、`expression` | 外觀（可空、不補值） |
+| `reference_asset_ids[]` | 指向 ReferenceAsset（歸屬以 asset 的 character_id 為準，gate 檢查一致） |
+| `default_style_profile`、`default_mood_profile` | 預設引用；Scene 可 override（§17.5） |
+| `voice_profile` | `VoiceAssignment{voice_id, speed, emotion}`；預設值，Scene 可 override |
+| `notes` | 備註 |
+- 與既有層的關係：`to_appearance()` 產生既有 `CharacterAppearance`／`CharacterTraits`（D-048 prompt 錨點層）；style／mood／voice 不進外觀錨點。現有 `Project.characters`（`CharacterVoice`）尚未遷移到本 schema（BACKLOG；不做不可逆 migration）。
+- 位置是 Scene 屬性：`ScenePlacement{character_id, horizontal(left/center/right), depth(foreground/midground/background), shot_size, action, pose}`。
+
+### 17.2 Reference Asset Schema（`ReferenceAsset`）
+`asset_id`、`category`（people／animals／characters／backgrounds／styles）、`file_path`（本機、不收 URL）、`character_id`（角色用途必填）、`role`（identity_face／full_body／outfit／pose／style_reference／background_reference）、`provenance`（dict）、`sha256`、`source_type`（user_supplied／generated／imported）、`commercial_clearance_status`（cleared／not_cleared／unknown，預設 unknown）、`is_primary`、`notes`。
+- role 與 category 必須相容（例 style_reference 只能是 styles；identity_face 只能是 people／animals／characters）。
+- 檔名可自由（例 `hero_male_v1.jpg`）；**誰、用途、來源、可否商用只看 metadata**，不看檔名（禁止 `char_a.jpg` 式猜測）。
+- 目前支援矩陣：只有 (people, identity_face) → S4 `--identity`（研究用）；其他組合 `support_status()`＝`not yet supported`。
+
+### 17.3 Reference Library（正式規格）
+```
+workspace/reference_library/          ← 主路徑（本機；workspace/ 已 gitignore，不進 Git）
+  people/        人物身份／臉／全身／服裝／pose     identity_face：研究用（S4）；其他 not yet supported
+  animals/       動物外觀                          not yet supported
+  characters/    虛構角色／角色設計                 not yet supported
+  backgrounds/   場景／環境                         not yet supported
+  styles/        風格／色調／畫風                   not yet supported
+  <任意檔名>.<ext> ＋ 選用 sidecar <檔名>.<ext>.ref.json（ReferenceAsset metadata）
+workspace/identity_refs/              ← legacy 相容路徑（D-056），只讀，不再新增
+```
+- CLI：`--ref <character_id>=<category>/<檔名>`（先找 reference_library，再找 legacy）；evidence 記 `source=reference_library`／`reference_library_legacy`、類別、sha256、bytes、asset metadata。
+- sidecar 存在時：character_id、sha256、role 必須與本次綁定一致，否則 fail closed；不存在時，綁定只來自使用者顯式 `--ref`。
+- 未來 UI 以 metadata 為主，不依賴資料夾或檔名判定身份；資料夾存在 ≠ 功能完成。
+- GitHub 只保存 schema、規則、provenance metadata 與路徑慣例；私人圖片永不 commit。
+
+### 17.4 Character Validation Gate（`validate_characters()`）
+生成前檢查，blocking 衝突 → **fail closed**（不生成、列出需修正項目）：
+character_id 唯一｜asset_id 唯一｜角色用途 reference 必須綁定存在的角色｜role 與 category 相容｜角色類型與 reference 類別相符｜同一 reference（sha256）不得綁多個角色｜角色引用的 asset 確實屬於該角色｜每個角色恰好一個明確 placement、不得兩人同位｜（選用）每角色需有 identity_face｜主要 reference 至多一張｜私人圖片不得在 repo 內 workspace/ 以外位置｜商用授權 unknown／not_cleared：內部診斷為警告，正式輸出（`final_output=True`）為 blocking。
+- `gender_presentation` 由 enum 保證為明確值或 unspecified。
+- 現接線：`style-test --identity` 的 `--ref` 路徑（`_character_gate`）、`compose-scene` 角色層 character_id 驗證。UI 接線見 BACKLOG。
+
+### 17.5 Style／Mood／Voice 與身份解耦
+- Style 不是一個不可拆的 prompt 字串：至少拆 **Visual Style、Mood、Lighting、Color Tone、Camera**（現有 `StyleProfile` 仍是合併的 prompt 詞，拆分為 BACKLOG）。
+- 角色可有 `default_style_profile`／`default_mood_profile`，**每個 Scene 可 override**；同一角色可有寫實／動畫／3D／恐怖／溫暖版本，身份欄位不變。
+- Voice：角色可有預設 `voice_profile`；Scene 可 override voice／speech speed／emotion；voice 資料與身份資料分離，經 character_id 綁定（既有 `CharacterVoice` 的 confirm 流程 D-030 沿用）。
+
+### 17.6 角色 UI／UX（正式需求；實作在 BACKLOG）
+主流程：**角色 → 參考圖 → 外觀 → 風格 → 聲音 → 場景位置 → 確認 → 生成**。
+- A 基本資料：角色名稱、Character ID（唯讀顯示）、角色類型、性別呈現、年齡感、備註。
+- B 外觀：臉型、五官、髮型、髮色、服裝、特徵、表情。
+- C Reference：上傳、從 Reference Library 選、每張顯示綁定角色與用途、多張、更換、刪除、指定主要 reference、顯示來源與 provenance。
+- D Visual Style（獨立於身份）：寫實、日系動畫、3D、繪本、自訂。
+- E Mood：溫暖、恐怖、陽光、悲傷、浪漫、懸疑、自訂。
+- F 其他視覺：Lighting、Color tone、Camera、Composition。
+- G Voice：聲音、語速、情緒、試聽。
+- H Scene Placement：左／中／右、前景／中景／後景、景別、動作、姿勢。
+- **Character Confirmation Card**（生成前必經）：每角色一行，例「男主角｜男性｜hero_male_v1.jpg｜灰西裝｜左側｜寫實｜冷色｜Voice A」「女主角｜女性｜heroine_v1.jpg｜紅大衣｜右側｜寫實｜暖色｜Voice B」；至少顯示 display_name、gender_presentation、reference image、outfit、position、style、mood、voice；任一不一致可在此步直接修改；Gate 有衝突時不能按「生成」。目的：杜絕「reference 綁對但角色定義錯」。
+- 一般 UI 不顯示 char_a／IP-Adapter／checkpoint／CUDA／model path／prompt token；技術參數放 Advanced／Debug。

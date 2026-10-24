@@ -445,3 +445,9 @@
 - Result: D-057；DG26 研究文件（三 route 比較、環境盤點）；`see/core/compose.py`、`compose-scene`／`compose-review`、`ab_*` 層案例；Layered Scene → ARCHITECTURE §16
 - Tests: 見 commit
 - Next: Windows git pull → ab_background → A／B 單人層 → compose-scene
+
+## 2026-10-24 — Batch 48
+- Batch: Batch 48 — 角色身份定義治理（A＝男、B＝女修正；schema／gate／Reference Library／UI 規格）
+- Result: D-058；PROJECT_RULES §17；ARCHITECTURE §16 欄位＋§17；`see/models/character_definition.py`；A／B 案例 v2；舊 evidence `historical_reversed_character_mapping`
+- Tests: 見 commit
+- Next: Windows git pull → ab_char_a_isolated（A＝男）→ ab_char_b_isolated（B＝女）→ compose-scene

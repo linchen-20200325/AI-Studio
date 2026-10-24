@@ -2,6 +2,7 @@
 
 > 起因：S4（D-054／D-056）同 seed 重跑，mapping PASS（`identity_region_map`＋疊圖證明 char_a→left、char_b→right）、兩人分離改善，但 **identity fidelity FAIL**（single-user subjective）。
 > 結論方向：不要求 SD1.5 一次同時完成 A／B identity、性別、服裝、位置、背景、構圖；改為**每個角色獨立生成／驗證，再合成到共同 Scene**。
+> **D-058 修正**：上述 S4 結果屬 two_characters_ab v1（`historical_reversed_character_mapping=true`：當時 char_a＝女、char_b＝男，與客戶 A＝男、B＝女相反），只作模型能力證據。Route A 角色層一律用 v2：`ab_char_a_isolated`＝A 男主角、`ab_char_b_isolated`＝B 女主角；角色層以 character_id 綁定（ARCHITECTURE §16／§17）。
 > 限制：NT$0、不下載新模型（含 ControlNet／SAM／RMBG／segmentation）、不新增大型依賴、不用 FaceID／InsightFace、不訓練 LoRA、不 reroll seed、不改 production default。
 
 ## 1. 目標流程
@@ -35,7 +36,7 @@
 **Route A 先做 Windows 真機 PoC**（零下載、改動最小、最直接回答「單人 identity 是否明顯高於雙人同框」），**Route C 作為第二步**（只修接縫，需先接 inpaint／img2img）。Route B 不優先：它重新把兩角色放回同一去噪上下文、臉更小，且違反「改 A 只重做 A」。
 
 ## 5. 已完成 PoC（Route A，D-057）
-- 案例：`ab_background`、`ab_char_a_isolated`、`ab_char_b_isolated`（皆可加 `--checkpoint`／`--scheduler`／`--gen-policy native`；角色層可加 `--identity … --ref char_x=…`，單一 reference＝全畫面 mask）。
+- 案例：`ab_background`（真機已完成、保留）、`ab_char_a_isolated`（v2：A＝男）、`ab_char_b_isolated`（v2：B＝女）（皆可加 `--checkpoint`／`--scheduler`／`--gen-policy native`；角色層可加 `--identity … --ref char_x=…`，單一 reference＝全畫面 mask）。
 - `compose-scene --background <stem> --layer char_a=<stem> --layer char_b=<stem> --place char_a=0.3 --place char_b=0.7 [--order …]`：
   - 只收 style-test 產出（technical_valid=true）；**不生成新圖、不改任何 style-test evidence**。
   - 輸出 `workspace/compositions/<name>/`：`composite.png`、`composite.json`、`layers/<id>_mask.png`、`layers/<id>_cutout.png`。

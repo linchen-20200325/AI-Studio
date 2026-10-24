@@ -248,4 +248,15 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - Character Preference／Identity 屬偏好層（§15），**Provider Agnostic**：換 image model 原則上沿用；model-specific 參數（adapter 權重、clip skip 等）放模型層。
 - **使用者真人照片＝敏感素材**：不得提交 GitHub、不得做測試 fixture、不得上傳第三方 provider（除非使用者另行明確同意）；Local First，只存本機 workspace（不進 Git）。
 - Reference Image 技術（IP-Adapter／FaceID 類）下載、導入前須另做授權、硬體可行性、品質研究並經 Decision Gate。
-- **Reference Library（D-056）**：所有 reference assets 統一放 `workspace/identity_refs/{people,animals,characters,backgrounds}/`（本機、不進 Git）。GitHub 只保存規則、schema、路徑慣例與 provenance metadata（sha256／bytes／類別），不得提交任何私人參考圖。某類別尚無對應 conditioning 時必須明確拒絕，不得假裝支援。
+- **Reference Library（D-056／D-058）**：所有 reference assets 統一放 `workspace/reference_library/{people,animals,characters,backgrounds,styles}/`（本機、不進 Git；舊 `workspace/identity_refs/` 僅 legacy 相容）。GitHub 只保存規則、schema、路徑慣例與 provenance metadata（sha256／bytes／類別），不得提交任何私人參考圖。某類別尚無對應 conditioning 時必須明確拒絕，不得假裝支援。
+
+## 17. Character Identity Definition（D-058，永久）
+- **`character_id` 是穩定身份鍵**，不代表性別、位置、style、mood、voice 或角色類型。產品使用穩定 ID（例 `char_001`、`char_002`）；A／B 只允許作測試槽位、UI 暫時排序或比較標籤。禁止「A 永遠＝男／B 永遠＝女」、禁止從 character_id 推論性別、位置或風格。
+- 性別呈現、位置、reference、style、mood、voice **全部是顯式欄位**（schema：ARCHITECTURE §17）。`gender_presentation`（male／female／nonbinary／unspecified）是畫面呈現，**不是生理性別**；未指定＝`unspecified`，缺資料不得自行補值。
+- **不得從 reference image 自動推論**敏感身份、國籍或族群；`appearance_region` 只有使用者明確指定時才填。
+- Reference asset 的歸屬（character_id）、用途（role）、來源（source_type）與商用授權狀態由 **metadata** 決定，禁止靠檔名或資料夾猜。
+- **Identity 與 Style／Mood／Voice 分離**：角色只持有預設引用，Scene 可 override；改 style 不得改變身份設定。
+- **Character Validation Gate**：生成前檢查（ID 唯一、reference 綁定、性別欄位、placement、role、跨角色重複 reference、私人圖片只在本機、商用授權）；任何衝突 **fail closed**（不生成，顯示需要修正）。
+- **Character Confirmation Card**：正式 UI 在生成前必須顯示每個角色的名稱、性別呈現、reference、服裝、位置、style、mood、voice，且可在該步直接修改。
+- 一般使用者 UI 不暴露技術名稱（char_a、IP-Adapter、checkpoint、CUDA、model path、prompt token）；技術參數只在 Advanced／Debug。
+- **歷史 evidence 定義錯誤時**：不刪、不覆寫、不改名假裝正確；以 metadata／文件標記（例 `historical_reversed_character_mapping=true`）並說明可用與不可用的結論；修正後的案例定義版本 +1，新檔名不得與舊檔衝突。

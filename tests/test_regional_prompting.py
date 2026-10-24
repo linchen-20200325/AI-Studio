@@ -51,7 +51,7 @@ def test_regional_prompts_keep_attributes_out_of_base():
     assert base.startswith("two people side by side, ")
     for attr in ("glasses", "red coat", "grey", "black hair", "woman", "man,"):
         assert attr not in base
-    assert "round glasses" in rb and "glasses" not in ra and "red coat" in ra and "red coat" not in rb
+    assert "round glasses" in ra and "glasses" not in rb and "red coat" in rb and "red coat" not in ra  # D-058：A＝男、B＝女
     with pytest.raises(ValueError):
         regional_prompts(get_case("girl_portrait_closeup"))
 
@@ -69,8 +69,8 @@ def test_style_test_cli_regional_and_long_prompt_flags(tmp_path, monkeypatch, ca
     assert main(["style-test", "--style", "realistic", "--case", "girl_portrait_closeup", "--regional"]) == 2  # 單人案例不可 regional
     capsys.readouterr()
     d = tmp_path / "ws" / "style_tests"
-    reg = _json.loads((d / "realistic_seed1234_two_characters_ab_native_regional.json").read_text(encoding="utf-8"))
-    lp = _json.loads((d / "realistic_seed1234_two_characters_ab_native_longprompt.json").read_text(encoding="utf-8"))
+    reg = _json.loads((d / "realistic_seed1234_two_characters_ab-v2_native_regional.json").read_text(encoding="utf-8"))
+    lp = _json.loads((d / "realistic_seed1234_two_characters_ab-v2_native_longprompt.json").read_text(encoding="utf-8"))
     assert reg["diagnostic_overrides"]["regional"] and reg["diagnostic_overrides"]["long_prompt"]
     assert lp["diagnostic_overrides"]["long_prompt"] and not lp["diagnostic_overrides"]["regional"]
     assert reg["prompt"] == lp["prompt"]  # evidence 的 prompt 不變 → style-compare 只差 prompt_mode

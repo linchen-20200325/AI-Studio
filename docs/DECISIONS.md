@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-058 | 角色身份定義治理：客戶裁示 **A＝男、B＝女**（v1 寫反）→ A／B 案例 v2＋舊 evidence `historical_reversed_character_mapping`；character_id ≠ 性別／位置／style／voice；Character Definition／Reference Asset schema、Reference Library 主路徑 `reference_library/`、Character Validation Gate、Confirmation Card、Style／Voice 解耦、Layered Scene 以 character_id 綁定 | 有效 | 可逆（治理） |
 | D-057 | S4 同 seed 重跑：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 僅研究證據；啟動 DG-26 角色分開生成再合成（Route A 零下載 PoC：`ab_*` 層案例＋`compose-scene`／`compose-review`）；Layered Scene 架構原則入庫 | 有效（待 Windows PoC） | 可逆 |
 | D-056 | S4 真機人工結果入庫（2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分，主觀；scene FAIL）；A／B binding 全鏈追溯＝**mapping verified（非程式 bug）**；加 position→region 明確排序、執行期 mask 幾何自檢、region map／疊圖 evidence；Reference Library `workspace/identity_refs/` 規格 | 有效 | 可逆 |
 | D-055 | 治理：GitHub Alone Recovery——GitHub 是專案記憶本體非備份；AI 記憶／聊天只是暫時 context；新 AI 只靠 GitHub 須還原七項；完成定義增加三種接續情境（PROJECT_RULES §12／§12.5） | 有效 | 治理，可修訂（需裁示） |
@@ -448,3 +449,13 @@
 - **PoC（零下載、零新依賴）**：`see/core/compose.py`；案例 `ab_background`、`ab_char_a_isolated`、`ab_char_b_isolated`（沿用 two_characters_ab 同一份角色設定）；CLI `compose-scene`（只吃 technical_valid 的 style-test 產出、不改原 evidence、每層 provenance、mask／cutout／composite 存 `workspace/compositions/<name>/`）與 `compose-review`（scene／各角色 identity／貼上感，主觀）。改 A 只重做 A 層（測試證明 B 層位元不變）。只做 people。
 - **Layered Scene 架構原則（客戶裁示，永久方向）**：角色一致性不靠「一個模型一次畫完整 Scene」；Scene＝Background／Character A／Character B／Props／Effects／Text-Subtitles 各層，修改單一元素只重做受影響層 → ARCHITECTURE §16、BACKLOG。
 - 未做：ControlNet、SAM／RMBG／segmentation 下載、FaceID、InsightFace、LoRA、付費、production default 變更。鍵控不足 → DG-27（去背模型，需授權審查）。
+
+## D-058 2026-10-24 角色身份定義治理：A＝男、B＝女修正；character_id 不代表任何屬性；Character／Reference schema、Gate、Confirmation Card
+- **錯誤**：`two_characters_ab` v1（D-049 起）把 char_a 定義為女性（左、紅大衣）、char_b 為男性（右、灰西裝）；客戶的實際裁示與 reference 指派是 **A＝男、B＝女**。S4 兩次真機（D-056／D-057）的 reference 綁定與 mask mapping 本身正確，但角色定義與 reference 性別相反（reference 綁對、定義錯）。
+- **修正（v2）**：A＝男主角（East Asian、灰短髮、圓眼鏡、灰西裝、左）；B＝女主角（East Asian、黑長直髮、紅大衣、右）；`two_characters_ab`、`ab_char_a_isolated`、`ab_char_b_isolated` 以 `CharacterDefinition` 定義、`definition_version=2`、檔名 `-v2`（不會覆寫舊檔）；review checklist 同步。`ab_background` 無角色 → 不受影響、真機結果保留不重跑。
+- **歷史 evidence**：不刪、不覆寫、不改名；文件標記 `historical_reversed_character_mapping=true`（PHASE2_EVIDENCE D-049／S1／S2／S4×2 列）；程式以「case 屬 A／B 系列且無 `case_definition_version` 或 <2」辨識，`style-compare` 輸出標示、`compose-scene` 拒收為角色層。舊 S4 identity fidelity FAIL 仍是**模型能力**證據；不可用來判定 A／B 性別 mapping 是否正確。
+- **永久規則**（PROJECT_RULES §17）：character_id＝穩定身份鍵，不代表性別、位置、style、mood、voice、類型；A／B 只作測試槽位／UI 暫時排序／比較標籤；所有屬性顯式；gender_presentation ≠ biological sex、未指定＝unspecified、不補值；不從圖片推論敏感身份；metadata 決定 reference 歸屬與用途（不看檔名）；Validation Gate fail closed；Confirmation Card；UI 不暴露技術名稱；歷史 evidence 定義錯誤的處理方式。
+- **Schema／實作**（ARCHITECTURE §17）：`see/models/character_definition.py`（CharacterDefinition、ReferenceAsset、ScenePlacement、VoiceAssignment、`validate_characters()`、`support_status()`）；Reference Library 主路徑 `workspace/reference_library/{people,animals,characters,backgrounds,styles}/`＋sidecar `<檔名>.ref.json`，legacy `identity_refs/` 相容；`style-test --identity` 接 gate＋sidecar 一致性檢查；evidence 新增 `case_definition_version`、`historical_reversed_character_mapping`、`character_definitions`；`compose-scene` 角色層以 character_id 綁定（來源不符 → fail closed）並記 layer_type／style_override／regeneration_scope。
+- **UI／UX 需求**（ARCHITECTURE §17.6、BACKLOG）：角色建立／編輯頁 A～H、Character Confirmation Card、Advanced／Debug 分離；Style 拆 Visual Style／Mood／Lighting／Color Tone／Camera 並可 Scene override；Voice 預設＋Scene override。
+- **Windows Route A**：D-058 合併且 CI 綠前暫停；之後以 v2 案例重新開始（`ab_background` 沿用）。
+- 未做：新模型、新依賴、ControlNet、segmentation、付費、production default 變更、不可逆 migration、刪除舊 evidence。

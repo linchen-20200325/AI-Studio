@@ -484,13 +484,16 @@ def test_two_characters_case_uses_product_anchor_path_and_disjoint_attributes():
     c = get_case("two_characters_ab")
     a, b = c.characters
     # 錨點走產品同一條路徑（CharacterTraits → anchor_text）
-    assert a.anchor == "East Asian woman, long straight black hair, wearing red coat"
-    assert b.anchor == "East Asian man, short grey hair, round glasses, wearing grey suit"
+    # D-058：A＝男、B＝女（v2）；character_id 不代表性別，性別來自 CharacterDefinition.gender_presentation
+    assert a.anchor == "East Asian man, short grey hair, round glasses, wearing grey suit"
+    assert b.anchor == "East Asian woman, long straight black hair, wearing red coat"
+    assert a.definition.gender_presentation.value == "male" and b.definition.gender_presentation.value == "female"
+    assert c.definition_version == 2
     assert c.base_prompt_en.startswith(f"two people side by side, {a.anchor} on the left, {b.anchor} on the right, ")
     assert c.base_prompt_en.endswith("upper body, front view, looking at viewer, city at night in the background, blurred background")
     assert c.seed == 1234
     # 互斥屬性：只屬於 B 的配件／顏色不得出現在 A 的錨點，反之亦然（否則人工審圖無法判斷互換）
-    assert "glasses" not in a.anchor and "red" not in b.anchor and "black" not in b.anchor and "grey" not in a.anchor
+    assert "glasses" not in b.anchor and "red" not in a.anchor and "black" not in a.anchor and "grey" not in b.anchor
 
 
 def test_two_characters_style_test_evidence(tmp_path, monkeypatch, capsys):
@@ -503,8 +506,10 @@ def test_two_characters_style_test_evidence(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("SEE_MODELS_DIR", str(tmp_path / "no-models"))
     main(["style-test", "--style", "realistic", "--case", "two_characters_ab", "--gen-policy", "native"])
     capsys.readouterr()
-    ev = _json.loads((tmp_path / "ws" / "style_tests" / "realistic_seed1234_two_characters_ab_native.json").read_text(encoding="utf-8"))
+    ev = _json.loads((tmp_path / "ws" / "style_tests" / "realistic_seed1234_two_characters_ab-v2_native.json").read_text(encoding="utf-8"))
     assert [x["character_id"] for x in ev["case_characters"]] == ["char_a", "char_b"]
+    assert ev["case_definition_version"] == 2 and ev["historical_reversed_character_mapping"] is False
+    assert [d["gender_presentation"] for d in ev["character_definitions"]] == ["male", "female"]
     assert ev["prompt_subject_check"]["passed"] and ev["prompt_source"] == "case_base_prompt_en"
-    assert "圓眼鏡只在 B" in " ".join(ev["human_review"]["checklist"])
+    assert "圓眼鏡只在 A" in " ".join(ev["human_review"]["checklist"])
 

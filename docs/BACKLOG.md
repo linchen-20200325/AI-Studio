@@ -193,7 +193,7 @@
 | S4 PoC：每角色 reference image＋IP-Adapter mask | 實作 DONE（D-054）；真機一次：2 人恢復、identity 有影響、A／B 位置疑似顛倒、fidelity 部分（主觀，scene FAIL，D-056） |
 | S4 A／B binding 追溯 | DONE（D-056）：mapping verified、非程式 bug；加 position 排序／mask 幾何自檢／`identity_region_map`＋疊圖 |
 | S4 同 seed 重跑取 evidence | DONE（D-057）：mapping PASS、分離改善、**identity fidelity FAIL**（主觀）→ S4 只作研究證據，不升格 production；不再以調 scale 為主解法 |
-| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | 研究 DONE；Route A PoC 程式 DONE（零下載）→ NEXT：Windows 真機（背景＋A＋B 各一張＋compose-scene＋compose-review） |
+| DG-26 Multi-character Composition（研究：DG26_MULTI_CHARACTER_COMPOSITION_RESEARCH.md） | 研究 DONE；Route A PoC 程式 DONE（零下載）；`ab_background` 真機已完成（保留、不重跑）→ NEXT：Windows `ab_char_a_isolated`（A＝男）→ `ab_char_b_isolated`（B＝女）→ compose-scene → compose-review（D-058 修正後恢復） |
 | DG-26 Route C：合成後只修接縫（4-ch inpaint 或低 strength img2img，既有權重） | BACKLOG（Route A 真機後評估） |
 | DG-26 Route B：inpaint 依序合成 | 不優先（D-057） |
 | DG-27 去背／segmentation 模型（若單色背景鍵控不足） | 未觸發；需授權審查＋Gate，不得自行下載 |
@@ -201,6 +201,28 @@
 | ControlNet（openpose 等）兩人佈局控制 | RESEARCH（需另下載；S4 後評估） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
 | 重抽 seed | 非解法（客戶裁示） |
+
+## Character Identity Definition／角色 UI（D-058；規格：ARCHITECTURE §17；規則：PROJECT_RULES §17）
+| 項目 | 狀態 |
+|---|---|
+| A／B 定義修正（A＝男、B＝女；`two_characters_ab`／`ab_char_a_isolated`／`ab_char_b_isolated` v2、檔名 `-v2`） | DONE（D-058） |
+| 舊 evidence 標記 `historical_reversed_character_mapping=true`（不刪、不覆寫、不改名） | DONE（文件＋程式辨識；style-compare 標示、compose-scene 拒收） |
+| Character Definition Schema、ReferenceAsset Schema、ScenePlacement、VoiceAssignment | DONE（`see/models/character_definition.py`） |
+| Character Validation Gate（fail closed） | DONE（library＋`style-test --identity`／`compose-scene` 接線）；UI 接線 → BACKLOG |
+| Reference Library 主路徑 `workspace/reference_library/`（含 styles/）＋sidecar `.ref.json`；legacy `identity_refs/` 相容 | DONE（CLI）；非 people 類別一律 not yet supported |
+| `Project.characters`（CharacterVoice）遷移到 CharacterDefinition | BACKLOG（需可逆 migration 設計；不做不可逆遷移） |
+| StyleProfile 拆分：Visual Style／Mood／Lighting／Color Tone／Camera＋Scene override | BACKLOG |
+| Voice per-scene override（voice／speed／emotion） | BACKLOG（角色預設 voice 既有 D-030） |
+| UI A 基本資料（名稱、ID、類型、性別呈現、年齡感、備註） | BACKLOG（DG-19 UI） |
+| UI B 外觀（臉型、五官、髮型、髮色、服裝、特徵、表情） | BACKLOG |
+| UI C Reference（上傳／Library 選取／綁定角色與用途顯示／多張／更換／刪除／主要 reference／provenance） | BACKLOG |
+| UI D Visual Style（寫實、日系動畫、3D、繪本、自訂） | BACKLOG |
+| UI E Mood（溫暖、恐怖、陽光、悲傷、浪漫、懸疑、自訂） | BACKLOG |
+| UI F Lighting／Color tone／Camera／Composition | BACKLOG |
+| UI G Voice（聲音、語速、情緒、試聽） | BACKLOG（試聽 CLI 既有） |
+| UI H Scene Placement（左中右、前中後景、景別、動作、姿勢） | BACKLOG |
+| **Character Confirmation Card**（生成前必經、可直接修改、Gate 衝突時禁止生成） | BACKLOG（規格 ARCHITECTURE §17.6） |
+| 一般 UI 不暴露技術名稱；Advanced／Debug 區 | BACKLOG |
 
 ## Layered Scene（D-057；客戶裁示；架構見 ARCHITECTURE §16）
 | 層 | 狀態 |
@@ -210,17 +232,17 @@
 | Animal／Fictional character／Environment layer conditioning | BACKLOG（Reference Library 類別已定義；conditioning 未做） |
 | Props Layer、Effects Layer | BACKLOG |
 | Text／Subtitles Layer | 既有字幕燒錄（影片管線），尚未納入 Scene layer 資料模型 |
-| Scene layer 資料模型（每層 provenance、placement、只重做受影響層、沿用 per-scene fingerprint） | BACKLOG（PoC 證據後設計） |
+| Scene layer 資料模型（layer_id、layer_type、source asset、**character_id 為角色層主鍵**、provenance、placement、style override、regeneration scope；沿用 per-scene fingerprint） | 欄位已定（ARCHITECTURE §16，D-058）；compose-scene evidence 已含；正式資料模型 BACKLOG |
 
 ## Reference Library（D-056；客戶裁示；規格見 ARCHITECTURE §14.6）
 | 項目 | 狀態 |
 |---|---|
-| `workspace/identity_refs/{people,animals,characters,backgrounds}/` 路徑慣例、`--ref char_x=people/<檔>`、provenance（sha256／bytes／category） | DONE（CLI；不進 Git） |
+| `workspace/identity_refs/{people,animals,characters,backgrounds}/` 路徑慣例、`--ref char_x=people/<檔>`、provenance（sha256／bytes／category） | DONE（CLI；不進 Git）；D-058 起為 legacy，主路徑 `workspace/reference_library/`（含 styles/） |
 | people → 人物臉部 identity（S4 `--identity`） | DONE（唯一支援類別） |
 | animals → 動物外觀 conditioning | BACKLOG（需另研究／Gate；不得走 face-only pipeline） |
 | characters → 虛構角色／角色設計 conditioning | BACKLOG（同上） |
 | backgrounds → 場景／環境 conditioning | BACKLOG（同上） |
-| Library metadata（每張圖 sidecar：類別、角色綁定、同意紀錄、來源；不含圖片本身） | BACKLOG（schema 待設計） |
+| Library metadata（每張圖 sidecar：類別、角色綁定、同意紀錄、來源；不含圖片本身） | DONE（ReferenceAsset schema＋`<檔名>.ref.json`，D-058）；Library 管理 UI → BACKLOG |
 | UI 從 Reference Library 選 reference | BACKLOG（DG-19 UI 之後） |
 
 ## 生成後可調整項目總表（D-052；客戶需求；已存在者只指向原項，不重複）
