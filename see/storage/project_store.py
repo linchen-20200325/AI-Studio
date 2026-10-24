@@ -82,10 +82,23 @@ class ProjectStore:
         path = self.scene_dir(project_id, scene_id) / "manifest.json"
         if path.exists():
             try:
-                return SceneManifest.model_validate_json(path.read_text(encoding="utf-8"))
+                m = SceneManifest.model_validate_json(path.read_text(encoding="utf-8"))
             except ValueError:
-                pass  # 損壞的 manifest 視為空 → 重做
+                return SceneManifest(scene_id=scene_id)  # 損壞的 manifest 視為空 → 重做
+            return self._relocate(m, path.parent)
         return SceneManifest(scene_id=scene_id)
+
+    @staticmethod
+    def _relocate(m: SceneManifest, scene_dir: Path) -> SceneManifest:
+        """D-064 搬移相容：舊 manifest 存的是絕對路徑；workspace 換位置後，若同名檔就在本景資料夾內 → 改指向新位置（只在記憶體，
+        下次 save_manifest 才寫回）。fingerprint 不含路徑，所以產物照常沿用；找不到檔案 → 維持原樣（valid() 會判失效而重做）。"""
+        for rec in m.entries.values():
+            p = Path(rec.path)
+            if not p.exists():
+                cand = scene_dir / p.name
+                if cand.is_file():
+                    rec.path = str(cand)
+        return m
 
     def save_manifest(self, project_id: str, manifest: SceneManifest) -> None:
         d = self.scene_dir(project_id, manifest.scene_id)

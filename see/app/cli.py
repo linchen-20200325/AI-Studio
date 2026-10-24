@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -199,6 +200,94 @@ def cmd_check_env(args: argparse.Namespace) -> int:
     for k, v in rows.items():
         print(f"{k:14s} {v}")
     return 0 if rows["ffmpeg"] and rows["ffprobe"] else 1
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """D-064 Environment Doctor：唯讀檢查（--write-manifest 才寫 workspace/environment_manifest.json）。"""
+    from see.core.environment import run_doctor, write_manifest
+
+    s = Settings()
+    rep = run_doctor(s, hash_files=args.hash)
+    if args.json:
+        print(json.dumps(rep.to_dict(), ensure_ascii=False, indent=2))
+    else:
+        group = None
+        for c in rep.checks:
+            if c.group != group:
+                group = c.group
+                print(f"--- {group}")
+            req = "REQUIRED" if c.required else "optional"
+            print(f"[{c.status.value:11s}] {c.name:24s} {req:8s} {c.detail}")
+            if c.hint and c.status.value != "OK":
+                print(f"{'':14s}→ {c.hint}")
+        print("--- 基本設定（必要的只有這幾個；其餘見 .env.example）")
+        for k in ("SEE_MODELS_DIR", "SEE_IMAGE_PROVIDER", "SEE_TTS_PROVIDER"):
+            print(f"  {k:20s} {os.environ.get(k) or '(未設定：使用程式預設)'}")
+        print("--- Ready for")
+        for k, v in rep.readiness["ready"].items():
+            print(f"  ✓ {k:32s} {v}")
+        print("--- Not ready for")
+        for k, v in rep.readiness["not_ready"].items():
+            print(f"  ✗ {k:32s} {v}")
+        print("--- Tiers")
+        for k, v in rep.tiers.items():
+            print(f"  {k:18s} {v['status']:11s} " + ("缺：" + "；".join(v["missing"]) if v["missing"] else ""))
+    if args.write_manifest:
+        print(f"manifest → {write_manifest(rep, s)}", file=sys.stderr)
+    if rep.failed_required:
+        print(f"REQUIRED 項目失敗：{rep.failed_required}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_bootstrap(args: argparse.Namespace) -> int:
+    """D-064 Bootstrap：預設只列計畫（唯讀）；--apply-safe 只建立缺少的空 workspace 資料夾與版本檔。"""
+    from see.core.environment import apply_safe, bootstrap_plan, run_doctor
+
+    s = Settings()
+    if args.apply_safe:
+        done = apply_safe(s)
+        print("已執行（只建立、不刪除、不覆寫）：" + ("；".join(done) if done else "無需變更"))
+    plan = bootstrap_plan(run_doctor(s), s)
+    if args.json:
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return 0
+    titles = {"auto_safe": "1. 可自動完成（需 --apply-safe 才執行）", "user_action": "2. 需使用者操作",
+              "needs_approval": "3. 需下載／安裝裁示（不會自動執行）", "blocked": "4. 目前 blocked（不要做）"}
+    for k, title in titles.items():
+        print(f"--- {title}")
+        for it in plan[k] or [{"item": "（無）", "detail": "", "command": ""}]:
+            print(f"  • {it['item']}" + (f"：{it['detail']}" if it["detail"] else ""))
+            if it["command"]:
+                print(f"      {it['command']}")
+    if not args.apply_safe:
+        print("（唯讀：未安裝、未下載、未修改任何系統設定）")
+    return 0
+
+
+def cmd_env_export(args: argparse.Namespace) -> int:
+    """D-064 匯出可恢復資訊（manifest、套件清單、模型 ID／hash、workspace／角色／reference metadata、設定）；不含模型與私人圖片。"""
+    from see.core.environment import export_environment
+
+    try:
+        out = export_environment(Settings(), Path(args.out) if args.out else None, hash_files=args.hash)
+    except FileExistsError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    print(f"exported → {out}")
+    for p in sorted(out.iterdir()):
+        print(f"  {p.name}  {p.stat().st_size} bytes")
+    return 0
+
+
+def cmd_smoke(args: argparse.Namespace) -> int:
+    """D-064 Smoke test（不需 GPU；暫存 workspace；mock／placeholder／silent）。"""
+    from see.core.environment import Status, smoke_test
+
+    res = smoke_test()
+    for name, st, detail in res:
+        print(f"[{st.value:11s}] {name:16s} {detail}")
+    return 1 if any(st == Status.ERROR for _, st, _ in res) else 0
 
 
 def cmd_hardware(args: argparse.Namespace) -> int:
@@ -393,8 +482,12 @@ def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler
     if spec is not None:
         prov = read_provenance(s.models_dir, spec)
         if not prov or not prov.get("verified") or prov.get("local_sha256") != spec.sha256:
-            return None, (f"checkpoint {spec.checkpoint_id} 沒有通過驗證的 provenance；"
-                          f"請先 `python -m see.app.cli checkpoint-download {spec.checkpoint_id} --yes`")
+            if not os.environ.get("SEE_MODELS_DIR"):  # D-064：區分「模型目錄未設定」與「未驗證」
+                return None, (f"模型目錄未設定：SEE_MODELS_DIR 沒有設定，程式在預設 {s.models_dir} 找不到 {spec.checkpoint_id}；"
+                              f"請先設定 SEE_MODELS_DIR（例 $env:SEE_MODELS_DIR=\"E:\\AI\\models\"）再執行 `python -m see.app.cli doctor`")
+            return None, (f"checkpoint {spec.checkpoint_id} 沒有通過驗證的 provenance（{checkpoint_file(s.models_dir, spec).parent}）；"
+                          f"若是從舊機搬來，先 `python -m see.app.cli doctor --hash` 確認；否則 "
+                          f"`python -m see.app.cli checkpoint-download {spec.checkpoint_id} --yes`")
         if Path(path).stat().st_size != spec.bytes:
             return None, f"checkpoint 檔案大小與 provenance 不符：{path}"
     id_spec, id_dir = None, None
@@ -1165,6 +1258,21 @@ def main(argv: list[str] | None = None) -> int:
     apv.add_argument("--by", default="human"); apv.add_argument("--note"); apv.set_defaults(fn=cmd_approve)
     fn = sub.add_parser("final", help="Final render（需 APPROVED）"); fn.add_argument("project_id"); fn.set_defaults(fn=cmd_final)
     ce = sub.add_parser("check-env"); ce.set_defaults(fn=cmd_check_env)
+    doc = sub.add_parser("doctor", help="環境檢查（系統／Python／GPU／工具／模型／workspace；唯讀；Ready／Not ready）")
+    doc.add_argument("--json", action="store_true")
+    doc.add_argument("--hash", action="store_true", help="重算模型 sha256（大檔很慢；搬機後驗證用）")
+    doc.add_argument("--write-manifest", action="store_true", help="寫入 workspace/environment_manifest.json（machine-local，不進 Git）")
+    doc.set_defaults(fn=cmd_doctor)
+    bs = sub.add_parser("bootstrap", help="環境建置計畫（預設唯讀 dry-run）；--apply-safe 只建立缺少的空 workspace 資料夾")
+    bs.add_argument("--check", action="store_true", help="唯讀列出計畫（預設行為）")
+    bs.add_argument("--apply-safe", action="store_true", help="只建立缺少的空資料夾與 workspace_version.json；不安裝、不下載")
+    bs.add_argument("--json", action="store_true")
+    bs.set_defaults(fn=cmd_bootstrap)
+    ee = sub.add_parser("env-export", help="匯出可恢復資訊到 workspace/exports/env-<時間>/（不含模型與私人圖片）")
+    ee.add_argument("--out", default=None, help="輸出資料夾（必須不存在或為空）")
+    ee.add_argument("--hash", action="store_true", help="重算模型 sha256")
+    ee.set_defaults(fn=cmd_env_export)
+    sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
     hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")
     hw.set_defaults(fn=cmd_hardware)

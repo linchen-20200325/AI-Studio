@@ -18,7 +18,11 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+CHARACTER_SCHEMA_VERSION = 1  # D-064：未來 schema 變更 → 先 backup()；不可逆遷移 → Decision Gate
+
+
 class CharacterRecord(BaseModel):
+    schema_version: int = Field(default=CHARACTER_SCHEMA_VERSION, ge=1, description="舊檔沒有此欄位 → 視為 v1")
     definition: CharacterDefinition
     archived: bool = False
     revision: int = Field(default=1, ge=1)
@@ -54,16 +58,54 @@ class CharacterStore:
             raise CharacterStoreError(f"character_id already exists: {definition.character_id}")
         return self._save(CharacterRecord(definition=definition))
 
+    @staticmethod
+    def _load(p: Path) -> CharacterRecord:
+        """讀檔；比程式新的 schema → fail safe（不猜、不改寫）。"""
+        rec = CharacterRecord.model_validate_json(p.read_text(encoding="utf-8"))
+        if rec.schema_version > CHARACTER_SCHEMA_VERSION:
+            raise CharacterStoreError(f"{p.name}: schema_version {rec.schema_version} is newer than supported "
+                                      f"{CHARACTER_SCHEMA_VERSION}; update the program instead of editing")
+        return rec
+
     def get(self, character_id: str) -> CharacterRecord:
         p = self._path(character_id)
         if not p.is_file():
             raise KeyError(character_id)
-        return CharacterRecord.model_validate_json(p.read_text(encoding="utf-8"))
+        return self._load(p)
+
+    def backup(self, dest_root: Path | None = None) -> Path:
+        """遷移前備份（D-064）：整份 character_library 複製到 workspace/backups/character_library-<時間>/；不改原檔。"""
+        import shutil
+
+        stamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
+        dest = Path(dest_root or self.root.parent / "backups") / f"character_library-{stamp}"
+        if self.root.is_dir():
+            shutil.copytree(self.root, dest)
+        else:
+            dest.mkdir(parents=True)
+        return dest
+
+    def migration_plan(self) -> dict[str, list[str]]:
+        """列出需要遷移的檔案（只讀）。目前只有 v1：舊檔（無 schema_version）以 v1 相容讀取，**不重寫**。"""
+        plan: dict[str, list[str]] = {"current": [], "legacy_compatible": [], "newer_than_supported": [], "unreadable": []}
+        for p in sorted(self.root.glob("*.json")) if self.root.is_dir() else []:
+            try:
+                import json
+
+                raw = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                plan["unreadable"].append(p.name)
+                continue
+            v = raw.get("schema_version")
+            key = ("legacy_compatible" if v is None else "current" if v == CHARACTER_SCHEMA_VERSION
+                   else "newer_than_supported" if isinstance(v, int) and v > CHARACTER_SCHEMA_VERSION else "unreadable")
+            plan[key].append(p.name)
+        return plan
 
     def list(self, include_archived: bool = False) -> list[CharacterRecord]:
         if not self.root.is_dir():
             return []
-        recs = [CharacterRecord.model_validate_json(p.read_text(encoding="utf-8")) for p in sorted(self.root.glob("*.json"))]
+        recs = [self._load(p) for p in sorted(self.root.glob("*.json"))]
         return [r for r in recs if include_archived or not r.archived]
 
     def update(self, character_id: str, /, **changes: object) -> CharacterRecord:

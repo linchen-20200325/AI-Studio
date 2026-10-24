@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-24T00:00:00+00:00",
+  "os": {
+    "system": "Windows",
+    "release": "11",
+    "machine": "AMD64"
+  },
+  "python": {
+    "version": "3.12.7",
+    "in_venv": true
+  },
+  "torch": "2.5.1+cu121",
+  "cuda": {
+    "available": true,
+    "build": "12.1",
+    "cudnn": 90100
+  },
+  "gpu": {
+    "name": "NVIDIA GeForce GTX 1650",
+    "vram_mb": 4096,
+    "compute_capability": "7.5"
+  },
+  "ffmpeg": "ffmpeg version 7.1-full_build-www.gyan.dev",
+  "repo": {
+    "commit": "<git commit sha>",
+    "branch": "main"
+  },
+  "models_dir": {
+    "variable": "SEE_MODELS_DIR",
+    "configured": true,
+    "local_path": "E:\\AI\\models"
+  },
+  "models": [
+    {
+      "model_id": "sd15_base",
+      "kind": "image_base",
+      "root": "SEE_MODELS_DIR",
+      "rel_path": "sd15",
+      "status": "OK",
+      "expected_sha256": null,
+      "bytes": null
+    },
+    {
+      "model_id": "kokoro_v1_1_zh",
+      "kind": "tts",
+      "root": "SEE_MODELS_DIR",
+      "rel_path": "kokoro-v1_1-zh",
+      "status": "OK",
+      "expected_sha256": null,
+      "bytes": null
+    },
+    {
+      "model_id": "meinamix_v12",
+      "kind": "image_checkpoint",
+      "root": "SEE_MODELS_DIR",
+      "rel_path": "checkpoints/meinamix_v12/meinamix_v12Final.safetensors",
+      "status": "OK",
+      "expected_sha256": "a5e5a941a3217247dbceceee5b67f8d6b1ef2514260e08a5757436bec7035f93",
+      "bytes": null
+    },
+    {
+      "model_id": "cyberrealistic_final",
+      "kind": "image_checkpoint",
+      "root": "SEE_MODELS_DIR",
+      "rel_path": "checkpoints/cyberrealistic_final/CyberRealistic_FINAL_FP16.safetensors",
+      "status": "OK",
+      "expected_sha256": "2209c07b331a06cb28cf7c830ec758ae5b49eb97fab21f5de6b18c7be8b41554",
+      "bytes": null
+    },
+    {
+      "model_id": "ip_adapter_plus_face_sd15",
+      "kind": "identity_adapter",
+      "root": "SEE_MODELS_DIR",
+      "rel_path": "adapters/ip_adapter_plus_face_sd15",
+      "status": "UNAVAILABLE",
+      "expected_sha256": null,
+      "bytes": null
+    }
+  ],
+  "detected_model_ids": [
+    "sd15_base",
+    "kokoro_v1_1_zh",
+    "meinamix_v12",
+    "cyberrealistic_final"
+  ],
+  "workspace_version": 1,
+  "readiness": {
+    "ready": {
+      "web_ui": "…",
+      "preview_render": "…",
+      "sd15_image": "…"
+    },
+    "not_ready": {
+      "identity_lora": "HARDWARE_UPGRADE_BLOCKED（D-061）"
+    }
+  },
+  "settings": {
+    "portable": {
+      "SEE_LLM_PROVIDER": null,
+      "SEE_IMAGE_PROVIDER": "auto",
+      "SEE_IMAGE_MODEL_PRESET": null,
+      "SEE_VIDEO_PROVIDER": null,
+      "SEE_TTS_PROVIDER": null,
+      "SEE_TTS_DEFAULT_VOICE": null,
+      "SEE_AUDIO_PROVIDER": null,
+      "SEE_LIPSYNC_PROVIDER": null
+    },
+    "machine_specific": {
+      "SEE_WORKSPACE": null,
+      "SEE_MODELS_DIR": "E:\\AI\\models",
+      "SEE_IMAGE_MODEL_PATH": null,
+      "SEE_TTS_MODEL_PATH": null,
+      "SEE_TTS_DEVICE": null,
+      "SEE_FFMPEG": null,
+      "SEE_FFPROBE": null,
+      "SEE_SUBTITLE_FONT": null
+    },
+    "other_see_vars": {},
+    "project_level_portable": "style_id／preferences／scene preferences／characters（voice、外觀）存在各 project.json，隨 workspace 搬移",
+    "ui_settings": "Web UI 目前沒有持久化設定（無 localStorage／伺服器端 UI 設定）"
+  },
+  "_comment": "SANITIZED SAMPLE（D-064）。真實檔案由 `python -m see.app.cli doctor --write-manifest` 產生於 workspace/environment_manifest.json（machine-local，不進 Git）。"
+}

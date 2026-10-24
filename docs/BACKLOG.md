@@ -179,8 +179,8 @@
 |---|---|---|
 | User-defined Style／Mood Profile | 使用者新增／修改／儲存風格，不寫死；分層：Visual style（日系動漫／真人電影感／3D／繪本…）、Mood（恐怖／溫馨／陽光／悲傷／浪漫／懸疑…）、Cinematography、Lighting、Audio mood、Character appearance；可組合（例「日系動漫＋溫馨＋黃昏」）；自然語言 → AI 產生 Style Profile → 試生成 → 人工確認 → 存成「我的風格」 | NEXT（資料模型非 UI 可自主；自然語言需 DG-10 LLM） |
 | Mobile-first Preference Layer | 手機／Web：輸入故事 → 選角色 → 選風格／氛圍 → 選聲音試聽 → 調整 → 生成 → Preview → 局部修改 → Final；使用者不接觸 CMD／checkpoint／CUDA／模型路徑／環境變數 | NEEDS HUMAN DECISION（UI＝DG-19） |
-| Environment Bootstrap | 不得要求每次 `set SEE_MODELS_DIR=...`；persistent configuration（設定檔／啟動腳本）＋啟動自檢。實例：新 CMD 未設 SEE_MODELS_DIR → 既有 CyberRealistic 被誤判 provenance 不可用 | NEXT（可自主；錯誤訊息應提示「模型目錄未設定」而非「未驗證」） |
-| Migration／Reinstall | 安裝／還原 → GPU／VRAM 檢測 → Python／runtime／CUDA 相容檢查 → dependency 檢查 → 模型存在性＋provenance 驗證（搬移後驗 sha256，不強迫重下載）→ 只補缺 → 還原使用者設定；備份／還原 Style／Character／Voice／Project settings | NEXT（可自主，分階段） |
+| Environment Bootstrap | 不得要求每次 `set SEE_MODELS_DIR=...`；persistent configuration（設定檔／啟動腳本）＋啟動自檢。實例：新 CMD 未設 SEE_MODELS_DIR → 既有 CyberRealistic 被誤判 provenance 不可用 | **DONE（D-064）**：`doctor`／`bootstrap`（唯讀）／`smoke`；錯誤訊息已區分「模型目錄未設定」與「未驗證」。**持久化設定機制 → NEEDS HUMAN DECISION**（專案本地設定檔 vs 使用者 `setx`）；Windows 真機 doctor 輸出待實跑 |
+| Migration／Reinstall | 安裝／還原 → GPU／VRAM 檢測 → Python／runtime／CUDA 相容檢查 → dependency 檢查 → 模型存在性＋provenance 驗證（搬移後驗 sha256，不強迫重下載）→ 只補缺 → 還原使用者設定；備份／還原 Style／Character／Voice／Project settings | **第一階段 DONE（D-064）**：`env-export`、environment manifest、模型 logical ID＋相對路徑、workspace／reference／character 搬移相容、schema_version＋fail safe、backup／migration_plan（只列出）；流程見 docs/MIGRATION_REINSTALL.md。後續：真正的 restore 指令、設定還原 UI（DG-19） |
 
 ## 多角色／Identity（D-050；研究見 DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md）
 | 項目 | 狀態 |

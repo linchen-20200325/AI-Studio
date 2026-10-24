@@ -406,3 +406,18 @@ character_id 唯一｜asset_id 唯一｜角色用途 reference 必須綁定存�
 5. 訓練時間與每角色 reference 數量（使用者負擔）
 VRAM 規劃參考（**只是 resume planning，不得硬編為永久硬體需求**）：4 GB 不再投入 Character LoRA 訓練｜12 GB 可重評 SD1.5 Character LoRA｜16 GB 較適合長期角色 LoRA／部分 SDXL workflow｜24 GB 再評更大型 identity／SDXL／video。
 
+## 19. Environment Bootstrap 與 Migration Foundation（D-064；PROJECT_RULES §19）
+```
+doctor（唯讀）──▶ checks[OK|PARTIAL|UNAVAILABLE|ERROR] ──▶ readiness（Ready／Not ready）＋ Tier A–D
+   │  system／python／gpu／tools／models（logical ID＋相對 SEE_MODELS_DIR）／workspace（schema＋可載入性）
+   ├─▶ --write-manifest → workspace/environment_manifest.json（machine-local；docs/environment_manifest.example.json 為範例）
+bootstrap（唯讀計畫）──▶ auto_safe／user_action／needs_approval／blocked；--apply-safe 只建空資料夾＋workspace_version.json
+env-export ──▶ workspace/exports/env-<時間>/（manifest、套件清單、模型 manifest、workspace inventory、settings）
+smoke ──▶ 暫存 workspace：mock→placeholder→silent→Ken Burns→ffmpeg＋Web API 匯入
+```
+- 程式：`see/core/environment.py`；CLI：`doctor`、`bootstrap`、`env-export`、`smoke`（`see/app/cli.py`）。
+- 搬移相容：Reference sidecar 存 `<category>/<file>`＋sha256（只比對檔名＋hash）；ProjectStore 讀 manifest 時把不存在的舊絕對路徑對應到本景資料夾同名檔（fingerprint 不含路徑）。
+- Schema 版本：workspace（`workspace_version.json`）、CharacterRecord、ReferenceAsset、environment manifest；缺欄位＝v1，比程式新＝fail safe。遷移：先 `CharacterStore.backup()`，`migration_plan()` 只列出；不可逆遷移 → Decision Gate。
+- 設定分類：portable（provider 選擇、預設 voice、專案內偏好）vs machine-specific（workspace、models_dir、模型路徑、TTS 裝置、ffmpeg、字型、CUDA／GPU）。持久化設定機制待裁示。
+- 流程與指令：docs/ENVIRONMENT_SETUP.md、docs/MIGRATION_REINSTALL.md。
+

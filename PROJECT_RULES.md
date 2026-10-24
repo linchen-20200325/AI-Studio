@@ -268,3 +268,10 @@ Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；
 - 中文 → 英文 prompt 必須經明確的 translator／prompt builder service contract；**沒有真 AI 翻譯時不得假裝有**：UI 與 evidence 必須標示 prompt 來源（`zh_generated`／`legacy_en`／`legacy_image_prompt`／`advanced_override`）與 translator 名稱、`ai_translated`。
 - 中文自然語言描述（例：人物描述原文）在沒有可靠解析前只保存原文，不自動拆成結構化欄位、不宣稱已解析；結構化欄位只在使用者明確選擇／填寫時成立。
 
+## 19. Environment／Migration（D-064，永久）
+- **GitHub 必須足以讓新電腦／新 AI 重建環境**（不靠聊天記憶）：安裝、檢查、搬機流程以 [`docs/ENVIRONMENT_SETUP.md`](docs/ENVIRONMENT_SETUP.md)、[`docs/MIGRATION_REINSTALL.md`](docs/MIGRATION_REINSTALL.md) 為準，內容必須與實際 CLI 一致（`doctor`／`bootstrap`／`env-export`／`smoke`）。
+- 環境工具**預設唯讀**：不自動 pip install、不安裝 torch／CUDA／driver、不下載模型、不改系統 PATH／registry、不寫永久環境變數。安全寫入只限使用者明確旗標（`bootstrap --apply-safe` 只建空資料夾＋版本檔；`doctor --write-manifest`；`env-export` 只寫新資料夾）。
+- 固定狀態 OK／PARTIAL／UNAVAILABLE／ERROR；**缺少 ≠ OK**；optional 缺少不使整體失敗；介面存在 ≠ 能力完成。
+- 模型以 logical model ID＋相對 `SEE_MODELS_DIR` 的路徑描述，**不得寫死磁碟代號**；換磁碟只改 `SEE_MODELS_DIR`。新寫入的 metadata 不存本機絕對路徑。
+- 匯出物去識別化（家目錄 → `~`、使用者名稱 → `<user>`、secret → `<redacted>`）；不打包模型、不複製私人圖片；machine-local manifest 不進 Git，GitHub 只放去識別化範例。
+- 資料 schema 帶版本；舊資料相容讀取且不偷偷改寫；比程式新 → fail safe；遷移前先備份；**禁止 silent destructive migration；不可逆遷移 → Decision Gate**。

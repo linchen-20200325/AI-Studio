@@ -90,9 +90,10 @@ def support_status(category: RefCategory, role: RefRole) -> str:
 class ReferenceAsset(BaseModel):
     """一張 reference 的 metadata（圖片本身只在本機 Reference Library，不進 Git；GitHub 只存 schema／規則）。"""
 
+    schema_version: int = Field(default=1, ge=1, description="D-064；舊 sidecar 無此欄位 → v1")
     asset_id: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,80}$")
     category: RefCategory
-    file_path: str = Field(min_length=1, description="本機路徑（不收 URL）")
+    file_path: str = Field(min_length=1, description="D-064 起存 <category>/<file>（相對 Library 根）；舊檔可能是絕對路徑，只比對檔名")
     character_id: str | None = Field(default=None, description="綁定角色；style／background reference 可為 None")
     role: RefRole
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -193,7 +194,7 @@ def validate_characters(characters: list[CharacterDefinition], assets: list[Refe
         if a.category not in ROLE_CATEGORIES[a.role]:
             issues.append(GateIssue(code="role_category_mismatch",
                                     message=f"{a.asset_id}：用途 {a.role.value} 不屬於類別 {a.category.value}"))
-        if repo_root is not None:
+        if repo_root is not None and Path(a.file_path).is_absolute():  # 相對路徑＝Library 內 <category>/<file>（D-064），必在 workspace
             p = Path(a.file_path).resolve()
             root = repo_root.resolve()
             if p.is_relative_to(root) and not p.is_relative_to(root / "workspace"):

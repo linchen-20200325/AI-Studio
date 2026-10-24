@@ -32,6 +32,7 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 - [docs/BACKLOG.md](docs/BACKLOG.md) — 待辦
 - [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) — 目前狀態快照（ChatGPT + Project AI 共用）
 - [docs/HANDOFF.md](docs/HANDOFF.md) — 新 AI 對話入口（先讀什麼、驗什麼）
+- [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) — 安裝與 `doctor`；[docs/MIGRATION_REINSTALL.md](docs/MIGRATION_REINSTALL.md) — 重灌／搬機／換 GPU／換磁碟
 - [docs/PHASE1_EVIDENCE.md](docs/PHASE1_EVIDENCE.md) — Phase 1 真機證據；[docs/SESSION_LOG.md](docs/SESSION_LOG.md) — 歷史
 
 ## 快速開始
@@ -39,7 +40,8 @@ Phase 0 不做真正的 AI Video，只用 placeholder 圖片 + Ken Burns + 轉�
 ```bash
 pip install -r requirements.txt
 # 系統需求：ffmpeg + ffprobe（必要）、espeak-ng（建議）、CJK 字型（字幕）
-python -m see.app.cli check-env
+python -m see.app.cli doctor      # 環境檢查（唯讀；Ready／Not ready）；新電腦／搬機見 docs/ENVIRONMENT_SETUP.md、docs/MIGRATION_REINSTALL.md
+python -m see.app.cli smoke       # 不需 GPU 的冒煙測試
 python -m see.ui --lan   # Web UI：手機開 http://<IP>:8000/
 python -m see.app.cli run examples/story_short.txt --project-id demo01
 #   → workspace/projects/demo01/renders/preview.mp4

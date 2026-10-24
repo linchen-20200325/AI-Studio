@@ -476,3 +476,8 @@
 - Tests: 見 commit（含 Playwright UI 實測）
 - Next: Environment Bootstrap（可自主）
 
+## 2026-10-24 — Batch 53
+- Batch: Batch 53 — D-064 Environment Bootstrap／Migration Foundation
+- Result: see/core/environment.py；CLI doctor／bootstrap／env-export／smoke；schema_version（workspace／character／reference）；workspace 搬移相容；docs/ENVIRONMENT_SETUP.md、docs/MIGRATION_REINSTALL.md、environment_manifest.example.json；PROJECT_RULES §19、ARCHITECTURE §19
+- Tests: 見 commit（tests/test_environment.py）
+- Next: Scene 結構化設定資料模型（可自主）；Windows 可選跑 doctor 回報真機輸出

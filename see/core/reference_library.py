@@ -3,6 +3,7 @@
 - 圖片只在本機 `workspace/reference_library/<category>/`（workspace/ 已 gitignore）；本模組只讀寫 sidecar metadata
   `<檔名>.ref.json`（ReferenceAsset），**從不複製、搬移或刪除圖片**。
 - 舊 `workspace/identity_refs/` 為 legacy：只列出、不登記、不改寫（唯讀相容）。
+- 可搬移（D-064）：metadata 只靠「類別資料夾＋檔名＋sha256」對應圖片；整個 workspace 換位置後 binding 仍有效。
 - 歸屬與用途只看 metadata；檔名與資料夾不推論身份（PROJECT_RULES §17）。任何不一致 → fail closed（ReferenceLibraryError）。
 """
 from __future__ import annotations
@@ -18,6 +19,7 @@ from see.models.character_definition import (CHARACTER_ROLES, ROLE_CATEGORIES, R
 
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 SIDECAR_SUFFIX = ".ref.json"
+REF_SCHEMA_VERSION = 1
 
 
 class ReferenceLibraryError(ValueError):
@@ -69,9 +71,12 @@ class ReferenceLibrary:
         if not side.is_file():
             return None
         try:
-            return ReferenceAsset.model_validate_json(side.read_text(encoding="utf-8"))
+            asset = ReferenceAsset.model_validate_json(side.read_text(encoding="utf-8"))
         except ValueError as e:
             raise ReferenceLibraryError(f"invalid metadata {side.name}: {e}") from e
+        if asset.schema_version > REF_SCHEMA_VERSION:  # 比程式新 → fail safe（不猜欄位、不改寫）
+            raise ReferenceLibraryError(f"{side.name}: schema_version {asset.schema_version} newer than supported {REF_SCHEMA_VERSION}")
+        return asset
 
     def validate(self, image: Path, asset: ReferenceAsset, category: str) -> list[str]:
         """metadata 與實際檔案／所在類別是否一致（不一致即問題，呼叫端 fail closed）。"""
@@ -134,7 +139,8 @@ class ReferenceLibrary:
         if any(e.asset and e.asset.asset_id == asset_id and e.rel_path != rel_path for e in self.list(include_legacy=False)):
             raise ReferenceLibraryError(f"asset_id already used: {asset_id}")
         prov = {"registered_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **(provenance or {})}
-        asset = ReferenceAsset(asset_id=asset_id, category=image.parent.name, file_path=str(image), character_id=character_id,
+        # D-064：存相對路徑（<category>/<file>），workspace 搬到別的磁碟／電腦後 metadata 不含舊機路徑
+        asset = ReferenceAsset(asset_id=asset_id, category=image.parent.name, file_path=f"{image.parent.name}/{image.name}", character_id=character_id,
                                role=role, sha256=file_sha256(image), source_type=source_type, provenance=prov,
                                commercial_clearance_status=commercial_clearance_status, notes=notes)
         return self._write(image, asset)

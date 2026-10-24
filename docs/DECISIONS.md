@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-064 | Environment Bootstrap／Migration Foundation：`doctor`（系統／Python／GPU／工具／模型／workspace、Ready／Not ready、Tier A–D）、`bootstrap`（預設唯讀；`--apply-safe` 只建空資料夾）、machine-local environment manifest＋去識別化範例、`env-export`（可恢復資訊，不含模型／私人圖片）、`smoke`；模型 logical ID＋相對 SEE_MODELS_DIR；workspace／Character Store／Reference sidecar schema_version＋fail safe；workspace 搬移後產物沿用 | 有效 | 可逆 |
 | D-063 | 客戶裁示：**一般 UI 全中文輸入**（模型語言屬內部實作）；Scene `image_prompt_zh`（圖片描述）→ prompt builder → 英文 prompt（無 AI 翻譯時標示來源，不假裝）；`image_prompt_en` 改為 internal／legacy；**Scene Character Override**（表情／情緒／動作／視線／姿勢／本幕服裝／位置／景深＋中文原話）與角色永久設定分離；Scene 卡改中文分區＋人物子卡 | 有效 | 可逆 |
 | D-062 | 不需 GPU 升級的安全工作：Preference Layer 非 UI 核心（PreferenceSet、Project→Scene override、再生成範圍、偏好快照、舊資料相容）；Web UI Scene 卡圖片描述／畫面說明／影片動態欄位＋影響範圍提示；Reference Library service、Character CRUD（無 hard delete）、Confirmation payload | 有效 | 可逆 |
 | D-061 | 客戶裁示：**Identity Preservation／Character LoRA＝HARDWARE_UPGRADE_BLOCKED**（GTX 1650 4 GB）；D-060 reference crop rerun → DEFERRED（superseded by hardware block，歷史保留）；專案繼續，改做不需 GPU 升級的安全工作；Hardware Upgrade Resume Gate | 有效 | 可逆（硬體升級後重評） |
@@ -514,3 +515,17 @@
 - **未做／規格缺口（BACKLOG）**：真 AI 翻譯（DG-10）、中文原話 → 結構化解析、Advanced 英文覆寫語意、視覺偏好中文輸入（現行 custom_en 是英文，與 §18 衝突）、角色聲音／聲音情緒（DG-14／DG-15）、場景卡新增／移除登場角色。
 - 未新增依賴、未改 production default、未接 LLM、未下載模型、未做 Identity／LoRA、未做 DG-19 最終 UI。
 
+## D-064 2026-10-24 Environment Bootstrap 與 Migration／Reinstall Foundation
+- **目標**：可重灌、可搬機、可換 GPU；GitHub 足以讓新電腦／新 AI 重建環境（PROJECT_RULES §19、D-055）。NT$0、無新依賴、無下載、production default 不變、不碰 identity。
+- **`see/core/environment.py`＋CLI**：
+  - `doctor [--json] [--hash] [--write-manifest]`：system（OS、Python≥3.11、repo＋commit、workspace、可用空間）、python（venv、executable、核心套件 REQUIRED、torch／diffusers／transformers／kokoro… optional）、gpu（torch 可用時：CUDA、GPU、VRAM、torch、CUDA build、cuDNN、compute capability、fp16／bf16；無 GPU＝UNAVAILABLE 非 ERROR；torch 損壞＝ERROR 但非 required）、tools（ffmpeg／ffprobe／git REQUIRED；espeak-ng、CJK 字型 optional）、models（SEE_MODELS_DIR 未設定／不存在／可讀／空間；sd15_base、kokoro_v1_1_zh、cyberrealistic_final、meinamix_v12、ip_adapter_plus_face_sd15 的存在＋provenance；`--hash` 才重算 sha256）、workspace（schema_version、各子資料夾、project／reference／character 可載入性）。最後 Ready for／Not ready for＋Tier A–D。只有 REQUIRED 的 ERROR 使 exit code 1。
+  - `bootstrap [--check] [--apply-safe] [--json]`：分「可自動／需使用者操作／需下載安裝裁示／blocked」；預設唯讀（測試證明不建立任何檔案）；`--apply-safe` 只建立缺少的空 workspace 資料夾（含 reference_library 各類別）與 `workspace_version.json`，冪等、不覆寫。
+  - `env-export [--out] [--hash]`：`workspace/exports/env-<時間>/`（manifest、python_packages.txt、models_manifest、workspace_inventory〔專案清單、reference metadata 相對路徑＋sha256＋綁定、角色庫含 archived／revision〕、settings portable／machine-specific）；拒絕寫入非空資料夾；不含模型與圖片；去識別化。
+  - `smoke`：暫存 workspace、mock＋placeholder＋silent＋Ken Burns＋ffmpeg，加 Web API 匯入與 TTS 介面；不需 GPU、不碰使用者資料。
+- **Environment manifest**：`workspace/environment_manifest.json`（machine-local，不進 Git）；GitHub 放 `docs/environment_manifest.example.json`（去識別化範例）。schema_version 比程式新 → 讀取拒絕。
+- **搬移相容（程式修正）**：
+  - Reference Library 新登記的 `file_path` 改存 `<category>/<file>`（不存本機絕對路徑）；舊絕對路徑 sidecar 仍可（本來就只比對檔名＋sha256）；Character Gate 的「圖片在 repo 內」檢查只對絕對路徑做。
+  - `ProjectStore.load_manifest`：舊 manifest 的絕對路徑不存在時，若同名檔在本景資料夾 → 指向新位置（fingerprint 不含路徑 → workspace 搬家後產物全部沿用，測試證明）。
+  - Schema 版本：`workspace_version.json`（缺＝legacy v1）、`CharacterRecord.schema_version`（缺＝v1）、`ReferenceAsset.schema_version`（缺＝v1）；比程式新 → fail safe（不改寫）。`CharacterStore.backup()`、`migration_plan()`（只列出）。
+  - style-test checkpoint 錯誤訊息區分「模型目錄未設定（SEE_MODELS_DIR 未設定）」與「provenance 未驗證」（BACKLOG 實例）。
+- **未做／待裁示**：持久化設定檔（讓使用者不必每個視窗設定 SEE_MODELS_DIR）的機制——專案本地設定檔 vs 使用者自行 `setx` → NEEDS HUMAN DECISION（本輪只提示、不寫永久環境變數）。GPU 真機 doctor 輸出待 Windows 實跑。
