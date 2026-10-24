@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from see.models.approval import Approval
 from see.models.asset import Asset
+from see.models.character_binding import CAST_SCHEMA_VERSION, CharacterBinding
 from see.models.enums import Status
 from see.models.preferences import PreferenceSet
 from see.models.render_job import RenderJob
@@ -144,6 +145,10 @@ class Project(BaseModel):
     characters: dict[str, CharacterVoice] = Field(default_factory=dict, description="角色設定：voice（D-030）＋ appearance（D-032）")
     style_id: str = Field(default="default", description="Style Profile id（see/core/styles.py；default = Phase 1 既有風格）")
     preferences: PreferenceSet | None = Field(default=None, description="D-062 Project default 偏好（Mood／Lighting／Color／Camera／Composition／Generation）；None＝無")
+    # D-068 Batch 3：Character Library 綁定（character_id＋pinned revision）。**foundation only**：
+    # Project.cast 存在但尚不是 production 角色來源；pipeline（TTS／image prompt／voice 確認／fingerprint）仍只用 Project.characters。
+    cast: list[CharacterBinding] = Field(default_factory=list, description="D-068 pinned Library 角色（foundation；尚未接 pipeline）")
+    cast_schema_version: int | None = Field(default=None, description="cast 格式版本；None＝沒有 cast（舊專案）")
     script: Script | None = None
     scenes: list[Scene] = Field(default_factory=list)
     assets: list[Asset] = Field(default_factory=list)
@@ -151,6 +156,19 @@ class Project(BaseModel):
     render_jobs: list[RenderJob] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
+
+    @model_validator(mode="after")
+    def _validate_cast(self) -> "Project":
+        if self.cast_schema_version is not None and self.cast_schema_version > CAST_SCHEMA_VERSION:
+            raise ValueError(f"cast_schema_version {self.cast_schema_version} is newer than supported {CAST_SCHEMA_VERSION}; "
+                             "update the program instead of editing this project")  # fail safe：不猜新格式
+        ids = [b.character_id for b in self.cast]
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        if dup:
+            raise ValueError(f"duplicate character_id in Project.cast: {dup}")
+        if self.cast and self.cast_schema_version is None:
+            self.cast_schema_version = CAST_SCHEMA_VERSION
+        return self
 
     def scene(self, scene_id: str) -> Scene:
         for s in self.scenes:

@@ -183,7 +183,7 @@ Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟�
 |---|---|---|
 | 1 | （本輪）設計文件 | — |
 | 2 | CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結；read_revision()；CharacterBinding／resolve_binding 基礎；不影響 pipeline | **DONE（D-067）** |
-| 3 | Project `cast` schema（character_binding_version、pinned revision、role_label、follow）＋解析器（revision 缺失 fail closed）；pipeline 仍以 legacy 為主，新欄位只讀 | Batch 2 |
+| 3 | Project `cast` schema（cast_schema_version、pinned revision、role_label、alias、follow=pinned）＋`resolve_project_cast()`（revision 缺失 fail closed）；pipeline 仍只用 legacy `Project.characters` | **DONE（D-068）；not yet production source of truth** |
 | 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | DG-29 |
 | 5 | `--apply`／rollback（備份、ID 改寫、legacy_characters 保留、migration log） | Batch 4＋客戶看過 dry-run |
 | 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | Batch 5 |

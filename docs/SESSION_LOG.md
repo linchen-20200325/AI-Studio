@@ -499,3 +499,9 @@
 - Result: character_store.py（history／canonical hash／reference snapshot／legacy baseline／create_new 系統 ID）、character_binding.py（CharacterBinding＋resolve_binding）、doctor history 驗證、export history 清單；DECISIONS／BACKLOG／ARCHITECTURE §21／binding 設計文件／MIGRATION_REINSTALL 同步
 - Tests: 見 commit（tests/test_character_history.py）
 - Next: Batch 3 Project cast schema＋pinned 解析器（不改 pipeline、不遷移）
+
+## 2026-10-24 — Batch 57
+- Batch: Batch 57 — D-068 Batch 3：Project.cast foundation＋pinned revision 解析
+- Result: Project.cast／cast_schema_version、see/core/cast.py、doctor project_cast、env-export cast、`cast show`、`GET /api/projects/{pid}/cast`。**Project.cast exists but is not yet production source of truth.**（production 角色來源仍是 `Project.characters`；尚未遷移任何專案）
+- Tests: 見 commit（tests/test_project_cast.py）
+- Next: Batch 4 `character-migrate --dry-run`（唯讀報告）

@@ -305,6 +305,15 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
         runner.submit(pid, "edit", _work)
         return {"project_id": pid, "job": runner.status(pid).to_dict(), "impact": impact}
 
+    @app.get("/api/projects/{pid}/cast")
+    def project_cast(pid: str) -> dict[str, Any]:
+        """D-068 唯讀：Project.cast 解析結果（foundation；正式角色來源仍是 Project.characters）。"""
+        from see.core.cast import resolve_project_cast
+        from see.storage.character_store import CharacterStore
+
+        rep = resolve_project_cast(_load(pid), CharacterStore(settings.workspace))
+        return {"production_source": "Project.characters", **rep.to_dict(include_snapshot=True)}
+
     @app.post("/api/projects/{pid}/scenes/{sid}/impact")
     def scene_edit_impact(pid: str, sid: str, body: SceneEditIn) -> dict[str, Any]:
         """預覽修改影響範圍（不寫入、不重做）：UI 用來提示「會重做哪些產物」。"""

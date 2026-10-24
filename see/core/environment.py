@@ -461,15 +461,17 @@ def check_workspace(settings: Settings) -> list[Check]:
     # 內容可載入性（只讀）
     store = ProjectStore(ws)
     bad = []
+    loaded = []
     for pid in store.list_projects():
         try:
-            store.load(pid)
+            loaded.append(store.load(pid))
         except Exception as e:  # noqa: BLE001
             bad.append(f"{pid}: {type(e).__name__}")
     n = len(store.list_projects())
     if n:
         out.append(Check("workspace", "projects_loadable", Status.OK if not bad else Status.PARTIAL, False,
                          f"{n - len(bad)}/{n} 個 project.json 可載入", "; ".join(bad[:5]), {"failed": bad}))
+        out.append(_cast_check(ws, loaded))
     try:
         entries = ReferenceLibrary(ws).list()
         probs = [e.rel_path for e in entries if e.problems]
@@ -702,20 +704,48 @@ def python_packages() -> list[str]:
     return [seen[k] for k in sorted(seen)]
 
 
+def _cast_check(ws: Path, projects: list[Any]) -> Check:
+    """D-068：Project cast readiness（foundation；尚非 production 角色來源）。沒有 cast 的舊專案＝not configured（中性，不算失敗）。"""
+    from see.core.cast import resolve_project_cast
+    from see.storage.character_store import CharacterStore
+
+    cs = CharacterStore(ws)
+    reports = {p.project_id: resolve_project_cast(p, cs) for p in projects}
+    with_cast = {k: r for k, r in reports.items() if r.status != "not_configured"}
+    data = {k: r.status for k, r in reports.items()}
+    if not with_cast:
+        return Check("workspace", "project_cast", Status.UNAVAILABLE, False,
+                     f"{len(reports)} 個專案都沒有 cast（not configured；production 仍用 Project.characters）", data=data)
+    errors = sorted(k for k, r in with_cast.items() if r.status == "error")
+    partial = sorted(k for k, r in with_cast.items() if r.status == "partial")
+    st = Status.ERROR if errors else Status.PARTIAL if partial else Status.OK
+    return Check("workspace", "project_cast", st, False,
+                 f"{len(with_cast)}/{len(reports)} 個專案有 cast：error {len(errors)}、not generation ready {len(partial)}"
+                 "（foundation；尚非 production 角色來源）",
+                 ("revision 遺失或 hash 不符（fail closed，不會改用 latest）：" + ", ".join(errors)) if errors else
+                 ("reference 遺失：" + ", ".join(partial)) if partial else "", data)
+
+
 def workspace_inventory(settings: Settings) -> dict[str, Any]:
     from see.core.reference_library import ReferenceLibrary
     from see.storage.character_store import CharacterStore
     from see.storage.project_store import ProjectStore
 
+    from see.core.cast import resolve_project_cast
+
     ws = settings.workspace
     store = ProjectStore(ws)
+    cstore = CharacterStore(ws)
     projects = []
     for pid in store.list_projects():
         try:
             p = store.load(pid)
+            cast = resolve_project_cast(p, cstore)
             projects.append({"project_id": pid, "title": p.title, "status": str(p.status.value if hasattr(p.status, "value") else p.status),
                              "scenes": len(p.scenes), "style_id": p.style_id, "has_preferences": p.preferences is not None,
-                             "characters": sorted(p.characters)})
+                             "characters": sorted(p.characters),
+                             # D-068：cast 只匯出綁定與解析結果（hash、readiness），不含角色快照與任何圖片
+                             "cast": cast.to_dict(include_snapshot=False)})
         except Exception as e:  # noqa: BLE001
             projects.append({"project_id": pid, "error": type(e).__name__})
     refs = []

@@ -12,7 +12,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from see.models.character_definition import ID_PATTERN
+# 與 see.models.character_definition.ID_PATTERN 相同（測試保證一致）；這裡不匯入，避免 Project ↔ character_definition 循環匯入
+ID_PATTERN = r"^[a-z][a-z0-9_]{1,63}$"
+CAST_SCHEMA_VERSION = 1
 
 
 class CharacterBinding(BaseModel):
@@ -36,7 +38,7 @@ class ResolvedCharacter:
     issues: list[str] = field(default_factory=list)
 
 
-def resolve_binding(store, binding: CharacterBinding) -> ResolvedCharacter:
+def resolve_binding(store, binding: CharacterBinding, library=None) -> ResolvedCharacter:
     """讀 binding 指定的 revision（不是 latest），並檢查其凍結的 reference 目前是否仍在且 sha256 相同。
     - revision 缺失／hash 不符 → 由 store.read_revision 丟 CharacterRevisionError（fail closed）。
     - reference 遺失或內容改變 → generation_ready=False、列出 missing／changed；**不改綁其他圖**。"""
@@ -44,7 +46,7 @@ def resolve_binding(store, binding: CharacterBinding) -> ResolvedCharacter:
     from see.core.reference_library import ReferenceLibrary, ReferenceLibraryError
 
     rev = store.read_revision(binding.character_id, binding.character_revision)
-    lib = ReferenceLibrary(store.workspace)
+    lib = library or ReferenceLibrary(store.workspace)
     missing: list[str] = []
     issues: list[str] = []
     for b in rev.reference_bindings:

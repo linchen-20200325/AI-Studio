@@ -310,6 +310,34 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 1 if err else 0
 
 
+def cmd_cast(args: argparse.Namespace) -> int:
+    """D-068 唯讀：顯示 Project.cast 的 pinned revision 與 readiness（foundation；尚非 production 角色來源）。"""
+    from see.core.cast import resolve_project_cast
+    from see.storage.character_store import CharacterStore
+
+    s = Settings()
+    from see.storage.project_store import ProjectStore
+
+    try:
+        project = ProjectStore(s.workspace).load(args.project_id)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    rep = resolve_project_cast(project, CharacterStore(s.workspace))
+    if args.json:
+        print(json.dumps(rep.to_dict(include_snapshot=False), ensure_ascii=False, indent=2))
+        return 0 if rep.status in ("not_configured", "ok") else 1
+    print(f"Project {project.project_id} cast：{rep.status}（foundation；production 角色來源仍是 Project.characters）")
+    for e in rep.entries:
+        b = e.binding
+        label = " ".join(x for x in (b.role_label, f"({b.alias})" if b.alias else "") if x)
+        state = "OK" if e.integrity == "ok" and e.generation_ready else "NOT READY" if e.integrity == "ok" else "ERROR"
+        print(f"  {b.character_id}@r{b.character_revision} {label}  [{state}]"
+              + (f" archived" if e.archived else "") + (f" missing={e.missing_references}" if e.missing_references else "")
+              + (f" — {e.error}" if e.error and e.integrity == "error" else ""))
+    return 0 if rep.status in ("not_configured", "ok") else 1
+
+
 def cmd_smoke(args: argparse.Namespace) -> int:
     """D-064 Smoke test（不需 GPU；暫存 workspace；mock／placeholder／silent）。"""
     from see.core.environment import Status, smoke_test
@@ -1309,6 +1337,11 @@ def main(argv: list[str] | None = None) -> int:
     cfg.add_argument("key", nargs="?", default="")
     cfg.add_argument("value", nargs="?", default="")
     cfg.set_defaults(fn=cmd_config)
+    cst = sub.add_parser("cast", help="（唯讀）Project.cast：pinned Library revision 與 readiness；foundation，尚非 production 角色來源")
+    cst.add_argument("action", choices=["show"])
+    cst.add_argument("project_id")
+    cst.add_argument("--json", action="store_true")
+    cst.set_defaults(fn=cmd_cast)
     sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")
     hw.add_argument("--json", action="store_true"); hw.add_argument("--path", default=".", help="評估磁碟空間的路徑（預設 workspace 所在）")

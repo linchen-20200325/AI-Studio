@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-068 | Batch 3：`Project.cast`（list[CharacterBinding]，可選、預設空）＋`cast_schema_version`＋`resolve_project_cast()`（只讀 pinned revision、不 fallback latest、hash 不符 fail closed、reference 遺失 not ready）；doctor／env-export／唯讀 CLI `cast show`／唯讀 API。Project.cast exists but is not yet production source of truth | 有效 | 可逆 |
 | D-067 | **DG-29 客戶裁示 A**：全域穩定 Character Library ID（系統產生、不由 display_name 產生、rename 不變；Library／Project／Scene 最終同一 ID）；舊專案逐專案人工觸發遷移（dry-run → mapping／conflict report → 客戶確認 → backup → migration → verify → 可 rollback），不做一次性大批改寫，未遷移專案維持原行為。**核可方案 D Revision Pinning**（Project 綁 character_id＋character_revision；預設鎖定；不自動更新；跟隨最新版只能顯式 opt-in；revision 不存在或 hash 不符 → fail closed）。Batch 2：Character Store 不可變 revision history | 有效 | 可逆（遷移另過 Gate） |
 | D-066 | 客戶裁示：(1) **Project 層結構化場景預設先不做**；(2) **visual_description 與 Scene structured fields 並存、不互相自動改寫**。角色資料唯一架構設計（docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）：推薦 revision pinning（Library 單一來源＋不可變 revision history；Project 存 character_id＋revision）；發現 **DG-29 角色 ID 命名空間**（舊專案 ID 為專案內順序 ID，跨專案不唯一）待裁示 | 有效（2 項裁示）／設計待核可 | 可逆（未實作） |
 | D-065 | 客戶裁示方案 A：machine-specific 設定用專案本機設定檔 `see.local.json`（env > local config > unset；不進 Git；doctor 顯示來源）；Scene 結構化設定（13 欄位，中文、None 不補值、確定性對照、局部重做）；鏡頭運動沿用 camera_motion、視覺風格沿用 Scene.preferences | 有效 | 可逆 |
@@ -574,3 +575,12 @@
 - `see/models/character_binding.py`：`CharacterBinding`（character_id、character_revision、role_label、alias、follow 只允許 "pinned"）＋`resolve_binding()`：讀指定 revision（不是 latest）；revision 缺失／hash 不符 → fail closed；凍結的 reference 遺失或 sha 改變 → generation_ready=False、列 missing，不改綁其他圖。**未接進 production Project。**
 - doctor：`workspace.character_store` 驗證所有 revision（竄改 → ERROR；有 legacy 無 history → PARTIAL）；env-export 角色清單附 history_revisions。
 - 未做（後續批次）：Project cast 接線、Project.characters 遷移、ID 改寫、narrator／reference path／voice confirmation 遷移。無新依賴、production pipeline 行為不變。
+
+## D-068 2026-10-24 Batch 3：Project.cast foundation＋pinned revision 解析
+- **Project.cast exists but is not yet production source of truth.**（production 角色來源仍是 `Project.characters`；尚未遷移任何專案）
+- Schema：`Project.cast: list[CharacterBinding] = []`（character_id、character_revision、role_label、alias、follow 只允許 pinned）；`Project.cast_schema_version: int | None`（無 cast＝None；有 cast 自動為 1；比程式新 → 載入拒絕，fail safe）。驗證：ID 格式、revision ≥ 1、不可省略 revision（不自動 latest）、同一 character_id 不可重複、role_label ≤ 40、alias ≤ 64。Library 不存在該 revision 時 project.json 照常可存可讀，由 resolver／readiness fail closed。
+- Resolver：`see/core/cast.py` `resolve_project_cast(project, character_store, reference_library=None)` → CastReport（status not_configured／ok／partial／error）＋CastEntry（binding、integrity、resolved_revision、content_sha256、archived、generation_ready、missing_references、snapshot、error）。只讀 pinned revision；revision 缺失／hash 不符 → integrity=error、snapshot=None（不 fallback latest）；reference 遺失或改變 → generation_ready=False；archived 角色的歷史 revision 照常解析；不寫檔、不換角色。
+- Readiness：doctor `workspace.project_cast`（沒有 cast＝UNAVAILABLE「not configured」，中性；全部解析＝OK；reference 遺失＝PARTIAL；revision 遺失／hash 不符＝ERROR；皆非 REQUIRED）。env-export 每個專案附 cast 綁定、resolved hash、readiness（不含角色快照與圖片）。
+- 唯讀介面：CLI `python -m see.app.cli cast show <project_id> [--json]`；API `GET /api/projects/{pid}/cast`（回應註明 production_source=Project.characters）。沒有修改 cast 的 CLI／API／UI。
+- Production 隔離（測試證明）：有 cast（含指向不存在的 revision）時，image request、ctx、resolve_voice、voice 確認、fingerprint 與沒有 cast 時完全相同；建置不重做任何產物。
+- 未做：Project.characters 遷移、ID／Scene ID 改寫、migration report、pipeline 切換、角色庫 UI、update-to-latest、narrator／reference path 遷移。
