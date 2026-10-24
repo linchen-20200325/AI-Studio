@@ -214,3 +214,62 @@ def test_real_diffusers_s2_with_attention_slicing_and_clip_skip2(tiny_pipe):
         assert "SlicedAttnProcessor" in set(before.values())
     finally:
         tiny_pipe.disable_attention_slicing()
+
+
+# ---------------------------------------------------------------- D-052 style-compare 實驗變數語意（真機發現：S1 被判 not_comparable）
+def _cmp_ev(mode=None, **over):
+    g = {"gen_policy": "native", "gen_width": 768, "gen_height": 512, "crop_box": [0, 40, 768, 472], "steps": 25, "guidance": 7.0,
+         "scheduler_name": "dpmpp_2m_karras", "clip_skip_a1111": 1}
+    if mode:
+        g["prompt_mode"] = mode
+    ev = {"case_id": "two_characters_ab", "seed": 1234, "style_id": "realistic", "base_prompt": "b", "prompt": "p",
+          "negative_prompt": "n", "width": 1920, "height": 1080, "final_dtype": "float32",
+          "checkpoint": {"checkpoint_id": "cyberrealistic_final", "sha256": "2209c07b331a06cb"}, "generation": g}
+    ev.update(over)
+    return ev
+
+
+def test_compare_baseline_vs_s1_auto_intended():
+    from see.core.style_tests import compare_conditions
+
+    r = compare_conditions(_cmp_ev(), _cmp_ev("long_prompt"))  # D-049 基準（無欄位＝standard）vs S1
+    assert r["verdict"] == "single_variable" and r["intended"] == ["prompt_mode"] and r["intended_source"] == "auto"
+    assert r["differences"] == {"prompt_mode": ["standard", "long_prompt"]} and r["unexpected_differences"] == []
+
+
+def test_compare_s1_vs_s2_and_baseline_vs_s2():
+    from see.core.style_tests import compare_conditions
+
+    for a, b in ((_cmp_ev("long_prompt"), _cmp_ev("regional")), (_cmp_ev(), _cmp_ev("regional"))):
+        r = compare_conditions(a, b)
+        assert r["verdict"] == "single_variable" and r["intended"] == ["prompt_mode"]
+    assert compare_conditions(_cmp_ev(), _cmp_ev("regional"), ("prompt_mode",))["intended_source"] == "explicit"
+
+
+def test_compare_real_extra_difference_still_not_comparable():
+    from see.core.style_tests import compare_conditions
+
+    r = compare_conditions(_cmp_ev(), _cmp_ev("long_prompt", seed=99))
+    assert r["verdict"] == "not_comparable" and r["unexpected_differences"] == ["seed"] and r["intended"] == ["prompt_mode"]
+    # 換模型＋換 prompt_mode 同時發生 → 不是受控比較（自動與明確指定皆然）
+    other = _cmp_ev("regional", checkpoint={"checkpoint_id": "meinamix_v12", "sha256": "a5e5a941a321"})
+    for intended in (None, ("model", "prompt_mode")):
+        r = compare_conditions(_cmp_ev(), other, intended)
+        assert r["verdict"] == "not_comparable" and set(r["unexpected_differences"]) >= {"model", "prompt_mode"}
+    # 明確指定 model 時，prompt_mode 不同仍是 unexpected
+    assert compare_conditions(_cmp_ev(), _cmp_ev("long_prompt"), ("model",))["verdict"] == "not_comparable"
+
+
+def test_style_compare_cli_default_auto(tmp_path, monkeypatch, capsys):
+    import json as _json
+
+    from see.app.cli import main
+
+    monkeypatch.setenv("SEE_WORKSPACE", str(tmp_path / "ws"))
+    d = tmp_path / "ws" / "style_tests"
+    d.mkdir(parents=True)
+    (d / "base.json").write_text(_json.dumps(_cmp_ev()), encoding="utf-8")
+    (d / "s1.json").write_text(_json.dumps(_cmp_ev("long_prompt")), encoding="utf-8")
+    assert main(["style-compare", "base", "s1"]) == 0
+    assert _json.loads(capsys.readouterr().out)["verdict"] == "single_variable"
+    assert main(["style-compare", "base", "s1", "--intended", "model"]) == 4

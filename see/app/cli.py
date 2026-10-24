@@ -601,7 +601,8 @@ def cmd_style_compare(args: argparse.Namespace) -> int:
             print(f"找不到 {path}；現有：{have}", file=sys.stderr)
             return 2
         evs.append(json.loads(path.read_text(encoding="utf-8")))
-    intended = tuple(x.strip() for x in args.intended.split(",") if x.strip())
+    # D-052：未指定 --intended → 自動判定實驗變數（model 或 prompt_mode，恰好一個不同時）
+    intended = tuple(x.strip() for x in args.intended.split(",") if x.strip()) if args.intended else None
     res = compare_conditions(evs[0], evs[1], intended)
     res = {"a": args.stem_a, "b": args.stem_b, **res,
            "technical_valid": [evs[0].get("technical_valid"), evs[1].get("technical_valid")],
@@ -757,7 +758,8 @@ def main(argv: list[str] | None = None) -> int:
     srv.add_argument("--note"); srv.add_argument("--by", default="customer"); srv.set_defaults(fn=cmd_style_review)
     scp = sub.add_parser("style-compare", help="比對兩份 style-test evidence 的生成條件（是否只差一個變數；唯讀）")
     scp.add_argument("stem_a"); scp.add_argument("stem_b")
-    scp.add_argument("--intended", default="model", help="預期要不同的條件（逗號分隔，預設 model）")
+    scp.add_argument("--intended", default=None,
+                     help="刻意改變的條件（逗號分隔）；預設自動：model 或 prompt_mode 恰好一個不同時視為 intended")
     scp.set_defaults(fn=cmd_style_compare)
     app_ = sub.add_parser("appearance", help="角色外觀錨點（英文描述／服裝／特徵／參考圖）")
     app_.add_argument("project_id"); app_.add_argument("character_id")

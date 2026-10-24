@@ -184,10 +184,27 @@
 | 項目 | 狀態 |
 |---|---|
 | D-049 真機證據入庫（scene FAIL／style PASS，主觀） | DONE |
-| S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in `--long-prompt`） | 實作 DONE（D-051）→ NEXT：Windows 真機 |
+| S1 長 prompt 分段編碼（修 80＞77 截斷；opt-in `--long-prompt`） | DONE：真機解決截斷；scene FAIL（屬性綁定／臉部多樣性未解，主觀，D-052） |
+| style-compare 實驗變數語意（prompt_mode 被誤判） | DONE（D-052） |
 | S2 Regional prompting 原型（零下載；opt-in `--regional`） | 實作 DONE（D-051）→ NEXT：Windows 真機＋人工 scene 判定 |
 | 角色 → 畫面區域提升到 Scene／Storyboard 資料（regional 產品化） | 待 S2 真機結果 |
 | S3 分段生成＋合成（零下載） | RESEARCH（S2 不足再評估） |
 | S4 IP-Adapter plus-face／full-face SD1.5（≈2.67 GB；Apache-2.0；image encoder 上游授權待核；4 GB 可行性未證實） | NEEDS HUMAN DECISION（DG-24 B） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
 | 重抽 seed | 非解法（客戶裁示） |
+
+## 生成後可調整項目總表（D-052；客戶需求；已存在者只指向原項，不重複）
+| 需求 | 對應／狀態 |
+|---|---|
+| 生成後修改風格、氛圍、光線、色調 | 見「新正式產品需求」User-defined Style／Mood Profile＋Preference Layer（D-042／D-050）；**光線、色調**明列為 Style／Mood 可調欄位 — NEXT |
+| 修改臉型／五官／髮型／年齡感／服裝／表情 | CharacterTraits 已有五官／髮型／年齡／服裝（D-048 DONE，非 UI）；**臉型、表情**欄位缺 → NEXT（補欄位）；臉部 Identity 品質見 DG-24 |
+| 修改背景、時間、天氣、環境、構圖 | **新增**：Scene 層結構化設定（background／time_of_day／weather／environment／composition）→ NEXT（資料模型非 UI 可自主） |
+| 修改鏡位、景別、人物位置、動作 | **新增**：Shot 設定（camera_angle／shot_size／character_positions／action）；人物位置與 S2 regional 對應 → NEXT（待 S2 真機）；動作需 Image-to-Video（RESEARCH） |
+| 局部重生，只重做受影響鏡頭 | 已有：per-scene fingerprint 快取（改一景不重做其他景；角色設定只讓出現的景回 DRAFT）— DONE（基礎）；Preference 層級的影響範圍判定見 ARCHITECTURE §13 |
+| 最終真正 lip-sync | 見 P1「Lip-sync」與短劇 Roadmap Dialogue Performance — BLOCKED（未核准模型） |
+| 角色聲音／語速／情緒／SFX／環境音 | 聲音／語速 DONE（D-030）；**情緒**、**環境音（ambience）** NEXT；SFX 聽感未驗 |
+| BGM 選擇或生成、音量、情緒、ducking | 程序化 BGM＋ducking DONE（D-031／D-032）；**BGM 選擇／情緒／音量 UI 化** NEXT（UI＝DG-19） |
+| 自動剪接＋人工微調、轉場、字幕、音畫同步 | FFmpeg timeline／轉場／字幕 DONE（基礎）；**自動剪接節奏＋人工微調**、真硬切 NEXT（見 P2 `cut`） |
+| Preview → 指定鏡頭修改 → 再預覽 → Final | Web UI 單景修改／重做／核准 DONE（Phase 0.5）；與 Preference Layer 串接 NEXT |
+| 自訂 Style／Mood；UI 不要求 CMD／CUDA／模型路徑 | 見「新正式產品需求」Style／Mood＋Mobile-first＋Environment Bootstrap（D-050） |
+| 換電腦部署、模型搬移、設定備份還原 | 見「新正式產品需求」Migration／Reinstall（D-050） |

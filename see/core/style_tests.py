@@ -208,22 +208,35 @@ def comparison_conditions(ev: dict[str, Any]) -> dict[str, Any]:
             "prompt_mode": g.get("prompt_mode") or "standard"}
 
 
-def compare_conditions(a: dict[str, Any], b: dict[str, Any], intended: tuple[str, ...] = ("model",)) -> dict[str, Any]:
-    """比對兩份 evidence。verdict：
-    - `single_variable`：只有 intended 變數不同（嚴格公平比較）
-    - `model_preset_level`：intended 之外只差模型預設參數（如 clip skip），且模型本身不同 → 比較的是「模型＋其建議設定」整包
-    - `not_comparable`：還有其他條件不同（或缺欄位無法確認）→ 不得宣稱公平比較"""
+# 受控實驗可刻意改變的變數（D-052）：每次比較只能有其中一個不同
+EXPERIMENT_FIELDS = ("model", "prompt_mode")
+
+
+def compare_conditions(a: dict[str, Any], b: dict[str, Any], intended: tuple[str, ...] | None = None) -> dict[str, Any]:
+    """比對兩份 evidence。`intended`＝刻意改變的實驗變數：
+    - None（預設，D-052）：自動判定——EXPERIMENT_FIELDS 中**恰好一個**不同時，它就是 intended；兩個以上同時不同 → 全列 unexpected
+      （例：換 checkpoint 又換 prompt_mode 不是受控比較）。
+    - 明確指定：只有列出的欄位可不同；指定多個且同時不同 → not_comparable（受控比較一次只改一個變數）。
+    verdict：`single_variable`｜`model_preset_level`（換模型＋只差模型 preset 參數，如 clip skip）｜`not_comparable`。"""
     ca, cb = comparison_conditions(a), comparison_conditions(b)
     diffs = {k: [ca[k], cb[k]] for k in COMPARISON_FIELDS if ca[k] != cb[k]}
     unknown = [k for k in REQUIRED_FIELDS if ca[k] is None and cb[k] is None]
-    preset = [k for k in diffs if k in MODEL_PRESET_FIELDS and "model" in diffs]
-    other = [k for k in diffs if k not in intended and k not in preset]
+    if intended is None:
+        exp = [k for k in EXPERIMENT_FIELDS if k in diffs]
+        chosen, source = (tuple(exp), "auto") if len(exp) == 1 else ((), "auto")
+    else:
+        chosen, source = tuple(intended), "explicit"
+    changed = [k for k in diffs if k in chosen]
+    if len(changed) > 1:
+        chosen, changed = (), []  # 一次只改一個變數；多個同時變 → 全部視為 unexpected
+    preset = [k for k in diffs if k in MODEL_PRESET_FIELDS and "model" in changed]
+    other = [k for k in diffs if k not in changed and k not in preset]
     if other or unknown:
         verdict = "not_comparable"
     elif preset:
         verdict = "model_preset_level"
     else:
         verdict = "single_variable"
-    return {"verdict": verdict, "differences": diffs, "intended": [k for k in diffs if k in intended],
+    return {"verdict": verdict, "differences": diffs, "intended": changed, "intended_source": source,
             "model_preset_differences": preset, "unexpected_differences": other, "unknown_fields": unknown,
             "identical": [k for k in COMPARISON_FIELDS if k not in diffs and k not in unknown]}

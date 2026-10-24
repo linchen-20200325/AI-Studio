@@ -403,3 +403,11 @@
 - Result: D-051；chunk_token_ids／encode_text_chunks／RegionalAttnProcessor；style-test --long-prompt／--regional；evidence prompt_mode；style-compare prompt_mode；暫時 venv（torch CPU＋diffusers 0.41＋transformers 5.20，tiny 隨機權重、無下載）整合測試 10 passed
 - Tests: CI 環境 172 passed、5 skipped（torch 整合測試 skip）
 - Next: Windows git pull → S1 → S2
+
+---
+- Date: 2026-10-24
+- Start SHA: 5406b67
+- Batch: Batch 42 — style-compare 實驗變數修正＋S1 真機觀察＋需求入庫治理
+- Result: D-052；compare_conditions 自動 intended（model／prompt_mode 恰一）；S1 evidence（scene FAIL，主觀）；PROJECT_RULES §12 需求當輪入庫；BACKLOG 生成後可調整總表
+- Tests: 176 passed、5 skipped
+- Next: Windows git pull → S2

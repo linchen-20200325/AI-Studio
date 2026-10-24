@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-052 | style-compare 實驗變數自動判定（修 S1 誤判 not_comparable）；S1 真機 scene FAIL（主觀）；PROJECT_RULES 需求當輪入庫 | 有效 | 可逆 |
 | D-051 | DG-24 裁示 A：S1 `--long-prompt`＋S2 `--regional`（opt-in；零下載；tiny diffusers 整合測試）；待真機受控比較 | 有效（待真機） | 可逆 |
 | D-050 | D-049 真機 scene FAIL／style PASS（主觀）＋prompt 80＞77；多角色／Identity 研究；新需求 Style/Mood Profile、Mobile-first、Env Bootstrap、Migration | 有效；DG-24 待裁示 | 可逆 |
 | D-049 | A／B 多角色同框受控案例 `two_characters_ab`（產品錨點路徑、互斥屬性、人工互換檢查；77 token 守門） | 有效（待真機） | 可逆 |
@@ -392,3 +393,9 @@
 - Evidence：`prompt_mode`（standard／long_prompt／regional）、`prompt_encoding`（chunks、content_tokens、region_prompts、base_ratio）、`prompt_truncated_effective`；style-compare 新增比較欄位 `prompt_mode`（舊 JSON＝standard）。檔名加 `_longprompt`／`_regional`，不覆寫 D-049 基準。
 - 驗證：容器以暫時 venv 安裝 torch 2.14.1（CPU）＋diffusers 0.41.0＋transformers 5.20.2（同客戶 Windows 版本；**僅測試用，不加入專案依賴**），tiny 隨機權重（無任何下載）跑整合測試；CI 無 torch → 該組 skip，純函式測試照跑。
 - 未做：S3、S4、下載、production default 變更、重抽 seed。
+
+## D-052 2026-10-24 style-compare 實驗變數語意修正＋S1 真機觀察＋需求入庫治理
+- 真機發現：`style-compare <D-049 基準> <S1>` 回 not_comparable，唯一差異正是刻意改變的 `prompt_mode`（standard→long_prompt）。根因：`--intended` 預設寫死 `model`（D-043 只為換模型比較設計），D-051 新增 prompt_mode 欄位時未更新語意。
+- 修正：`--intended` 預設改為**自動**——實驗變數（model、prompt_mode）**恰好一個**不同時即為 intended；兩個以上同時不同（例：換模型又換 prompt_mode）或其他任何欄位不同 → not_comparable；明確指定時仍只允許列出的欄位，且一次只能有一個變動。evidence 增 `intended_source`（auto／explicit）。未改任何生成結果、未重抽 seed、production default 不變。
+- S1 真機人工（single-user subjective）：寫實攝影質感尚可；女角眼鏡／鼻眼交界局部五官幾何異常；外觀過度模板化；A 紅大衣遺失、A 錯戴眼鏡、B 灰短髮與灰西裝未遵守 → S1 解決截斷，**未**解決 attribute binding、臉部多樣性與局部品質；scene_validated=false；style_validated 未正式填寫（不由 scene FAIL 推論）。
+- 永久治理：PROJECT_RULES §12 增「客戶需求當輪入庫」。BACKLOG 補「生成後可調整項目總表」（只補缺、指向既有項目）。

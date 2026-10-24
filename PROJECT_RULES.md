@@ -174,6 +174,8 @@ SHA 慣例：`PROJECT_STATE.md` 的 checkpoint 欄位 與 `SESSION_LOG.md` 的 E
 
 **GitHub repository is the long-term project memory and Source of Truth. ChatGPT Memory, Claude Memory, and conversation history are not project storage. Any information required by a future AI session must be persisted to the appropriate canonical GitHub document.**
 
+**客戶需求入庫（D-052，永久）**：凡客戶提出且會影響產品功能、UX、架構、資料、模型策略、待辦或驗收標準的需求，都必須在**當輪工作結束前**寫入 GitHub canonical docs（BACKLOG／ARCHITECTURE／DECISIONS／PROJECT_RULES 等依責任分流）；不得只存在 ChatGPT、Claude 對話或 AI 記憶。
+
 角色：GitHub＝長期記憶／正式事實；ChatGPT＝獨立協作、研究、驗證、裁示輔助；Claude／Project AI＝實作者；AI Memory＝非正式、不可依賴；對話 context＝暫時工作記憶。只存在聊天或 AI Memory 的資訊一律視為**尚未正式保存**。禁止「AI 記得，所以不用寫」。
 
 ### 12.1 Knowledge Persistence Check
