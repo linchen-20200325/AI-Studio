@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-067 | **DG-29 客戶裁示 A**：全域穩定 Character Library ID（系統產生、不由 display_name 產生、rename 不變；Library／Project／Scene 最終同一 ID）；舊專案逐專案人工觸發遷移（dry-run → mapping／conflict report → 客戶確認 → backup → migration → verify → 可 rollback），不做一次性大批改寫，未遷移專案維持原行為。**核可方案 D Revision Pinning**（Project 綁 character_id＋character_revision；預設鎖定；不自動更新；跟隨最新版只能顯式 opt-in；revision 不存在或 hash 不符 → fail closed）。Batch 2：Character Store 不可變 revision history | 有效 | 可逆（遷移另過 Gate） |
 | D-066 | 客戶裁示：(1) **Project 層結構化場景預設先不做**；(2) **visual_description 與 Scene structured fields 並存、不互相自動改寫**。角色資料唯一架構設計（docs/CHARACTER_LIBRARY_PROJECT_BINDING.md）：推薦 revision pinning（Library 單一來源＋不可變 revision history；Project 存 character_id＋revision）；發現 **DG-29 角色 ID 命名空間**（舊專案 ID 為專案內順序 ID，跨專案不唯一）待裁示 | 有效（2 項裁示）／設計待核可 | 可逆（未實作） |
 | D-065 | 客戶裁示方案 A：machine-specific 設定用專案本機設定檔 `see.local.json`（env > local config > unset；不進 Git；doctor 顯示來源）；Scene 結構化設定（13 欄位，中文、None 不補值、確定性對照、局部重做）；鏡頭運動沿用 camera_motion、視覺風格沿用 Scene.preferences | 有效 | 可逆 |
 | D-064 | Environment Bootstrap／Migration Foundation：`doctor`（系統／Python／GPU／工具／模型／workspace、Ready／Not ready、Tier A–D）、`bootstrap`（預設唯讀；`--apply-safe` 只建空資料夾）、machine-local environment manifest＋去識別化範例、`env-export`（可恢復資訊，不含模型／私人圖片）、`smoke`；模型 logical ID＋相對 SEE_MODELS_DIR；workspace／Character Store／Reference sidecar schema_version＋fail safe；workspace 搬移後產物沿用 | 有效 | 可逆 |
@@ -558,3 +559,18 @@
   - 舊 `Project.characters` 遷移規格：migration version、backup、dry-run（預設）、mapping／conflict report、apply 需使用者決定檔、rollback（還原 project.json；Library 新增項 archive 不刪）、idempotent、`legacy_characters` 保留；分類 自動／人工／不可搬（seed、adapter、body_type、遺失 reference、空殼條目不搬、不補造）。
   - **Stop condition → DG-29（角色 ID 命名空間）**：舊專案角色 ID 是專案內 ID（跨專案不唯一、可能不符 Library ID 格式）；採「Library／Project／Scene 同一 ID」需逐案改寫專案內引用 → 需客戶裁示。總管推薦 A：Library ID 系統產生（不由名稱生成）、舊專案按需逐案遷移（dry-run→確認→備份→改寫→可 rollback）、未遷移專案維持 legacy 可用。
 - 本輪無程式變更、無 schema 變更、無資料搬移。
+
+## D-067 2026-10-24 DG-29 裁示 A＋核可 Revision Pinning（方案 D）；Batch 2 Character Store 不可變 revision history
+- **DG-29 裁示 A（全域穩定 ID）**：Character Library 的 `character_id` 由系統產生，不由 display_name 產生，rename 不改 ID；Library／Project／Scene 最終使用同一穩定 character_id。舊專案**不做一次性大批改寫**，採逐專案、人工觸發遷移：dry-run → mapping／conflict report → 客戶確認 → backup → migration → verify → 可 rollback；未遷移的舊專案維持原行為，不得因新架構而壞掉。
+- **核可方案 D（Revision Pinning）**：Project 綁定 `character_id + character_revision`；預設鎖定；Library 有新版不得自動更新 Project；「跟隨最新版」未來若做只能是顯式 opt-in；指定 revision 不存在或 hash 不符 → fail closed，不得偷偷改用 latest。
+- Batch 2 實作細節見下方「Batch 2」段（同一 D-067）。
+
+### D-067 Batch 2：Character Store 不可變 revision history（已實作）
+- 佈局：`workspace/character_library/<id>.json`＝head（索引，相容舊讀取）；`workspace/character_library/history/<id>/r000001.json`…＝**append-only revision**（exclusive create：同號存在即拒絕；無覆寫、無刪除 API）。目前狀態以最新且驗證通過的 revision 為準。
+- `CharacterRevision`（schema_version 1）：character_id、revision、created_at、archived、完整 CharacterDefinition、reference_asset_ids、primary_reference_asset_id、reference_bindings（asset_id、status ok／missing／inconsistent、role、category、`<category>/<file>`、sha256、is_primary、problems）、provenance（action、previous_revision、baseline_from_legacy_current、note）、content_sha256。
+- canonical hash：除 content_sha256 外全部欄位，JSON key 排序、緊湊分隔、UTF-8 → sha256；reference_bindings 依 asset_id 排序；不含本機絕對路徑。讀取重算，不符／版本過新／檔名與內容不一致 → `CharacterRevisionError`（fail closed，不自動修復）。
+- API：`create_new()`（ID 系統產生 `char_`＋12 位 hex，secrets 標準庫；不由名稱產生）、`create()`（既有 ID 匯入／測試）、`get()`、`read_revision()`、`list_revisions()`、`latest_revision()`、`update()`（rename＝改 display_name，provenance action=rename）、`archive()`、`restore()`、`refresh_references()`（Reference Library 綁定／換圖／primary 改變 → 顯式新 revision；沒變不產生）、`verify_revision()`／`verify_history()`、`backup()`、`migration_plan()`（新增 no_history）。沒有實際變更不產生 revision；revision 單調遞增。
+- legacy：沒有 history 的舊角色，讀取不寫入；第一次修改前把當下 head 寫成 baseline revision（沿用 head 的 revision 號，`baseline_from_legacy_current=true`，note 說明更早 revision 不存在、未補造）。
+- `see/models/character_binding.py`：`CharacterBinding`（character_id、character_revision、role_label、alias、follow 只允許 "pinned"）＋`resolve_binding()`：讀指定 revision（不是 latest）；revision 缺失／hash 不符 → fail closed；凍結的 reference 遺失或 sha 改變 → generation_ready=False、列 missing，不改綁其他圖。**未接進 production Project。**
+- doctor：`workspace.character_store` 驗證所有 revision（竄改 → ERROR；有 legacy 無 history → PARTIAL）；env-export 角色清單附 history_revisions。
+- 未做（後續批次）：Project cast 接線、Project.characters 遷移、ID 改寫、narrator／reference path／voice confirmation 遷移。無新依賴、production pipeline 行為不變。

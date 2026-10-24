@@ -34,7 +34,7 @@
 | **換磁碟／搬模型** | 例 `D:\ai-models` → `E:\AI\models`：複製資料夾、`config set models_dir "E:\AI\models"`（或環境變數 `SEE_MODELS_DIR`，優先序較高）、`doctor --hash`。模型以 logical ID＋相對路徑描述，沒有任何地方寫死磁碟代號。 |
 | **搬 workspace** | 整個資料夾複製即可。專案 manifest 舊的絕對路徑會在讀取時自動對應到新位置的同名檔（fingerprint 不含路徑 → 產物沿用、不重做）。 |
 | **Reference Library** | 隨 workspace 複製。`.ref.json` 以「類別資料夾＋檔名＋sha256」對應圖片；路徑改變但檔案 hash 相同 → 仍是同一份 reference、角色綁定與 primary 不變（不會被當成新角色）。檔案內容變了 → `sha256 mismatch`，fail closed。 |
-| **Character Store** | 隨 workspace 複製；`schema_version`、archived、revision 都在檔案內。舊檔（無 schema_version）以 v1 讀取、不改寫。 |
+| **Character Store** | 隨 workspace 複製（含 `character_library/history/` 不可變 revision）；`schema_version`、archived、revision 都在檔案內。舊檔（無 schema_version）以 v1 讀取、不改寫。搬機後 `doctor` 會重算每個 revision 的 content_sha256（竄改 → ERROR）。 |
 | **GitHub Alone Recovery** | 新 AI／新電腦只讀 GitHub：`README` → `docs/HANDOFF.md` → `docs/PROJECT_STATE.md` → 本文件與 ENVIRONMENT_SETUP。不需要聊天紀錄。 |
 
 ## 4. Schema 版本與遷移規則（foundation）

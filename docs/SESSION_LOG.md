@@ -493,3 +493,9 @@
 - Result: docs/CHARACTER_LIBRARY_PROJECT_BINDING.md；DECISIONS D-066；BACKLOG／ARCHITECTURE §20 註記＋§21；DG-29（角色 ID 命名空間）提出
 - Tests: 無程式變更
 - Next: 等客戶裁示 DG-29＋核可 revision pinning → Batch 2
+
+## 2026-10-24 — Batch 56
+- Batch: Batch 56 — D-067 DG-29 裁示 A＋核可 revision pinning；Character Store 不可變 revision history（Batch 2）
+- Result: character_store.py（history／canonical hash／reference snapshot／legacy baseline／create_new 系統 ID）、character_binding.py（CharacterBinding＋resolve_binding）、doctor history 驗證、export history 清單；DECISIONS／BACKLOG／ARCHITECTURE §21／binding 設計文件／MIGRATION_REINSTALL 同步
+- Tests: 見 commit（tests/test_character_history.py）
+- Next: Batch 3 Project cast schema＋pinned 解析器（不改 pipeline、不遷移）

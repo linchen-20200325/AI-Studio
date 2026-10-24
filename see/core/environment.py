@@ -480,10 +480,18 @@ def check_workspace(settings: Settings) -> list[Check]:
     except ReferenceLibraryError as e:
         out.append(Check("workspace", "reference_metadata", Status.ERROR, False, str(e)))
     try:
-        recs = CharacterStore(ws).list(include_archived=True)
+        cs = CharacterStore(ws)
+        recs = cs.list(include_archived=True)
         if recs:
-            out.append(Check("workspace", "character_store", Status.OK, False,
-                             f"{len(recs)} 個角色（封存 {sum(r.archived for r in recs)}）"))
+            # D-067：逐一驗證不可變 revision history（hash 不符 → ERROR，不自動修復）；沒有 history 的 legacy 角色照實標示
+            hist_problems = [p for r in recs for p in cs.verify_history(r.definition.character_id)]
+            no_hist = [r.definition.character_id for r in recs if not cs.has_history(r.definition.character_id)]
+            st = Status.ERROR if hist_problems else Status.PARTIAL if no_hist else Status.OK
+            out.append(Check("workspace", "character_store", st, False,
+                             f"{len(recs)} 個角色（封存 {sum(r.archived for r in recs)}；尚無 revision history {len(no_hist)}）",
+                             "; ".join(hist_problems[:3]) if hist_problems else
+                             ("legacy 角色下次修改時會自動建立 baseline revision（不補造更早歷史）" if no_hist else ""),
+                             {"history_problems": hist_problems, "no_history": no_hist}))
     except (CharacterStoreError, ValueError) as e:
         out.append(Check("workspace", "character_store", Status.ERROR, False, str(e), "不要用舊程式改寫；先更新程式並備份"))
     return out
@@ -716,7 +724,9 @@ def workspace_inventory(settings: Settings) -> dict[str, Any]:
         if a:
             a["file_path"] = e.rel_path  # 不輸出本機絕對路徑；搬移後以 <category>/<file>＋sha256 重新解析
         refs.append({"rel_path": e.rel_path, "legacy": e.legacy, "problems": list(e.problems), "asset": a})
-    chars = [r.model_dump(mode="json") for r in CharacterStore(ws).list(include_archived=True)]
+    cs = CharacterStore(ws)
+    chars = [{**r.model_dump(mode="json"), "history_revisions": cs.list_revisions(r.definition.character_id)}
+             for r in cs.list(include_archived=True)]
     ver, src = read_workspace_version(ws)
     return {"workspace_schema_version": ver, "workspace_version_source": src, "projects": projects,
             "reference_library": refs, "character_store": chars,

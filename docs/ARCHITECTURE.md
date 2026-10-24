@@ -448,8 +448,8 @@ Character Library（唯一來源）                         Project             
    reference_bindings{asset_id,sha256}、archived）    voice_confirmed_revision}}            scene voice／style override
           │ reference_bindings → Reference Library（<category>/<file>＋sha256）
 ```
-- 現況：production 只用 `Project.characters`（CharacterVoice）；CharacterDefinition／Store 未接 pipeline；Store 無歷史 revision。
+- 現況：production 只用 `Project.characters`（CharacterVoice）；CharacterDefinition／Store 未接 pipeline。**D-067 Batch 2**：Store 已有不可變 revision history（`character_library/history/<id>/r000001.json`，append-only、canonical content_sha256、凍結 reference metadata；legacy 角色首次修改前建立 baseline，不補造更早歷史）；`CharacterBinding`＋`resolve_binding()`（pinned revision，缺失／hash 不符 fail closed，reference 遺失 → generation_ready=False 且不改綁）尚未接 Project。
 - 推薦綁定：**revision pinning**（D）；revision 缺失或 hash 不符 → fail closed；跟隨最新只能顯式設定；永不自動更新。
 - 解析鏈：Character default（pinned revision）→〔Project override：無規格，不實作〕→ Scene override。
-- 待裁示：**DG-29 角色 ID 命名空間**（舊專案內 ID vs Library 同一 ID）。
+- **D-067 客戶裁示**：DG-29 選 A（全域穩定 Library ID，系統產生；舊專案逐專案人工觸發遷移、可 rollback）；核可方案 D（Project 綁 character_id＋character_revision，預設鎖定，不自動更新，跟隨最新只能顯式 opt-in，缺失／hash 不符 fail closed）。
 

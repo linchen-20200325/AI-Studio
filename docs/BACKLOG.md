@@ -273,10 +273,10 @@
 | 項目 | 狀態 |
 |---|---|
 | 設計（盤點、責任邊界、A／B／C／D 比較、revision pinning、遷移規格、UX） | DONE（D-066；只設計） |
-| **DG-29 角色 ID 命名空間**（舊專案內 ID → Library 同一 ID；總管推薦 A：系統產生 ID＋逐案按需遷移） | **NEEDS HUMAN DECISION** |
-| 綁定方案採用 D（revision pinning）＋顯式 fork | NEEDS HUMAN DECISION（核可設計） |
-| Batch 2：CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結 | NEXT（設計核可後；不影響 pipeline） |
-| Batch 3：Project `cast` schema＋解析器（revision 缺失 fail closed） | BACKLOG（Batch 2 後） |
+| **DG-29 角色 ID 命名空間** | **客戶裁示 A（D-067）**：全域穩定 Library ID（系統產生、rename 不變）；舊專案逐專案人工觸發遷移、可 rollback；未遷移維持原行為 |
+| 綁定方案 D（revision pinning）＋顯式 fork | **客戶核可（D-067）**：預設鎖定、不自動更新、跟隨最新只能顯式 opt-in、revision 缺失／hash 不符 fail closed |
+| Batch 2：CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結＋CharacterBinding／resolve_binding 基礎 | **DONE（D-067）** |
+| Batch 3：Project `cast` schema（optional，預設無）＋解析器（revision 缺失 fail closed）；不改 pipeline、不遷移 | **NEXT**（可自主） |
 | Batch 4／5：`character-migrate --dry-run`／`--apply`＋rollback | BACKLOG（DG-29 後） |
 | Batch 6：pipeline 改由 pinned revision 解析 voice／anchor／reference | BACKLOG |
 | Batch 7：角色更新 UX（保持／更新／fork）、角色庫挑選 | BACKLOG（DG-19） |

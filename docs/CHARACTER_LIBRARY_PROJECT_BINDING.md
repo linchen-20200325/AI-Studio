@@ -2,7 +2,7 @@
 
 > 範圍：盤點現有角色資料，界定資料責任，比較綁定方案，定義 revision pinning、可重現性、舊 `Project.characters` 遷移規格與 UX。
 > **本輪不搬資料、不改 schema、不寫 migration、不改 production 行為。**盤點依實際 code path、序列化與 tests（不是只看文件）。
-> 找到一個需要客戶裁示的 Decision Gate，見 §9（**DG-29 角色 ID 命名空間**）。客戶裁示前不得開始實作 Batch 2 以後的工作。
+> **D-067 客戶裁示**：DG-29 選 A（全域穩定 Library ID；舊專案逐專案人工觸發遷移、可 rollback）；核可方案 D（revision pinning）。Batch 2（不可變 revision history）已實作，見 §5 與 DECISIONS D-067。
 
 ## 1. 現況盤點（Current state）
 
@@ -73,7 +73,7 @@ Voice／Style 解析鏈（設計）：`Character default（pinned revision）→
 理由：唯一同時滿足 SSOT（Library 單一來源）、可重現（舊 Project 不悄悄變）、可共用、可搬機的方案；B 的快照好處由「不可變 revision」取得而不產生第二份主資料。
 
 ## 5. Revision strategy（revision pinning）
-- **儲存**：CharacterStore 增加 append-only history：`workspace/character_library/history/<character_id>/r<revision>.json`（每次 create／update／archive／restore 寫入，永不覆寫、永不刪除）；`<character_id>.json` 仍是 head（相容現有讀取）。
+- **（D-067 已實作）儲存**：CharacterStore append-only history：`workspace/character_library/history/<character_id>/r000001.json`（每次 create／update／archive／restore 寫入，永不覆寫、永不刪除）；`<character_id>.json` 仍是 head（相容現有讀取）。
   - 現況限制：目前 store 只保留最新內容，**過去 revision 已不存在**；導入時以當時 head 作為第一份 history（不補造舊 revision）。
 - **revision 內容**：definition 全文＋`reference_bindings: [{asset_id, role, sha256, is_primary}]`（凍結當時的 reference hash）＋`content_sha256`（整份正規化 JSON 的 hash，供完整性檢查）。
 - **Project 綁定**：`cast: {character_id: {revision, role_label, alias, follow: "pinned"|"latest", voice_confirmed_revision, voice_confirmed_at}}`。
@@ -154,6 +154,9 @@ Voice／Style 解析鏈（設計）：`Character default（pinned revision）→
 
 新專案（客戶裁示後實作）：Script／Storyboard 產生角色時直接在 Library 建立（或挑選既有）角色並使用 Library ID；不再產生 `char_01` 類順序 ID。
 
+### 9.1 可重現性 contract（D-067，測試 `tests/test_character_history.py` 證明）
+Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟舊 Project 仍取得 revision 3；revision 3 不存在或 hash 不符 → fail closed，**不 fallback latest**；revision 3 凍結的 reference 遺失 → revision 仍可讀、generation_ready=false、列出 missing asset，不改綁其他圖。
+
 ## 10. Archive／Delete
 - Library：archive 可（可 restore）；**hard delete 禁止**（需高風險 Gate 另裁；history 永不刪）。
 - 已引用 archived 角色的舊 Project：照常讀取與重生（用 pinned revision）。
@@ -179,7 +182,7 @@ Voice／Style 解析鏈（設計）：`Character default（pinned revision）→
 | Batch | 內容 | 前提 |
 |---|---|---|
 | 1 | （本輪）設計文件 | — |
-| 2 | CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結；read_revision()；不影響 pipeline | 本設計核可 |
+| 2 | CharacterStore append-only revision history＋content_sha256＋reference_bindings 凍結；read_revision()；CharacterBinding／resolve_binding 基礎；不影響 pipeline | **DONE（D-067）** |
 | 3 | Project `cast` schema（character_binding_version、pinned revision、role_label、follow）＋解析器（revision 缺失 fail closed）；pipeline 仍以 legacy 為主，新欄位只讀 | Batch 2 |
 | 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | DG-29 |
 | 5 | `--apply`／rollback（備份、ID 改寫、legacy_characters 保留、migration log） | Batch 4＋客戶看過 dry-run |
