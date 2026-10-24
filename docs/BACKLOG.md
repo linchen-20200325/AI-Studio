@@ -189,8 +189,9 @@
 | S2 Regional prompting 原型（零下載；opt-in `--regional`） | DONE：真機 FAIL（單人融合／identity collapse，主觀，D-053）；保留為 opt-in 診斷，不再調參 |
 | 角色 → 畫面區域提升到 Scene／Storyboard 資料（regional 產品化） | 待 S2 真機結果 |
 | S3 分段生成＋合成（零下載） | RESEARCH（S2 不足再評估） |
-| S4 IP-Adapter plus-face SD1.5＋ViT-H image encoder（2,626,557,296 bytes ≈2.63 GB；adapter Apache-2.0、encoder MIT＋LAION 研究建議；4 GB 可行性未證實；研究 D-053） | NEEDS HUMAN DECISION（DG-25） |
-| S4 PoC：每角色 reference image＋IP-Adapter mask、測試參考圖用本專案自生角色圖（非真人照） | 規格 DONE（研究 §6）→ 待 DG-25 |
+| S4 IP-Adapter plus-face SD1.5＋ViT-H image encoder（2,626,557,296 bytes ≈2.63 GB） | DG-25 已核准（D-054）；程式 DONE；NEXT：Windows `adapter-download --check`→`--yes`→真機 |
+| S4 PoC：每角色 reference image＋IP-Adapter mask、測試參考圖用本專案自生角色圖（非真人照） | 實作 DONE（D-054）→ NEXT：Windows 真機＋人工 |
+| Face crop（參考圖目前為 CLIP 中心裁切、無人臉偵測） | RESEARCH（若 Identity 不足再評估，不新增 insightface） |
 | ControlNet（openpose 等）兩人佈局控制 | RESEARCH（需另下載；S4 後評估） |
 | S5 IP-Adapter-FaceID | 不建議（pickle＋InsightFace 非商用＋新依賴） |
 | 重抽 seed | 非解法（客戶裁示） |

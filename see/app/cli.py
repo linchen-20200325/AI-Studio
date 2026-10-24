@@ -379,10 +379,10 @@ def _style_test_stem(style_id: str, case_id: str, seed: int, gen_policy: str, cu
     return stem
 
 
-def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler: str | None):
+def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler: str | None, identity_id: str | None = None):
     """D-039：指定 checkpoint 或 scheduler 時直接建 DiffusersImageProvider（**不 fallback 到 placeholder**，fail-closed）。
     回傳 (provider, error)；兩者都沒指定 → (None, None)，沿用 registry 的 image provider。"""
-    if not checkpoint_id and not scheduler:
+    if not checkpoint_id and not scheduler and not identity_id:
         return None, None
     from see.providers.image.checkpoints import checkpoint_file, get_checkpoint, read_provenance
     from see.providers.image.diffusers_local import DiffusersImageProvider
@@ -397,7 +397,21 @@ def _style_test_image_provider(s: Settings, checkpoint_id: str | None, scheduler
                           f"請先 `python -m see.app.cli checkpoint-download {spec.checkpoint_id} --yes`")
         if Path(path).stat().st_size != spec.bytes:
             return None, f"checkpoint 檔案大小與 provenance 不符：{path}"
-    prov_obj = DiffusersImageProvider(preset="sd15", model_path=base, checkpoint=spec, checkpoint_path=path, scheduler=scheduler)
+    id_spec, id_dir = None, None
+    if identity_id:
+        from see.providers.image import adapters as ad
+
+        id_spec = ad.get_adapter(identity_id)
+        try:
+            ad.assert_usable(id_spec)
+        except (PermissionError, ValueError) as e:
+            return None, str(e)
+        if not ad.is_verified(s.models_dir, id_spec):
+            return None, (f"identity adapter {identity_id} 沒有通過驗證的 provenance（{ad.adapter_dir(s.models_dir, id_spec)}）；"
+                          f"請先 `python -m see.app.cli adapter-download {identity_id} --yes`（或確認 SEE_MODELS_DIR）")
+        id_dir = str(ad.adapter_dir(s.models_dir, id_spec))
+    prov_obj = DiffusersImageProvider(preset="sd15", model_path=base, checkpoint=spec, checkpoint_path=path, scheduler=scheduler,
+                                      identity_adapter=id_spec, identity_dir=id_dir)
     if not prov_obj.is_available():
         return None, prov_obj.unavailable_reason()
     return prov_obj, None
@@ -431,7 +445,14 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     scene = args.scene or case.scene_zh
     seed = case.seed if args.seed is None else args.seed
     _, orch = build(s)
-    image, err = _style_test_image_provider(s, args.checkpoint, args.scheduler)
+    refs, err = (_identity_references(s, case, args.ref or []) if args.identity else ([], None))
+    if err:
+        print(f"錯誤：{err}", file=sys.stderr)
+        return 2
+    if args.identity and args.regional:
+        print("錯誤：--identity 不與 --regional（S2）疊加（D-054）", file=sys.stderr)
+        return 2
+    image, err = _style_test_image_provider(s, args.checkpoint, args.scheduler, args.identity)
     if err:
         print(f"錯誤：{err}", file=sys.stderr)
         return 2
@@ -458,6 +479,8 @@ def cmd_style_test(args: argparse.Namespace) -> int:
             "regions": [apply_style(t, "", style, image.info.name)[0] for t in rr], "layout": "columns"}}
     elif args.long_prompt:
         req_params["prompt_mode"] = {"long_prompt": True}
+    if args.identity:  # D-054（S4，opt-in）：每角色獨立參考圖＋分欄 mask
+        req_params["identity"] = {"adapter_id": args.identity, "references": refs, "layout": "columns"}
     req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(s.width * IMAGE_SCALE), height=int(s.height * IMAGE_SCALE),
                        seed=seed, caption=f"style-test {style.style_id}", params=req_params)
     orch._gate(image.estimate_cost, _StyleTestBudget(), req)
@@ -465,7 +488,8 @@ def cmd_style_test(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / (_style_test_stem(style.style_id, case.case_id, seed, args.gen_policy, bool(args.base_prompt),
                                       args.checkpoint, args.scheduler,
-                                      "regional" if args.regional else ("longprompt" if args.long_prompt else None)) + ".png")
+                                      "regional" if args.regional else ("longprompt" if args.long_prompt else None))
+           + (f"_identity-{args.identity}" if args.identity else "") + ".png")
     t0 = time.perf_counter()
     res = image.generate_image(req, out)
     elapsed = round(time.perf_counter() - t0, 2)
@@ -476,7 +500,7 @@ def cmd_style_test(args: argparse.Namespace) -> int:
                                           "scheduler", "prompt_tokens", "negative_tokens", "token_limit", "prompt_truncated",
                                           "negative_truncated", "weights_variant", "attempts", "scheduler_name",
                                           "clip_skip_a1111", "clip_skip_diffusers", "vram_peak_mb", "final_max_side",
-                                          "prompt_mode", "prompt_encoding", "prompt_truncated_effective",
+                                          "prompt_mode", "prompt_encoding", "prompt_truncated_effective", "identity",
                                           "oom_downgrade", "numeric_downgrade", "initial_plan", "final_plan") if k in res.meta}
     ev = {"style_id": style.style_id, "style_display_name": style.display_name, "case_id": case.case_id,
           "scene": scene, "seed": seed, "width": req.width, "height": req.height,
@@ -487,7 +511,7 @@ def cmd_style_test(args: argparse.Namespace) -> int:
           "checkpoint": res.meta.get("checkpoint"), "commercial_cleared": False if args.checkpoint else None,
           "diagnostic_overrides": {"gen_policy": args.gen_policy, "base_prompt_override": bool(args.base_prompt),
                                    "scene_override": bool(args.scene), "long_prompt": bool(args.long_prompt or args.regional),
-                                   "regional": bool(args.regional)},
+                                   "regional": bool(args.regional), "identity": args.identity},
           "base_prompt": base_prompt, "prompt": prompt, "negative_prompt": negative, "style_params": params,
           "provider": res.provider, "generated_by": generated_by, "final_dtype": res.meta.get("final_dtype"),
           "fallback": res.meta.get("fallback"), "fallback_from": res.meta.get("fallback_from"),
@@ -515,6 +539,96 @@ def cmd_style_test(args: argparse.Namespace) -> int:
         print(f"警告：本張技術無效（{'; '.join(ev['technical_reasons'])}），不能作為風格驗收證據。", file=sys.stderr)
         return 3
     print("注意：technical_valid=true 只代表技術上有效；scene／style 是否通過須人工 style-review。", file=sys.stderr)
+    return 0
+
+
+def _identity_references(s: Settings, case, ref_args: list[str]) -> tuple[list[dict], str | None]:
+    """`--ref char_a=<style-test stem 或本機圖檔>`：每個案例角色都要一張。只讀本機（§16）；evidence 只記 sha256／bytes／來源，
+    不複製圖片、不記內容。style-test stem → 本專案生成圖（非真人照片），一併記來源 evidence 檔名。"""
+    from see.core.hashing import file_sha256
+
+    if not case.characters:
+        return [], f"--identity 需要多角色案例（{case.case_id} 沒有 characters）"
+    given: dict[str, str] = {}
+    for item in ref_args:
+        if "=" not in item:
+            return [], f"--ref 格式應為 <character_id>=<stem 或路徑>：{item}"
+        k, v = item.split("=", 1)
+        given[k.strip()] = v.strip()
+    need = [c.character_id for c in case.characters]
+    if sorted(given) != sorted(need):
+        return [], f"每個角色需要一張獨立參考圖：需要 {need}，收到 {sorted(given)}"
+    refs = []
+    for cid in need:
+        v = given[cid]
+        if "://" in v:
+            return [], f"參考圖只接受本機檔案（PROJECT_RULES §16）：{v}"
+        st = s.workspace / "style_tests" / f"{v}.png"
+        path, source, src_ev = (st, "style_test_output", f"{v}.json") if st.exists() else (Path(v), "local_file", None)
+        if not path.is_file():
+            have = sorted(p.stem for p in (s.workspace / "style_tests").glob("*.png")) if (s.workspace / "style_tests").exists() else []
+            return [], f"找不到參考圖 {v}（可用 style-test 產出：{have}）"
+        refs.append({"character_id": cid, "path": str(path), "sha256": file_sha256(path), "bytes": path.stat().st_size,
+                     "source": source, "source_evidence": src_ev})
+    if len({r["sha256"] for r in refs}) != len(refs):
+        return [], "A／B 參考圖相同：每個角色必須使用不同的參考圖"
+    return refs, None
+
+
+def cmd_adapter_download(args: argparse.Namespace) -> int:
+    """D-054（DG-25）：只下載型錄內、已核准的 Identity adapter（safetensors／json；固定 revision；逐檔 bytes＋sha256）。"""
+    import shutil
+
+    from see.providers.image import adapters as ad
+
+    s = Settings()
+    spec = ad.get_adapter(args.adapter_id)
+    dest = ad.adapter_dir(s.models_dir, spec)
+    plan = {"adapter_id": spec.adapter_id, "repo": spec.repo, "revision": spec.revision,
+            "files": [{"path": f.path, "bytes": f.bytes, "sha256": f.sha256} for f in spec.files],
+            "total_bytes": spec.total_bytes, "gb": round(spec.total_bytes / 1e9, 3), "license_status": spec.license_status,
+            "approved": spec.approved, "commercial_cleared": spec.commercial_cleared, "usage": spec.usage, "dest": str(dest)}
+    print(json.dumps(plan, ensure_ascii=False, indent=2))
+    try:
+        ad.assert_usable(spec)
+    except (PermissionError, ValueError) as e:
+        print(f"拒絕：{e}", file=sys.stderr)
+        return 3
+    if ad.is_verified(s.models_dir, spec):
+        print(f"已存在且通過驗證：{dest}；略過下載。")
+        return 0
+    if args.verify:  # 搬移自他機：只做本機核對，不下載
+        errs = ad.verify_local(s.models_dir, spec)
+        if errs:
+            print(json.dumps({"verified": False, "errors": errs}, ensure_ascii=False, indent=2))
+            return 3
+        ad.write_provenance(s.models_dir, spec, {f.path: {"bytes": f.bytes, "sha256": f.sha256} for f in spec.files})
+        print("本機檔案核對通過（未下載），已寫 provenance。")
+        return 0
+    if args.check:
+        try:
+            remote = ad.fetch_remote_metadata(spec)
+        except Exception as e:  # noqa: BLE001
+            print(f"遠端核對失敗（{type(e).__name__}: {e}）；未下載任何檔案。", file=sys.stderr)
+            return 1
+        errs = ad.validate_remote(spec, remote)
+        base = dest if dest.exists() else (s.models_dir if s.models_dir.exists() else Path("."))
+        free = shutil.disk_usage(base).free
+        print(json.dumps({"match": not errs, "errors": errs, "disk_free_gb": round(free / 1e9, 1),
+                          "enough_disk": free > spec.total_bytes * 1.1}, ensure_ascii=False, indent=2))
+        print("核對通過，未下載任何檔案。" if not errs else "核對失敗，不可下載。", file=sys.stderr)
+        return 0 if not errs else 3
+    if not args.yes:
+        print("未加 --yes：只顯示計畫，未下載任何檔案。", file=sys.stderr)
+        return 0
+    try:
+        prov = ad.download_adapter(s.models_dir, spec)
+    except Exception as e:  # noqa: BLE001
+        print(f"下載失敗或驗證不符（{type(e).__name__}: {e}）", file=sys.stderr)
+        return 3
+    print(json.dumps({"adapter_id": prov["adapter_id"], "verified": prov["verified"], "local_files": prov["local_files"],
+                      "commercial_cleared": prov["commercial_cleared"], "usage": prov["usage"]}, ensure_ascii=False, indent=2))
+    print("下載完成且 bytes／sha256 全部相符；僅限內部 S4 PoC，commercial_cleared=false。", file=sys.stderr)
     return 0
 
 
@@ -747,7 +861,14 @@ def main(argv: list[str] | None = None) -> int:
                      help="（診斷，D-051 S1）超過 77 token 時分段編碼，不截斷；預設關閉")
     stt.add_argument("--regional", action="store_true",
                      help="（診斷，D-051 S2）多角色案例：每角色一欄 regional cross-attention（隱含 --long-prompt）；預設關閉")
+    stt.add_argument("--identity", default=None, help="（診斷，D-054 S4）Identity adapter id，例 ip_adapter_plus_face_sd15；預設關閉")
+    stt.add_argument("--ref", action="append",
+                     help="（搭配 --identity）<character_id>=<style-test stem 或本機圖檔>，每個角色一張、不可相同")
     stt.set_defaults(fn=cmd_style_test)
+    add = sub.add_parser("adapter-download", help="下載已核准的 Identity adapter（IP-Adapter；safetensors／json；逐檔 bytes＋sha256）")
+    add.add_argument("adapter_id"); add.add_argument("--check", action="store_true", help="只核對遠端，不下載")
+    add.add_argument("--verify", action="store_true", help="只核對本機既有檔案（換電腦搬移），不下載")
+    add.add_argument("--yes", action="store_true", help="確認下載"); add.set_defaults(fn=cmd_adapter_download)
     ckd = sub.add_parser("checkpoint-download", help="下載已核准的 SD 1.5 checkpoint（單檔 safetensors；核對大小＋sha256；寫 provenance）")
     ckd.add_argument("checkpoint_id"); ckd.add_argument("--check", action="store_true", help="只核對遠端檔名／大小／sha256，不下載")
     ckd.add_argument("--yes", action="store_true", help="確認下載"); ckd.set_defaults(fn=cmd_checkpoint_download)

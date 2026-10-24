@@ -67,3 +67,7 @@ S1 修截斷但綁定／臉部多樣性未解；S2 單人融合（D-052／D-053�
 3. 受控比較：同 `two_characters_ab`、seed 1234、CyberRealistic；style-compare 新實驗變數 `identity_mode`（none→ip_adapter），其餘全同。
 4. 人工判定（single-user subjective）：兩人存在、A／B 臉部可區分、屬性不互換、臉部自然度與局部幾何。
 5. 單元測試：型錄守門（已完成）、mask 產生、參考圖 sha 快取鍵、未核准拒絕。
+
+### 6.5 DG-25 核准後實作狀態（D-054）
+- 已實作 `adapter-download`、`style-test --identity/--ref`；容器 `--check`：HF 固定 revision metadata 與型錄完全一致。容器無法實際下載（LFS CDN 403），實檔驗證在 Windows。
+- 已知限制：參考圖為 CLIP 中心裁切（無人臉偵測；plus-face 原設計為裁切臉部）→ 參考圖宜用臉部佔比高的近景（例 east_asian_*_portrait 輸出）；identity 期間 attn1 改用 SDPA（非 slicing），VRAM 峰值需真機確認。

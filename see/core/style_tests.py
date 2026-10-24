@@ -179,7 +179,7 @@ def verdict_to_bool(v: str | None) -> bool | None:
 # 不能回答「兩張圖的比較是否只差一個變數」。改由兩份 evidence 逐項比對（相容舊 JSON）。
 COMPARISON_FIELDS = ("case_id", "seed", "style_id", "base_prompt", "prompt", "negative_prompt", "request_size",
                      "gen_policy", "gen_size", "crop_box", "steps", "guidance", "scheduler", "final_dtype",
-                     "model", "clip_skip_a1111", "prompt_mode")
+                     "model", "clip_skip_a1111", "prompt_mode", "identity_mode")
 # 模型預設（D-042：模型專屬參數歸模型設定）——換 checkpoint 時隨模型改變屬「模型預設差異」，不是意外變數
 MODEL_PRESET_FIELDS = ("clip_skip_a1111",)
 BASE_MODEL = "sd15-base"
@@ -205,11 +205,13 @@ def comparison_conditions(ev: dict[str, Any]) -> dict[str, Any]:
             "scheduler": g.get("scheduler_name") or g.get("scheduler"), "final_dtype": ev.get("final_dtype"),
             "model": model, "clip_skip_a1111": clip,
             # D-051：舊 JSON 沒有此欄位＝標準編碼（單段 77 token）
-            "prompt_mode": g.get("prompt_mode") or "standard"}
+            "prompt_mode": g.get("prompt_mode") or "standard",
+            # D-054：舊 JSON 沒有 identity＝none（只有文字錨點）
+            "identity_mode": (g.get("identity") or {}).get("adapter_id") or "none"}
 
 
 # 受控實驗可刻意改變的變數（D-052）：每次比較只能有其中一個不同
-EXPERIMENT_FIELDS = ("model", "prompt_mode")
+EXPERIMENT_FIELDS = ("model", "prompt_mode", "identity_mode")
 
 
 def compare_conditions(a: dict[str, Any], b: dict[str, Any], intended: tuple[str, ...] | None = None) -> dict[str, Any]:

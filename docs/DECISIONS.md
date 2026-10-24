@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-054 | **DG-25 核准** IP-Adapter plus-face SD1.5＋ViT-H（≈2.63 GB，內部 PoC，commercial_cleared=false）；adapter-download、style-test --identity（每角色參考圖＋分欄 mask、encoder 在 CPU）；修 slicing×load_ip_adapter | 有效（待真機） | 可逆 |
 | D-053 | S2 真機 FAIL（單人融合，主觀）；prompt-only 路線結案、不 reroll；S4 研究＋adapter 型錄骨架（未核准）；DG-25 待裁示 | 有效 | 可逆 |
 | D-052 | style-compare 實驗變數自動判定（修 S1 誤判 not_comparable）；S1 真機 scene FAIL（主觀）；PROJECT_RULES 需求當輪入庫 | 有效 | 可逆 |
 | D-051 | DG-24 裁示 A：S1 `--long-prompt`＋S2 `--regional`（opt-in；零下載；tiny diffusers 整合測試）；待真機受控比較 | 有效（待真機） | 可逆 |
@@ -406,3 +407,11 @@
 - 正式結論：S1 解決 prompt truncation，但未解決角色綁定／臉部多樣性／局部幾何品質；S2 在 `two_characters_ab` 失敗（單人融合）。**不採用 reroll seed；不再以純 prompt 技巧無限調參**；下一路線升級為 **S4 Reference Image／Identity conditioning**（客戶指示）。
 - Project AI 推測（非裁示）：S2 為 0.2 base＋0.8 欄位 mask 的 cross-attention 分區；base 只寫「two people」不足以在 SD 1.5 上撐住兩人佈局，左右兩欄又各自描述「upper body, front view」單人構圖 → 模型傾向生成一位置中人物並混合兩欄條件。未經實驗證實，不再為此調參（依上條）。
 - S4 研究：`DG24_MULTI_CHARACTER_IDENTITY_RESEARCH.md` §6；安全骨架 `see/providers/image/adapters.py`（候選型錄＋守門，`approved=False`，無下載／載入）。下一 Decision Gate＝DG-25（是否核准下載 ≈2.63 GB）。
+
+## D-054 2026-10-24 DG-25 裁示：核准 IP-Adapter plus-face SD1.5＋ViT-H image encoder（內部 S4 PoC）；`--identity` 實作
+- **客戶裁示 DG-25＝核准**：下載並驗證 IP-Adapter plus-face SD1.5＋OpenCLIP ViT-H-14 image encoder（≈2.63 GB）；僅限內部 S4 PoC／品質驗證；`commercial_cleared=false`；不改 production default；不新增 torchvision／insightface／peft 等；每角色獨立參考圖、A／B 分區條件；不與 S2 疊加；位置控制不足再另提 ControlNet Decision Gate；4 GB 不可行時停下回報、不改付費。
+- 實作（opt-in）：`adapter-download <id> [--check|--verify|--yes]`（固定 revision `018e4027…`、逐檔 bytes＋sha256、safetensors／json only、不符即刪、provenance；`--verify` 供換電腦搬移後只驗不下載）；`style-test --identity ip_adapter_plus_face_sd15 --ref char_a=<stem|本機圖> --ref char_b=…`（每角色一張、不可相同、只收本機；style-test stem 記為 `style_test_output`＋來源 evidence）。
+- Provider：image encoder **只在 CPU fp32** 算參考圖 embeddings（不佔 VRAM、依 sha 快取）；`load_ip_adapter(image_encoder_folder=None)`＋`ip_adapter_image_embeds`＋`IPAdapterMaskProcessor` 左右分欄 mask（每角色一張）；scale 0.6；生成後 `unload_ip_adapter` 並還原原 attention processors。
+- **tiny 整合測試發現並修正**：diffusers 0.41 `load_ip_adapter` 在 attention slicing 開啟時（GTX 1650 低 VRAM 計畫）會 `TypeError: SlicedAttnProcessor missing slice_size` → identity 期間先換 `AttnProcessor2_0`（SDPA），結束還原。
+- 驗證（容器）：HF API 固定 revision metadata 與型錄一致（`adapter-download --check`：match=true）；**權重實檔未在容器下載**（容器 proxy 對 HF LFS CDN 回 403）→ 實際 bytes／sha256 驗證在 Windows `--yes` 時由程式強制執行。暫時 venv（torch 2.14.1 CPU、diffusers 0.41.0、transformers 5.20.2，非專案依賴）以 tiny 隨機 IP-Adapter Plus 權重跑整合：identity 影響輸出、A／B 參考圖對調輸出不同（證明分區而非全圖平均）、卸載後一般生成逐像素還原、embeds 快取命中。
+- 未做：真機出圖（待客戶）、ControlNet、production default 變更。

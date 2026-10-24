@@ -362,6 +362,21 @@ def encode_text_chunks(pipe: Any, texts: list[str], clip_skip_a1111: int) -> tup
                  "method": "A1111-style 75-token chunks, each BOS+chunk+EOS, concatenated"}
 
 
+IDENTITY_SCALE = 0.6  # IP-Adapter 臉部條件權重（文字 prompt 仍有效；常用 0.5–0.7）
+
+
+def identity_column_masks(n: int, width: int, height: int) -> list[Any]:
+    """S4：每個角色一張 IP-Adapter mask（左→右等分欄，與 two_characters_ab 的 on the left／right 對應）。PIL L 圖。"""
+    from PIL import Image
+
+    masks = []
+    for a, b in column_bounds(n, width):
+        m = Image.new("L", (width, height), 0)
+        m.paste(255, (a, 0, b, height))
+        masks.append(m)
+    return masks
+
+
 class RegionalAttnProcessor:
     """S2：cross-attention 分區（Regional Prompter／Latent Couple 類，零新模型）。
     encoder_hidden_states 是 [base, region_1 … region_n] 等長串接；每段各自做 attention，輸出依空間 mask 合成：
@@ -433,7 +448,8 @@ def _prompt_token_info(pipe: Any, prompt: str, negative: str) -> dict[str, Any]:
 class DiffusersImageProvider(ImageProvider):
     def __init__(self, preset: str = "sd15", model_path: str | None = None, device: str = "auto",
                  steps: int | None = None, guidance: float | None = None, checkpoint: Any = None,
-                 checkpoint_path: str | None = None, scheduler: str | None = None) -> None:
+                 checkpoint_path: str | None = None, scheduler: str | None = None,
+                 identity_adapter: Any = None, identity_dir: str | None = None) -> None:
         if preset not in MODEL_PRESETS:
             raise ValueError(f"unknown preset '{preset}'; known: {sorted(MODEL_PRESETS)}")
         cfg = MODEL_PRESETS[preset]
@@ -452,6 +468,11 @@ class DiffusersImageProvider(ImageProvider):
         # D-039：單檔 checkpoint（SD 1.5 架構）；model_path 仍是 base SD 1.5 diffusers 資料夾，只借它的 config／tokenizer
         self.checkpoint = checkpoint
         self.checkpoint_path = checkpoint_path
+        # D-054（S4，opt-in）：Identity adapter（IP-Adapter）；None＝不載入，行為與既有完全相同
+        self.identity_adapter = identity_adapter
+        self.identity_dir = identity_dir
+        self._id_encoder: Any = None
+        self._id_cache: dict[tuple[str, ...], Any] = {}
         if checkpoint is not None and preset != "sd15":
             raise ValueError("single-file checkpoints are SD 1.5 architecture; use preset 'sd15'")
         self.scheduler_name = scheduler or (checkpoint.scheduler if checkpoint is not None else "default")
@@ -632,10 +653,22 @@ class DiffusersImageProvider(ImageProvider):
                 call_kw = {"prompt_embeds": pe, "negative_prompt_embeds": npe}
             else:
                 call_kw = {"prompt": request.prompt, "negative_prompt": request.negative_prompt or None}
+            identity = request.params.get("identity")
+            id_loaded = False
+            if identity:
+                if regional:
+                    raise ProviderError("identity conditioning is not combined with S2 regional prompting (D-054)")
+                restore = dict(pipe.unet.attn_processors)
+                id_kw, id_info = self._identity_kwargs(pipe, identity, gw, gh, torch)
+                id_loaded = True
+                call_kw.update(id_kw)
+                self._gen_info["identity"] = id_info
             try:
                 latents = pipe(width=gw, height=gh, num_inference_steps=self.steps, guidance_scale=self.guidance,
                                generator=gen, output_type="latent", **call_kw).images
             finally:
+                if id_loaded:  # IP-Adapter processors 必須卸載，否則後續一般生成會把文字 token 誤當 image token
+                    pipe.unload_ip_adapter()
                 if restore is not None:  # 快取的 pipe 必須還原，避免影響後續一般生成
                     pipe.unet.set_attn_processor(restore)
             if not torch.isfinite(latents).all():
@@ -646,6 +679,65 @@ class DiffusersImageProvider(ImageProvider):
             image = vae.decode(z, return_dict=False)[0]
             self._gen_info["vram_peak_mb"] = _cuda_peak_mb(torch)
             return pipe.image_processor.postprocess(image, output_type="np")[0]
+
+    def _identity_embeds(self, refs: list[dict[str, Any]], torch: Any) -> Any:
+        """參考圖 → IP-Adapter plus 用的 image embeddings（hidden_states[-2]，同 diffusers encode_image）。
+        image encoder 只在 **CPU fp32** 跑（不佔 4 GB VRAM）；結果依 (encoder sha, 各參考圖 sha) 快取。"""
+        key = (self.identity_adapter.encoder_file.sha256 or "",) + tuple(r["sha256"] for r in refs)
+        if key in self._id_cache:
+            return self._id_cache[key], True
+        from PIL import Image
+        from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection  # type: ignore
+
+        if self._id_encoder is None:
+            enc_dir = Path(self.identity_dir) / Path(self.identity_adapter.encoder_file.path).parent
+            self._id_encoder = CLIPVisionModelWithProjection.from_pretrained(str(enc_dir), local_files_only=True,
+                                                                             torch_dtype=torch.float32).eval()
+        size = int(self._id_encoder.config.image_size)
+        fx = CLIPImageProcessor(size=size, crop_size=size)  # transformers 5.x 無 torchvision → 自動 PIL 版
+        imgs = [Image.open(r["path"]).convert("RGB") for r in refs]
+        px = fx(images=imgs, return_tensors="pt").pixel_values.to(dtype=torch.float32)
+        with torch.inference_mode():
+            pos = self._id_encoder(px, output_hidden_states=True).hidden_states[-2]
+            neg = self._id_encoder(torch.zeros_like(px), output_hidden_states=True).hidden_states[-2]
+        emb = torch.cat([neg[None], pos[None]], dim=0)  # (2, n_refs, tokens, dim)：CFG 的 negative 在前
+        self._id_cache[key] = emb
+        return emb, False
+
+    def _identity_kwargs(self, pipe: Any, identity: dict[str, Any], gw: int, gh: int, torch: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        """S4（D-054）：載入 IP-Adapter（不註冊 image encoder → 不上 GPU）、每角色一張參考圖＋一張分欄 mask。"""
+        spec = self.identity_adapter
+        if spec is None or self.identity_dir is None or identity.get("adapter_id") != spec.adapter_id:
+            raise ProviderError(f"identity adapter not configured for {identity.get('adapter_id')}")
+        refs = list(identity.get("references") or [])
+        if len(refs) < 1:
+            raise ProviderError("identity conditioning needs at least one reference image")
+        from diffusers.image_processor import IPAdapterMaskProcessor  # type: ignore
+
+        emb, cache_hit = self._identity_embeds(refs, torch)
+        # diffusers 0.41 `load_ip_adapter` 以「無參數」重建現有 attn1 processor 類別 → 開了 attention slicing
+        # （SlicedAttnProcessor 需 slice_size）會 TypeError（tiny 整合測試實測，D-054）。先換成 SDPA processor
+        # （AttnProcessor2_0；CUDA 上走 memory-efficient kernel，不展開完整注意力矩陣），呼叫端 finally 會還原原 processor。
+        from diffusers.models.attention_processor import AttnProcessor2_0  # type: ignore
+
+        pipe.unet.set_attn_processor(AttnProcessor2_0())
+        w = Path(spec.weight_file.path)
+        pipe.load_ip_adapter(str(self.identity_dir), subfolder=str(w.parent), weight_name=w.name,
+                             image_encoder_folder=None, local_files_only=True)
+        scale = float(identity.get("scale", IDENTITY_SCALE))
+        pipe.set_ip_adapter_scale([[scale] * len(refs)])
+        masks = IPAdapterMaskProcessor().preprocess(identity_column_masks(len(refs), gw, gh), height=gh, width=gw)
+        masks = masks.reshape(1, masks.shape[0], masks.shape[2], masks.shape[3])
+        dtype = next(pipe.unet.parameters()).dtype
+        kw = {"ip_adapter_image_embeds": [emb.to(dtype=dtype)], "cross_attention_kwargs": {"ip_adapter_masks": [masks]}}
+        info = {"adapter_id": spec.adapter_id, "adapter_sha256": spec.weight_file.sha256,
+                "image_encoder_sha256": spec.encoder_file.sha256, "image_encoder_device": "cpu", "scale": scale,
+                "mask": {"layout": "columns", "order": [r.get("character_id") for r in refs]},
+                "references": [{k: r.get(k) for k in ("character_id", "sha256", "bytes", "source", "source_evidence")}
+                               for r in refs],
+                "face_crop": "CLIP center crop (no face detector)", "embeds_cache_hit": cache_hit,
+                "combined_with_regional": False, "attn1_processor_during_identity": "AttnProcessor2_0 (SDPA)"}
+        return kw, info
 
     def generate_image(self, request: ImageRequest, out_path: Path) -> ImageResult:
         if not self.is_available():

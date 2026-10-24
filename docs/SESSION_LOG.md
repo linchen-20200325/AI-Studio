@@ -419,3 +419,11 @@
 - Result: D-053；S2 FAIL（單人融合，主觀；technical 未回報不補造）；prompt-only 結案；S4 研究 §6（plus-face SD1.5＋ViT-H，2.63 GB，無新依賴，diffusers 0.41 原始碼核對 mask／embeds）；adapters.py 型錄骨架（未核准）；evidence/dg24 補 laion encoder 與 IP-Adapter LICENSE
 - Tests: 178 passed、5 skipped
 - Next: DG-25
+
+---
+- Date: 2026-10-24
+- Start SHA: e66cf0a
+- Batch: Batch 44 — DG-25 核准：IP-Adapter 下載守門＋`--identity` S4 路線
+- Result: D-054；adapter-download（check／verify／yes）；style-test --identity/--ref；encoder CPU embeddings＋分欄 IP-Adapter mask；修 slicing×load_ip_adapter TypeError；容器 --check match；容器無法下載 LFS（403）→ 實檔驗證在 Windows
+- Tests: 184 passed、6 skipped（CI）；venv 整合 38 passed
+- Next: Windows git pull → adapter-download --check

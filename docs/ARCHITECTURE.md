@@ -258,3 +258,8 @@ prompt-only 文字錨點在 SD 1.5 同框時**無法綁定屬性**（眼鏡、�
 - `ImageRequest.params["prompt_mode"]`：`{"long_prompt": true}` 或 `{"long_prompt": true, "regional": {"base", "regions", "layout": "columns"}}`；不帶＝既有行為與 fingerprint 完全不變。
 - 實作在 provider 層（`see/providers/image/diffusers_local.py`：`chunk_token_ids`、`encode_text_chunks`、`RegionalAttnProcessor`、`regional_processors`）；偏好層（CharacterTraits）不變 → 未來 regional 能力可由其他 provider 以不同方式實作（Provider Agnostic）。
 - regional prompt 由案例資料組裝（`regional_prompts(case)`：base 不含任何角色屬性）；產品化前需把「角色 → 畫面區域」從測試案例提升到 Scene／Storyboard 資料（BACKLOG）。
+
+### 14.5 S4 Identity conditioning（D-054；opt-in）
+- `ImageRequest.params["identity"]＝{adapter_id, references:[{character_id, path, sha256, bytes, source}], layout:"columns"}`；不帶＝既有行為。
+- Provider（`diffusers_local.py`）：image encoder 在 CPU 產生 embeddings（快取鍵＝encoder sha＋參考圖 sha）→ `load_ip_adapter(image_encoder_folder=None)` → 每角色一張分欄 mask（IP-Adapter 內建 masking）→ 生成 → `unload_ip_adapter`＋還原 processors。不與 S2 regional 疊加。
+- Adapter 型錄／下載／provenance：`see/providers/image/adapters.py`（模型層；偏好層只持有 reference_images）。
