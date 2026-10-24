@@ -345,9 +345,13 @@ def cmd_character_migrate(args: argparse.Namespace) -> int:
 
     from see.core.character_migration import analyze, human_summary, workspace_digest
 
-    if not args.dry_run:
-        print("拒絕執行：實際 migration 尚未核准（Batch 5 需客戶確認 dry-run 報告後另行裁示）。請加 --dry-run 只做分析。", file=sys.stderr)
+    modes = [m for m in ("dry_run", "apply", "rollback", "list_migrations") if getattr(args, m)]
+    if len(modes) != 1:
+        print("拒絕執行：請只選一種模式：--dry-run（只分析）｜--apply --decisions <檔> --confirm <token>｜--rollback <migration_id>｜"
+              "--list-migrations", file=sys.stderr)
         return 2
+    if not args.dry_run:
+        return _character_migrate_write_modes(args)
     s = Settings()
     ws = s.workspace
     out = Path(args.out).resolve() if args.out else None
@@ -399,6 +403,38 @@ def cmd_character_migrate(args: argparse.Namespace) -> int:
         return 3
     if args.decisions and result["report"]["decisions"]["status"] != "applied":
         return 4  # 決定檔 stale／驗證失敗：報告已輸出，但未採用任何決定（fail closed）
+    return 0
+
+
+def _character_migrate_write_modes(args: argparse.Namespace) -> int:
+    """D-071 Batch 5：--apply／--rollback／--list-migrations。只對使用者指定的單一專案；全有或全無；失敗自動恢復。"""
+    from see.core import character_migration_apply as cma
+
+    ws = Settings().workspace
+    if args.list_migrations:
+        recs = cma.list_records(ws, args.project_id)
+        if not recs:
+            print(f"{args.project_id}：沒有任何 migration 紀錄")
+        for r in recs:
+            print(f"{r.get('migration_id')}  status={r.get('status')}  rewrites={r.get('rewrite_count', r.get('planned_rewrite_count'))}  "
+                  f"started={r.get('started_at')}")
+        return 0
+    try:
+        if args.rollback:
+            rec = cma.rollback(args.project_id, ws, args.rollback)
+            print(f"rollback 完成：{rec['migration_id']}；project.json 已恢復為 migration 前內容；本次新建角色：{rec['migration_created_characters']}")
+            return 0
+        if not args.decisions:
+            print("拒絕：--apply 必須搭配 --decisions <決定檔>（不得繞過 Batch 4.1 人工決定）", file=sys.stderr)
+            return 2
+        rec = cma.apply(args.project_id, ws, Path(args.decisions), args.confirm)
+    except cma.MigrationError as e:
+        print(f"ERROR {e.code}：{e.detail}", file=sys.stderr)
+        print("未完成 migration；專案維持原狀（若已寫入則已自動恢復）。", file=sys.stderr)
+        return 5
+    print(json.dumps({k: rec[k] for k in ("migration_id", "status", "rewrite_count", "legacy_to_library", "backup_path", "notice")},
+                     ensure_ascii=False, indent=2))
+    print(f"如需還原：python -m see.app.cli character-migrate {args.project_id} --rollback {rec['migration_id']}")
     return 0
 
 
@@ -1413,6 +1449,10 @@ def main(argv: list[str] | None = None) -> int:
     cmg.add_argument("--out", default=None, help="報告檔（必須在 workspace 外、不可已存在）；預設 stdout")
     cmg.add_argument("--decisions", default=None, help="（Batch 4.1）人工決定檔 JSON：套用後重算 migration_ready（仍只分析、不寫任何資料）")
     cmg.add_argument("--decisions-template", action="store_true", help="（Batch 4.1）輸出決定檔範本（action 需人工填寫）")
+    cmg.add_argument("--apply", action="store_true", help="（Batch 5）依已審查的決定檔實際遷移（需 --decisions 與 --confirm）")
+    cmg.add_argument("--confirm", default=None, help="（Batch 5）--dry-run --decisions 報告中的 apply_confirmation_token（12 碼）")
+    cmg.add_argument("--rollback", default=None, metavar="MIGRATION_ID", help="（Batch 5）還原指定 migration")
+    cmg.add_argument("--list-migrations", action="store_true", help="（Batch 5）列出本專案的 migration 紀錄")
     cmg.set_defaults(fn=cmd_character_migrate)
     sm = sub.add_parser("smoke", help="快速冒煙測試（不需 GPU；暫存 workspace；不碰使用者資料）"); sm.set_defaults(fn=cmd_smoke)
     hw = sub.add_parser("hardware", help="偵測 GPU/VRAM/RAM/disk/torch 並給出 AI Image Provider 建議")

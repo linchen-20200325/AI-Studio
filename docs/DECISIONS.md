@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-071 | **客戶裁示進入 Batch 5**；本輪只完成 migration engine：`character-migrate <pid> --apply --decisions <file> --confirm <token>`（preflight 16 項、atomic backup、staged transaction、post-verify、自動 rollback、`--rollback <migration_id>`、`--list-migrations`）。Batch 5 engine implemented ≠ any real project migrated | 有效 | 可逆（backup＋rollback；新角色 archive 不 hard delete） |
 | D-070 | Batch 4.1：Migration Human Decisions Layer（versioned 決定檔 `character_migration_decisions` v1；5 種 action；stale／任何錯誤 fail closed；重算 migration_ready＋proposed rewrite plan；create_new 只用 placeholder；zero-write）。Batch 4.1 remains analysis-only. No project has been migrated. | 有效 | 可逆（唯讀） |
 | D-069 | Batch 4：`character-migrate <project_id> --dry-run`（只分析舊 Project.characters → Library／cast；versioned JSON＋中文摘要；固定分類與 conflict code；reference sha256 分析；Scene／對白／旁白引用影響；report_input_hash；zero-write proof）。Batch 4 only analyzes. No project has been migrated | 有效 | 可逆（唯讀） |
 | D-068 | Batch 3：`Project.cast`（list[CharacterBinding]，可選、預設空）＋`cast_schema_version`＋`resolve_project_cast()`（只讀 pinned revision、不 fallback latest、hash 不符 fail closed、reference 遺失 not ready）；doctor／env-export／唯讀 CLI `cast show`／唯讀 API。Project.cast exists but is not yet production source of truth | 有效 | 可逆 |
@@ -608,3 +609,22 @@
 - 以上解決／適用規則屬 Project AI 依既有裁示（D-067／D-069）所做的實作規則，非客戶新裁示；客戶可提 Decision Re-open。
 - 未做（禁止事項維持）：`--apply`、任何專案遷移、寫 Project.cast／characters／Scene 引用、建立 CharacterDefinition、產生正式 Library ID、改 Reference Library、Batch 5、pipeline 切換、Identity／LoRA、新模型／dependency／付費 API、production default。
 - 測試：`tests/test_migration_decisions.py`（sd15test 形狀合成專案：無決定 blocking、全 create_new → ready、stale、14 種驗證錯誤整份拒絕、bind_existing pinned／缺 revision／封存、欄位層級衝突不被 create_new 解決、確定性、byte-for-byte zero-write、CLI）。全套 328 passed、10 skipped。
+
+## D-071 2026-10-24 Batch 5：Character migration apply engine（未對任何真實專案執行）
+- 客戶裁示：進入 Batch 5；本輪只做 engine 程式、測試、文件、安全網；**不得**在雲端或替客戶對 `sd15test` 執行 `--apply`。
+- 前提（客戶 Windows 回報，報告不在 GitHub）：sd15test 決定檔 char_01～char_04 全 `create_new`；decisions status=applied；migration_ready=true；blocking 0；unresolved 0；placeholder 4；affected scenes 5；planned rewrites 26；zero-write PASS；尚未 migration。
+- **Batch 5 engine implemented ≠ any real project migrated.** Project.cast is not yet production source of truth（Batch 6 才切換）。
+- CLI（模式互斥）：`--dry-run`｜`--apply --decisions <file> --confirm <token>`｜`--rollback <migration_id>`｜`--list-migrations`。token＝`apply_confirmation_token`（plan_sha256 前 12 碼；`--dry-run --decisions` 報告在 ready 時顯示）。沒有 `--force`。錯誤 → exit 5，專案維持原狀。
+- 程式：`see/core/character_migration_apply.py`（`preflight`、`create_backup`／`verify_backup`、`stage_project`、`apply`、`post_verify`、`rollback`）；`migration_decisions.plan_sha256()`；`analyze()` 未改。
+- Preflight（任一不符 → 不寫任何 byte）：workspace／project schema 相容；Project 無 cast；沒有 committed／committing migration record；Character Library 全部 history hash 通過、head schema 支援；Reference Library 已登記 asset 無 problems；重算 dry-run＋決定檔：status=applied、errors=[]、兩個 source hash 一致、migration_ready、blocking 0、unresolved 0；plan hash 重算一致；confirm token 正確。
+- Batch 5 v1 **只支援**：create_new 與 bind_existing（Scene／對白／SceneCharacter／視線／旁白 narrator_id／劇本 characters／beats 引用）。**fail closed（APPLY_UNSUPPORTED_IN_BATCH5）**：`narrator_setting`（Project 旁白設定 schema 未定義）、任何需要改寫 `Project.characters` 鍵的條目（legacy 角色設定在 Batch 6 前仍被 production 使用，移動會造成 voice／外觀回歸；處置需規格）。sd15test 不受影響（Project.characters=0）。
+- Backup：`workspace/backups/character_migrations/<pid>/<migration_id>/`（先 `.partial` 再 rename；不覆寫）：原始 project.json bytes、所有 Scene manifest（fingerprint）、決定檔 bytes、dry-run＋決定報告、migration plan、backup_manifest（各檔 sha256、原始 hash、report／decisions／plan hash、schema 版本、時間）。不含圖片。不進 Git。失敗 → 不開始。
+- 正式 ID：create_new 才由 `new_character_id()`（`char_`＋12 hex，secrets）產生；與 Library／同批比對，碰撞 → 重抽，10 次失敗 → ID_ALLOCATION_FAILED。CharacterDefinition 只填 display_name（決定檔或劇本名稱），其餘保持預設／unspecified，不猜；劇本 description／visual_prompt 原樣留在 Script。revision 1 帶 provenance（migration_id、project_id、legacy_id、source）。
+- Transaction：preflight → backup → staging（新角色寫入 `migrations/<pid>/<mid>.staging/`、project 改寫只依 proposed_rewrite_plan，每個位置寫入前確認仍是 legacy_id，實際數＝計畫數）→ 驗 staged（Project 合法、檔案未變）→ journal（record status=committing）→ commit（角色檔 rename 進 Library，project.json binary atomic replace）→ post-verify → record committed。lock 檔防並行。
+- Post-verify：project bytes＝staged、可重新 load、cast ID 唯一且數量正確、新角色 history hash、`resolve_project_cast` 無 error 且 content_sha256 一致、每個計畫位置已改寫、計畫外欄位（masked snapshot）不變、Scene manifest hash 不變。失敗 → 自動 rollback。
+- 失敗恢復：project.json 以原始 bytes 還原；已進 Library 的本次新角色 **archive（不 hard delete，D-066 §8.1）**；staging 移除；record status=failed（不阻擋重試）。
+- Rollback：只限同一 record（committed／committing）；驗 backup hash 與歸屬；目前 project.json 必須是 migration 後 bytes（之後被修改 → PROJECT_MODIFIED_AFTER_MIGRATION 拒絕）；還原原始 bytes；新角色若已被其他專案 cast 使用 → 保持 active，否則 archive；第二次 → ALREADY_ROLLED_BACK。
+- 已知行為：rollback／失敗後封存的同名角色仍在 Library → 重新 dry-run 會出現 NAME_CONFLICT（同名不代表同一角色），重試時決定檔需明確給 display_name。
+- Idempotency：已 committed → ALREADY_MIGRATED／PROJECT_ALREADY_HAS_CAST，不建第二組 ID；同一 intent＝同一 plan_sha256。
+- Production boundary：pipeline（TTS／image prompt／voice 確認／fingerprint）仍只讀 `Project.characters`；測試證明 script-only 專案遷移後 fingerprint 不變、image request 不讀 cast。不做 Batch 6。
+- 測試：`tests/test_character_migration_apply.py`（happy path 4 create_new、idempotent、confirm token、stale project／library、not ready／rejected、revision 竄改、reference hash mismatch、已有 cast、location changed／missing、count mismatch、backup failure、ID collision、staged write failure、post-verify failure、rollback＋重複 rollback、rollback 拒絕已修改專案、共用角色保留、bind_existing pinned、CLI、fingerprint 不變、CRLF bytes 還原）。全套 351 passed、10 skipped。

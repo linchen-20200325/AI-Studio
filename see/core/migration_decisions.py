@@ -236,6 +236,13 @@ def _check_library(store: Any, lid: str, cid: str, rev: int, out: dict[str, Any]
     return []
 
 
+def plan_sha256(project_id: str, report_input_hash: str, base_report_sha256: str, decisions_file_sha256: str | None,
+                accepted: list[dict[str, Any]], plan: list[dict[str, Any]]) -> str:
+    """reviewed migration plan 的確定性指紋（D-071）：同一份輸入＋同一份決定檔＋同一份改寫計畫 → 同一 hash（same migration intent）。"""
+    return _sha({"project_id": project_id, "report_input_hash": report_input_hash, "base_report_sha256": base_report_sha256,
+                 "decisions_file_sha256": decisions_file_sha256, "accepted": accepted, "plan": plan})
+
+
 # ---------------------------------------------------------------- 重新計算（只讀，回傳新報告）
 def _plan_target(entry: dict[str, Any], decision: dict[str, Any] | None) -> tuple[str | None, Any]:
     """回傳 (target_kind, target)。None＝此條目沒有可執行的改寫目標。"""
@@ -332,6 +339,10 @@ def apply_decisions(base: dict[str, Any], doc: Any, store: Any, *, load_errors: 
                                               if e["planned_disposition"] == "new_library_character_placeholder"),
             "migration_ready": not not_ready,
             "migration_ready_scope": READINESS_SCOPE,
+            # D-071 Batch 5：`--apply --confirm <token>` 用的確定性短 token（＝plan_sha256 前 12 碼；只有 ready 時提供）
+            "apply_confirmation_token": plan_sha256(report["project_id"], report["report_input_hash"], base["report_sha256"],
+                                                    decisions_file_sha256, [use[k] for k in sorted(use)], plan)[:12]
+            if not not_ready else None,
             "not_ready_reasons": not_ready,
         },
     )
@@ -363,7 +374,9 @@ def human_summary(result: dict[str, Any]) -> str:
              f"新角色 placeholder {s['new_character_placeholders']}｜計畫改寫引用 {s['planned_rewrite_references']} 處",
              f"可以進入 migration planning：{'是' if s['migration_ready'] else '否'}"
              + (f"（{'；'.join(s['not_ready_reasons'])}）" if s["not_ready_reasons"] else ""),
-             "注意：即使為「是」，也只代表可進入經審查的 migration planning；未遷移任何專案，Batch 5 尚未核准。", "---"]
+             "注意：即使為「是」，也只代表可進入經審查的 migration planning；本指令未遷移任何專案。", "---"]
+    if s.get("apply_confirmation_token"):
+        lines.insert(-1, f"apply_confirmation_token：{s['apply_confirmation_token']}（確認報告後，--apply 需 --confirm 這 12 碼）")
     for err in r["decisions"]["errors"]:
         lines.append(f"  [error] {err['code']}：{err['message']}" + (f"（{err['legacy_id']}）" if err["legacy_id"] else "")
                      + (f"：{err['detail']}" if err["detail"] else ""))
