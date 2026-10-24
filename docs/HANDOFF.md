@@ -13,10 +13,10 @@
 
 
 > **Do not depend on previous ChatGPT or Claude conversation context. Reconstruct state from GitHub.**
-> GitHub repository `linchen-20200325/AI-Studio` 是唯一長期記憶（PROJECT_RULES §12）。ChatGPT Memory／Claude Memory／舊對話都不是正式儲存層。
+> GitHub repository `linchen-20200325/AI-Studio` 是唯一長期記憶（PROJECT_RULES §12）；**GitHub 不是備份，而是專案記憶本體**。讀完後以 §12.5 七項自檢（D-055），任一項需靠聊天紀錄 → 先補 GitHub。ChatGPT Memory／Claude Memory／舊對話都不是正式儲存層。
 
 ## 1. First read（依序）
-1. [`PROJECT_RULES.md`](../PROJECT_RULES.md) — 永久規則（Free First、Provider/Compute Agnostic、Human Approval、停手條件、§11 交接、§12 GitHub Memory、§13 Model/Effort/Token Gate、§14 Windows 互動）
+1. [`PROJECT_RULES.md`](../PROJECT_RULES.md) — 永久規則（Free First、Provider/Compute Agnostic、Human Approval、停手條件、§11 交接、§12 GitHub Memory／§12.5 GitHub Alone Recovery、§13 Model/Effort/Token Gate、§14 Windows 互動）
 2. [`docs/PROJECT_STATE.md`](PROJECT_STATE.md) — 現在仍有效的狀態、Decision Gate、下一步、已驗證環境
 3. [`docs/BACKLOG.md`](BACKLOG.md) — 所有未完成工作（含能力盤點、Phase 2 建議、Windows／模型／裁示標示）
 4. [`docs/DECISIONS.md`](DECISIONS.md) — 已裁示事項（D-001～；superseded 有標示）

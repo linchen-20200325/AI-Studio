@@ -427,3 +427,9 @@
 - Result: D-054；adapter-download（check／verify／yes）；style-test --identity/--ref；encoder CPU embeddings＋分欄 IP-Adapter mask；修 slicing×load_ip_adapter TypeError；容器 --check match；容器無法下載 LFS（403）→ 實檔驗證在 Windows
 - Tests: 184 passed、6 skipped（CI）；venv 整合 38 passed
 - Next: Windows git pull → adapter-download --check
+
+## 2026-10-24 — Batch 45
+- Batch: Batch 45 — 治理：GitHub Alone Recovery（只改文件）
+- Result: D-055；PROJECT_RULES §12 永久判定＋§12.5 七項還原／治理缺口／完成定義；§12.1、§11.5 擴充；HANDOFF 入口指向 §12.5
+- Tests: 無程式變更
+- Next: 不變——Windows git pull → adapter-download --check

@@ -162,7 +162,8 @@ SHA 慣例：`PROJECT_STATE.md` 的 checkpoint 欄位 與 `SESSION_LOG.md` 的 E
 2. 重新取得：remote、branches、main HEAD、open/draft PR、CI、working tree（同一環境時）、最近 commits。
 3. 讀 `PROJECT_STATE.md` → `BACKLOG.md` → `DECISIONS.md` → `HANDOFF.md`（及角色專用 handoff）。
 4. 比對文件與 GitHub；不一致以 GitHub 為準，先修正文件。
-5. 才開始功能工作。
+5. 以 §12.5 七項自檢；任一項須靠聊天紀錄才知道 → 先補 GitHub。
+6. 才開始功能工作。
 
 ### 11.6 ChatGPT Verification Gate
 治理 AI 在提供「下一步、Project AI 提示語、完成度判斷、PR 合併建議、架構重大裁示」之前，必須先獨立重新查 GitHub 最新實況，不得只依 Claude 回報或 HANDOFF。
@@ -176,10 +177,12 @@ SHA 慣例：`PROJECT_STATE.md` 的 checkpoint 欄位 與 `SESSION_LOG.md` 的 E
 
 **客戶需求入庫（D-052，永久）**：凡客戶提出且會影響產品功能、UX、架構、資料、模型策略、待辦或驗收標準的需求，都必須在**當輪工作結束前**寫入 GitHub canonical docs（BACKLOG／ARCHITECTURE／DECISIONS／PROJECT_RULES 等依責任分流）；不得只存在 ChatGPT、Claude 對話或 AI 記憶。
 
+**永久判定（D-055）：GitHub 不是備份，而是專案記憶本體；AI 對話只是暫時工作介面。** ChatGPT／Claude／其他 AI 的 Memory、聊天紀錄、口頭回報都只能是暫時工作 context，不得作為正式狀態來源。
+
 角色：GitHub＝長期記憶／正式事實；ChatGPT＝獨立協作、研究、驗證、裁示輔助；Claude／Project AI＝實作者；AI Memory＝非正式、不可依賴；對話 context＝暫時工作記憶。只存在聊天或 AI Memory 的資訊一律視為**尚未正式保存**。禁止「AI 記得，所以不用寫」。
 
 ### 12.1 Knowledge Persistence Check
-每個 Batch 結束、Phase 結束、對話結束、重大裁示、真機驗證完成，必須檢查並寫入：
+每個 Batch、Decision、真機驗證、重大需求、Phase、對話結束前，必須檢查並寫入（並以 §12.5 的 GitHub Alone Recovery 測試自問）：
 永久規則 → `PROJECT_RULES.md`｜現況 → `docs/PROJECT_STATE.md`｜未完成 → `docs/BACKLOG.md`｜裁示 → `docs/DECISIONS.md`｜歷史 → `docs/SESSION_LOG.md`｜驗收證據 → `docs/*_EVIDENCE.md`｜導航 → `docs/HANDOFF.md`。
 
 ### 12.2 文件責任與防漂移
@@ -190,6 +193,20 @@ PROJECT_STATE 只寫現在；BACKLOG 只管未完成；DECISIONS 只管裁示；
 
 ### 12.4 完成度判斷（永久）
 Real／Completed＝使用者真正可用且已驗證；Partial＝部分可用；Mock＝僅 deterministic 開發用；Null＝無能力；Silent＝無真正音訊；Placeholder＝fallback 非生成能力。`MockLLMProvider`≠LLM 規劃完成、`silent-tts`≠TTS 完成、`null-audio`≠BGM/SFX 完成、`null-lipsync`≠lipsync 完成、placeholder 圖≠生圖完成。Skeleton／interface ≠ user-usable capability。關閉 BACKLOG 需 GitHub／code／test／真機證據。
+
+### 12.5 GitHub Alone Recovery（D-055，永久）
+目標：換 AI 可以、換對話可以、聊天紀錄不完整甚至遺失也可以；只要 GitHub 還在，就必須能把專案正確接回來。
+一個**完全沒有舊聊天紀錄**的新 AI，只靠 GitHub（依 §11.5 順序閱讀）必須能還原：
+1. 現在做到哪裡（`PROJECT_STATE`）
+2. 為什麼這樣設計（`DECISIONS`／`ARCHITECTURE`）
+3. 哪些已完成／未完成（`PROJECT_STATE`／`BACKLOG`）
+4. 使用者做過哪些裁示（`DECISIONS`）
+5. 真機／CI／人工驗收證據（`*_EVIDENCE`、`docs/evidence/`、Actions）
+6. 已知限制與失敗路線（`DECISIONS`／`BACKLOG`／研究文件）
+7. 唯一下一步（`PROJECT_STATE`「下一唯一安全接手點」）
+
+若新 AI 必須依賴聊天紀錄才能知道上述任一項 → 視為**治理缺口**：先補 GitHub canonical docs，再繼續開發。
+**工作完成定義（追加於 §12.4）**：在「換一個 AI」「開空白新對話」「舊聊天紀錄遺失」三種情況下仍能依 GitHub 正確接續，才算完成。
 
 ## 13. Model / Reasoning / Token Efficiency Gate（D-025）
 

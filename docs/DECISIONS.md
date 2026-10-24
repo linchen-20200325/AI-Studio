@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-055 | 治理：GitHub Alone Recovery——GitHub 是專案記憶本體非備份；AI 記憶／聊天只是暫時 context；新 AI 只靠 GitHub 須還原七項；完成定義增加三種接續情境（PROJECT_RULES §12／§12.5） | 有效 | 治理，可修訂（需裁示） |
 | D-054 | **DG-25 核准** IP-Adapter plus-face SD1.5＋ViT-H（≈2.63 GB，內部 PoC，commercial_cleared=false）；adapter-download、style-test --identity（每角色參考圖＋分欄 mask、encoder 在 CPU）；修 slicing×load_ip_adapter | 有效（待真機） | 可逆 |
 | D-053 | S2 真機 FAIL（單人融合，主觀）；prompt-only 路線結案、不 reroll；S4 研究＋adapter 型錄骨架（未核准）；DG-25 待裁示 | 有效 | 可逆 |
 | D-052 | style-compare 實驗變數自動判定（修 S1 誤判 not_comparable）；S1 真機 scene FAIL（主觀）；PROJECT_RULES 需求當輪入庫 | 有效 | 可逆 |
@@ -415,3 +416,9 @@
 - **tiny 整合測試發現並修正**：diffusers 0.41 `load_ip_adapter` 在 attention slicing 開啟時（GTX 1650 低 VRAM 計畫）會 `TypeError: SlicedAttnProcessor missing slice_size` → identity 期間先換 `AttnProcessor2_0`（SDPA），結束還原。
 - 驗證（容器）：HF API 固定 revision metadata 與型錄一致（`adapter-download --check`：match=true）；**權重實檔未在容器下載**（容器 proxy 對 HF LFS CDN 回 403）→ 實際 bytes／sha256 驗證在 Windows `--yes` 時由程式強制執行。暫時 venv（torch 2.14.1 CPU、diffusers 0.41.0、transformers 5.20.2，非專案依賴）以 tiny 隨機 IP-Adapter Plus 權重跑整合：identity 影響輸出、A／B 參考圖對調輸出不同（證明分區而非全圖平均）、卸載後一般生成逐像素還原、embeds 快取命中。
 - 未做：真機出圖（待客戶）、ControlNet、production default 變更。
+
+## D-055 2026-10-24 治理裁示：GitHub Alone Recovery（GitHub＝專案記憶本體）
+- 客戶裁示：換 AI、換對話、聊天紀錄不完整或遺失都可以；只要 GitHub 還在就必須能正確接回專案。
+- 永久判定：**GitHub 不是備份，而是專案記憶本體；AI 對話只是暫時工作介面。** ChatGPT／Claude／其他 AI 的 Memory、聊天紀錄、口頭回報不得作正式狀態來源。
+- 落地：`PROJECT_RULES.md` §12 加永久判定；新增 §12.5（七項還原清單、依賴聊天＝治理缺口先補 GitHub、完成定義增加三種接續情境）；§12.1 Knowledge Persistence Check 擴至每個 Batch／Decision／真機驗證／重大需求；§11.5 Recovery Protocol 加 §12.5 自檢步驟；`HANDOFF.md` 閱讀入口指向 §12.5。
+- 範圍：只改治理文件；不改功能、不改 production default。擴充 D-025，不取代。
