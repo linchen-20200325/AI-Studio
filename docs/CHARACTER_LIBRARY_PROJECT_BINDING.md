@@ -182,6 +182,15 @@ migration_ready＝沒有 blocking conflict、沒有 requires_human_decision、�
 - 失敗／rollback：project.json 回到原始 bytes；本次新角色 archive（不 hard delete）；被其他專案 cast 使用者保持 active；rollback 前專案若已被修改 → 拒絕。
 - Project.cast is not yet production source of truth（Batch 6 才切換）。
 
+### 8.7 Production source 切換（D-073 Batch 6A）
+| 條件 | production 角色來源 |
+|---|---|
+| 無 Project.cast、無 committed／committing migration record | legacy `Project.characters`（行為、fingerprint 不變） |
+| Project.cast 非空＋剛好一筆 committed record，且 id／revision／content_sha256 一致 | pinned cast（`resolve_project_cast`；不 fallback latest、不讀 Project.characters） |
+| 其他（cast 無 record、record committing／無法讀、cast 與 record 不一致、cast 空但有 committed record、revision 缺失／hash 不符、reference 遺失、Scene 引用不在 cast） | **fail closed**（CharacterSourceError），不 fallback |
+- 切換的 production path：image anchor／params（fingerprint）、旁白 voice／speed（fingerprint）、Final 前 voice 確認、narrator_id 驗證。
+- 未解：cast 角色 voice 確認 schema（目前一律未確認）、Project.characters 條目 migration、narrator_setting、Audio architecture（Batch 6B／D-072）。
+
 ## 9. ID 策略與 Decision Gate（DG-29：角色 ID 命名空間）
 **發現（stop condition）**：舊 Project 的角色 ID 是「專案內」ID（Mock 依出現順序產生 `char_01`；手動設定可為 `hero`、`narrator`，可含大寫／連字號），**跨專案不唯一**，也不一定符合 CharacterDefinition 的 `^[a-z][a-z0-9_]{1,63}$`。客戶規則要求「Library／Project／Scene 使用同一穩定 ID」→ 舊專案綁到 Library 時，**專案內所有引用（Scene.character_ids、narrator_id、SceneCharacter、Dialogue、Beat、Script）都要改寫成 Library ID**；這是每個專案內的 ID 重寫（非全庫重編，但屬資料改寫）→ 需裁示。
 
@@ -226,5 +235,5 @@ Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟�
 | 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | **DONE（D-069）；only analyzes, nothing migrated** |
 | 4.1 | 人工決定檔（versioned）＋重算 migration_ready／rewrite plan（只讀；§8.5） | **DONE（D-070）；analysis-only, nothing migrated** |
 | 5 | `--apply`／rollback（備份、ID 改寫、migration log；§8.6） | **ENGINE DONE（D-071）**；sd15test committed 2026-10-25 |
-| 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | Batch 5 |
+| 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | **6A DONE（D-073；§8.7）**；6B BACKLOG |
 | 7 | 角色更新 UX（保持／更新／fork）、角色庫挑選 | DG-19 |

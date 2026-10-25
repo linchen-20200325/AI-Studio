@@ -146,7 +146,7 @@ class Project(BaseModel):
     style_id: str = Field(default="default", description="Style Profile id（see/core/styles.py；default = Phase 1 既有風格）")
     preferences: PreferenceSet | None = Field(default=None, description="D-062 Project default 偏好（Mood／Lighting／Color／Camera／Composition／Generation）；None＝無")
     # D-068 Batch 3：Character Library 綁定（character_id＋pinned revision）。**foundation only**：
-    # Project.cast 存在但尚不是 production 角色來源；pipeline（TTS／image prompt／voice 確認／fingerprint）仍只用 Project.characters。
+    # D-073 Batch 6A：有 committed migration 且 cast 一致的專案，production 角色來源＝pinned cast（see/core/character_source.py）；否則 legacy Project.characters。
     cast: list[CharacterBinding] = Field(default_factory=list, description="D-068 pinned Library 角色（foundation；尚未接 pipeline）")
     cast_schema_version: int | None = Field(default=None, description="cast 格式版本；None＝沒有 cast（舊專案）")
     script: Script | None = None

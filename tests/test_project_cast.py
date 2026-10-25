@@ -1,5 +1,4 @@
-"""D-068 Batch 3：Project.cast foundation（可選、預設空、不影響 pipeline）＋pinned revision 解析。
-Project.cast exists but is not yet production source of truth。"""
+"""D-068 Batch 3：Project.cast foundation＋pinned revision 解析。D-073 起 production 切換規則見 tests/test_character_source.py。"""
 from __future__ import annotations
 
 import json
@@ -15,7 +14,7 @@ from see.models.character_binding import CharacterBinding
 from see.models.character_definition import ID_PATTERN, RefRole
 from see.models.project import Project
 from see.storage.character_store import CharacterStore
-from tests.conftest import TINY_STORY, requires_ffmpeg
+from tests.conftest import TINY_STORY
 
 
 def _planned(orch, pid):
@@ -129,33 +128,20 @@ def test_missing_reference_not_ready_and_archived_revision_resolves(orchestrator
     assert rep.entries[0].missing_references == ["hero_face"] and rep.entries[0].integrity == "ok"
 
 
-def test_cast_does_not_touch_production_pipeline(orchestrator):
-    """有 cast（甚至指向不存在的 revision）時，image request／voice／fingerprint 與沒有 cast 時完全相同。"""
+def test_cast_without_migration_record_fails_closed(orchestrator):
+    """D-073 取代 D-068 契約：cast 只有在 committed migration record 一致時才是 production 來源；否則 fail closed（不 fallback legacy）。"""
+    from see.core.character_source import CharacterSourceError
+
     p = _planned(orchestrator, "c4")
     orchestrator.set_character(p, "hero", display_name="英雄", voice_id="zm_010")
-    orchestrator.set_character_appearance(p, "hero", None)
     orchestrator.update_scene(p, p.scenes[0].scene_id, character_ids=["hero"], narrator_id="hero")
     s = p.scene(p.scenes[0].scene_id)
-    req0, ctx0 = orchestrator.image_request(p, s)
-    voice0 = orchestrator.resolve_voice(p, s)
-    unconfirmed0 = orchestrator.unconfirmed_characters(p)
     p.cast = [CharacterBinding(character_id="char_nothere", character_revision=5, role_label="男主角")]
-    req1, ctx1 = orchestrator.image_request(p, s)
-    assert req1.model_dump() == req0.model_dump() and ctx1 == ctx0
-    assert orchestrator.resolve_voice(p, s) == voice0 and orchestrator.unconfirmed_characters(p) == unconfirmed0
-    assert "char_nothere" not in json.dumps(req1.model_dump(), ensure_ascii=False)
-
-
-@requires_ffmpeg
-def test_empty_or_filled_cast_does_not_change_fingerprints(orchestrator):
-    p = _planned(orchestrator, "c5")
-    orchestrator.build_scene_assets(p)
-    fps = {s.scene_id: {k: v.fingerprint for k, v in orchestrator.store.load_manifest("c5", s.scene_id).entries.items()} for s in p.scenes}
-    p.cast = [CharacterBinding(character_id="char_nothere", character_revision=1)]
-    orchestrator.store.save(p)
-    reps = orchestrator.build_scene_assets(orchestrator.store.load("c5"))
-    assert all(r.rebuilt == [] for r in reps)
-    assert {s.scene_id: {k: v.fingerprint for k, v in orchestrator.store.load_manifest("c5", s.scene_id).entries.items()} for s in p.scenes} == fps
+    for fn in (lambda: orchestrator.image_request(p, s), lambda: orchestrator.resolve_voice(p, s),
+               lambda: orchestrator.unconfirmed_characters(p)):
+        with pytest.raises(CharacterSourceError) as e:
+            fn()
+        assert e.value.code == "CAST_MIGRATION_STATE_INCONSISTENT"
 
 
 def test_doctor_and_export_cast_info(orchestrator, monkeypatch, tmp_path):
@@ -199,7 +185,7 @@ def test_cast_cli_and_api_are_read_only(orchestrator, monkeypatch, capsys):
     before = orchestrator.store.project_file("c7").read_bytes()
     assert main(["cast", "show", "c7"]) == 0
     out = capsys.readouterr().out
-    assert f"{cid}@r3" in out and "[OK]" in out and "Project.characters" in out
+    assert f"{cid}@r3" in out and "[OK]" in out and "CAST_MIGRATION_STATE_INCONSISTENT" in out
     assert orchestrator.store.project_file("c7").read_bytes() == before
     from fastapi.testclient import TestClient
 
@@ -207,5 +193,5 @@ def test_cast_cli_and_api_are_read_only(orchestrator, monkeypatch, capsys):
 
     c = TestClient(create_app(orchestrator.settings, sync_jobs=True))
     r = c.get("/api/projects/c7/cast").json()
-    assert r["production_source"] == "Project.characters" and r["entries"][0]["resolved_revision"] == 3
+    assert r["production_source"] == "error:CAST_MIGRATION_STATE_INCONSISTENT" and r["entries"][0]["resolved_revision"] == 3
     assert orchestrator.store.project_file("c7").read_bytes() == before

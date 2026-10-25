@@ -1,6 +1,6 @@
 """CharacterBinding（D-067；revision pinning 的基礎 contract）：Project 未來用 `character_id + character_revision` 綁定 Library 角色。
 
-**尚未接進 production Project**（不改 Project.characters、不做 migration；Batch 3 起才接）。
+D-068 起接進 Project.cast；D-073 Batch 6A 起，已 migration 的專案 production 經 see/core/character_source.py 使用 pinned revision。
 可重現性保證（測試證明）：pin 在 `char_x@3`，即使 Library 已到 revision 7，解析結果仍是 revision 3；
 revision 不存在或 hash 不符 → fail closed（CharacterRevisionError），**絕不 fallback 到 latest**。
 「跟隨最新版」未來若要做，只能是顯式 opt-in（需另行實作與裁示；本 model 只允許 pinned）。

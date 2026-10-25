@@ -536,3 +536,11 @@
 - Batch: Batch 62 — sd15test 真機 migration 結果入庫（docs＋Batch 5 record notice 文字）
 - Result: 客戶 Windows `--apply` → mig_20261025T034023011925Z_18a80649 committed、rewrites 26、char_01～04 → char_fb5a2d546284／char_02fb3c6028d5／char_817f39658de6／char_fabdd19c9650；backup 存在；未 rollback。production 仍用 Project.characters；Batch 6 未開始。
 - Next: 等客戶裁示 Batch 6
+
+## 2026-10-25 — Batch 63
+- Batch: Batch 63 — D-073 Batch 6A：production character source → pinned Project.cast
+- Start: main `96f8488`（Open PR 0；CI 綠）
+- Result: see/core/character_source.py；orchestrator image_request／resolve_voice／unconfirmed_characters／update_scene 經單一邊界；legacy 不變；不一致 fail closed。Batch 6B／narrator／Audio 未開始。
+- Tests: tests/test_character_source.py；全套見 PR
+- Next: 客戶裁示 Batch 6B 範圍
+

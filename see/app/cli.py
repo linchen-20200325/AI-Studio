@@ -327,7 +327,13 @@ def cmd_cast(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(rep.to_dict(include_snapshot=False), ensure_ascii=False, indent=2))
         return 0 if rep.status in ("not_configured", "ok") else 1
-    print(f"Project {project.project_id} cast：{rep.status}（foundation；production 角色來源仍是 Project.characters）")
+    from see.core.character_source import CharacterSourceError, resolve_character_source
+
+    try:
+        src = resolve_character_source(project, s.workspace).mode
+    except CharacterSourceError as e:
+        src = f"error（fail closed）{e.code}：{e.detail}"
+    print(f"Project {project.project_id} cast：{rep.status}；production 角色來源：{src}")
     for e in rep.entries:
         b = e.binding
         label = " ".join(x for x in (b.role_label, f"({b.alias})" if b.alias else "") if x)
