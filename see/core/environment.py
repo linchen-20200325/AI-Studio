@@ -715,7 +715,7 @@ def _cast_check(ws: Path, projects: list[Any]) -> Check:
     data = {k: r.status for k, r in reports.items()}
     if not with_cast:
         return Check("workspace", "project_cast", Status.UNAVAILABLE, False,
-                     f"{len(reports)} 個專案都沒有 cast（not configured；production 仍用 Project.characters）", data=data)
+                     f"{len(reports)} 個專案都沒有 cast（not configured；這些專案 production 用 legacy Project.characters）", data=data)
     errors = sorted(k for k, r in with_cast.items() if r.status == "error")
     partial = sorted(k for k, r in with_cast.items() if r.status == "partial")
     st = Status.ERROR if errors else Status.PARTIAL if partial else Status.OK

@@ -26,6 +26,7 @@
 | D-031 | DG-16 裁示 A：Phase 2 第二目標＝Audio Layer（BGM／SFX／ducking）；第一版程序生成、NT$0、無外部素材；預設 audio=null（開啟與否 → DG-17） | 有效 | 可逆 |
 | D-032 | E2-3 真機 OK（BGM／ducking）；BGM 預設維持 null 延後到完整產品流程/UI；產品流程確立；Style Profile／Character Consistency／Lip-sync foundation（介面與 schema，無模型） | 有效 | 可逆 |
 | D-033 | DG-18 裁示 A：5 種非 default Style Profile Windows 真機出圖驗收（不改 Style 內容、不下載、不研究 IP-Adapter／LoRA／Lip-sync） | 進行中（順序依 D-034 調整） | 可逆 |
+| D-073 | **客戶裁示開始 Batch 6A**：已 migration（committed record＋一致 cast）專案的 production 角色來源切換為 pinned Project.cast（`see/core/character_source.py` 單一邊界）；legacy 專案不變；不一致 fail closed、不 fallback | 有效 | 可逆（rollback migration → legacy） |
 | D-072 | 客戶裁示：PR #2 rebase merge；Batch 5 v1 維持 `Project.characters` 與 `narrator_setting` fail closed（APPLY_UNSUPPORTED_IN_BATCH5，待 Batch 6／Audio architecture）；rollback 後封存角色規則定為正式規格 | 有效 | 可逆 |
 | D-071 | **客戶裁示進入 Batch 5**；本輪只完成 migration engine：`character-migrate <pid> --apply --decisions <file> --confirm <token>`（preflight 16 項、atomic backup、staged transaction、post-verify、自動 rollback、`--rollback <migration_id>`、`--list-migrations`）。Batch 5 engine implemented ≠ any real project migrated | 有效 | 可逆（backup＋rollback；新角色 archive 不 hard delete） |
 | D-070 | Batch 4.1：Migration Human Decisions Layer（versioned 決定檔 `character_migration_decisions` v1；5 種 action；stale／任何錯誤 fail closed；重算 migration_ready＋proposed rewrite plan；create_new 只用 placeholder；zero-write）。Batch 4.1 remains analysis-only. No project has been migrated. | 有效 | 可逆（唯讀） |
@@ -635,3 +636,15 @@
 - 裁示 2：`Project.characters` 條目本輪**不支援** migration，維持 `APPLY_UNSUPPORTED_IN_BATCH5`（Batch 6 前 production 仍依賴其 voice／appearance 語意），等 Batch 6 規劃 production source-of-truth 切換時一起設計。`narrator_setting` 同樣維持拒絕；**不得自行新增 Project narrator schema**，等 Batch 6／Audio architecture 一起裁示。兩項不影響 sd15test。
 - 裁示 3（正式規格，不需另開 Decision Gate）：migration 新建 Character 在 rollback／auto-recovery 時 archive、不 hard delete；已被其他 Project 使用 → 保持 active；rollback 後重新 dry-run 因封存同名角色出現 NAME_CONFLICT → 使用者必須在決定檔明確提供 `display_name`，不可自動沿用 archived identity，不可自動刪除 archived Character。
 - 不開始 Batch 6；不對任何 Windows project 代執行 `--apply`。
+
+## D-073 2026-10-25 Batch 6A：production character source 切換到 pinned Project.cast
+- 客戶裁示：開始 Batch 6A；唯一目標＝已 migration、具有效 Project.cast 的專案，production 角色來源改為 pinned cast。不處理 legacy Project.characters 條目 migration、narrator_setting、Audio architecture、UI 大改、第二個真實專案 migration、rollback。
+- Production character read map（盤點）：① `Orchestrator.image_request`（scene.character_ids → 外觀 anchor → prompt＋params.characters → image fingerprint）② `resolve_voice`（narrator_id → voice／speed → TTSRequest → narration fingerprint）③ `unconfirmed_characters`（Final 前 voice 確認閘門）④ `update_scene` narrator_id 驗證。not applicable：scene_prompt（只讀 Scene.characters 演出覆寫，非角色永久資料）、subtitle／timeline／render／video（不讀角色）、lipsync（null）。UI／CLI 顯示：`/api/projects/{pid}/cast` 與 `cast show` 的 production_source 改為實際來源；UI 角色標籤仍以 Project.characters→劇本名稱 fallback（顯示用，未改）；`set_character`／`set_character_appearance`／`confirm_character` 仍寫 Project.characters（對 cast 模式專案不再影響 production）。
+- 判定規則：cast 模式＝Project.cast 非空＋剛好一筆 committed record 且 cast（id、revision、content_sha256）一致；legacy＝無 cast、無 committed／committing record；rolled_back／failed record 不影響。其餘 fail closed，不 fallback Project.characters、不 fallback latest。
+- cast 模式資料：anchor＝pinned revision `CharacterDefinition.to_appearance().anchor_text`（空 → 不加 refs，與 legacy 相同語意）；params.characters 項目為 {character_id, character_revision, content_sha256, anchor}；voice＝voice_profile（None → provider 預設，speed None → project.speech_speed；不補值）。legacy 結構與 fingerprint 完全不變。
+- voice 確認：cast 層沒有確認欄位（需 schema）→ cast 模式下被當旁白的角色一律視為未確認（Final 被擋；不沿用 legacy confirmed）。→ Batch 6B 規格缺口。
+- 契約更新：D-068「cast 不影響 pipeline」的兩個測試改為新契約（cast 無 migration record → fail closed）。evidence ctx 增加 `character_source`（不進 fingerprint）。
+- sd15test 預期：無旁白角色、4 個角色只有名稱 → anchor 空 → image／narration fingerprint 不變、不重生（CI fixture 證明；未經 Windows 真機驗證）。
+- 未改：Batch 4／4.1 report／hash、migration record 格式、schema。Batch 6B 未開始。
+- 測試：`tests/test_character_source.py`（pinned r1 vs latest r2、Project.characters 修改無效、無 voice_profile 不補值、legacy 不變、竄改 revision／部分失敗、revision／character 不存在、record committing／cast 不一致／cast 空、Scene 引用不在 cast、rollback 回 legacy）；既有 `test_migration_keeps_fingerprints` 在 cast 模式下仍通過。
+

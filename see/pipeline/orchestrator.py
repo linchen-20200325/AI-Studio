@@ -247,13 +247,8 @@ class Orchestrator:
         pref_terms = prefs.prompt_terms({k: v for k, v in resolved.items() if k not in overridden})
         if pref_terms:
             prompt = ", ".join([prompt, *pref_terms])
-        refs = []
-        for cid in scene.character_ids:
-            ch = project.characters.get(cid)
-            if ch is not None and ch.appearance is not None and ch.appearance.anchor_text:
-                a = ch.appearance
-                refs.append({"character_id": cid, "anchor": a.anchor_text, "reference_images": list(a.reference_images),
-                             "seed": a.seed, "adapter": dict(a.adapter)})
+        src = self.character_source(project)  # D-073：legacy Project.characters 或 pinned Project.cast（唯一邊界；不一致 fail closed）
+        refs = [r for cid in scene.character_ids if (r := src.image_ref(cid, scene.scene_id)) is not None]
         if refs:  # 文字錨點放最前（prompt 型 provider 權重較高）；結構化 refs 留給未來 IP-Adapter／LoRA 類 provider
             prompt = ", ".join([r["anchor"] for r in refs] + [prompt])
         params: dict[str, object] = {}
@@ -267,7 +262,7 @@ class Orchestrator:
         out = project.output
         req = ImageRequest(prompt=prompt, negative_prompt=negative, width=int(out.width * IMAGE_SCALE), height=int(out.height * IMAGE_SCALE),
                            seed=scene.index, caption=scene.visual_description, params=params)
-        return req, {"style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs],
+        return req, {"character_source": src.mode, "style_id": style.style_id, "style_validated": style.validated, "character_anchors": [r["character_id"] for r in refs],
                      "preference_snapshot": prefs.snapshot(resolved),  # D-062 provenance（只進 evidence，不進 fingerprint）
                      **prompt_ev}  # D-063 prompt_source／scene_characters（只進 evidence）
 
@@ -411,8 +406,8 @@ class Orchestrator:
             raise ValueError(f"invalid scene edit: {e}") from e
         if updated.preferences is not None and updated.preferences.visual_style_id is not None:
             get_style(updated.preferences.visual_style_id)  # 未知風格 → ValueError（fail closed，不等到生成才失敗）
-        if updated.narrator_id is not None and updated.narrator_id not in project.characters:
-            raise ValueError(f"unknown narrator_id '{updated.narrator_id}'; characters: {sorted(project.characters)}")
+        if updated.narrator_id is not None and updated.narrator_id not in (known := self.character_source(project).known_ids()):
+            raise ValueError(f"unknown narrator_id '{updated.narrator_id}'; characters: {sorted(known)}")
         updated.status = Status.DRAFT
         project.scenes[project.scenes.index(scene)] = updated
         project.status = Status.DRAFT  # 任何修改都使 PREVIEW/APPROVED/FINAL 失效，需重新 preview → 核准
@@ -487,18 +482,18 @@ class Orchestrator:
     def resolve_voice(self, project: Project, scene: Scene) -> tuple[str, float, str]:
         """回傳 (voice, speed, source)。優先序：scene.voice（非 default）> 角色 voice > provider 預設；
         語速：scene.speech_speed > 角色 speed > project.speech_speed。未設角色的舊專案結果與先前完全相同（fingerprint 不變）。"""
-        ch: CharacterVoice | None = None
-        if scene.narrator_id is not None:
-            ch = project.characters.get(scene.narrator_id)
-            if ch is None:
-                raise SchemaViolation(f"scene {scene.scene_id}: narrator_id '{scene.narrator_id}' not in project.characters")
+        ch_voice: str | None = None
+        ch_speed: float | None = None
+        label: str | None = None
+        if scene.narrator_id is not None:  # D-073：經 character source（cast 模式只讀 pinned revision）
+            ch_voice, ch_speed, label = self.character_source(project).narrator_voice(scene.narrator_id, scene.scene_id)
         if scene.voice not in ("", "default"):
             voice, source = scene.voice, "scene"
-        elif ch is not None:
-            voice, source = ch.voice_id, f"character:{ch.character_id}"
+        elif ch_voice is not None:
+            voice, source = ch_voice, label
         else:
             voice, source = "default", "provider-default"
-        speed = scene.speech_speed or (ch.speed if ch is not None and ch.speed else None) or project.speech_speed
+        speed = scene.speech_speed or ch_speed or project.speech_speed
         return voice, speed, source
 
     def set_character(self, project: Project, character_id: str, *, display_name: str | None = None,
@@ -564,9 +559,14 @@ class Orchestrator:
         self.store.save(project)
         return ch
 
+    def character_source(self, project: Project):
+        """D-073 Batch 6A：production 角色來源（legacy Project.characters｜pinned Project.cast）。不一致 → CharacterSourceError（fail closed）。"""
+        from see.core.character_source import resolve_character_source
+
+        return resolve_character_source(project, self.settings.workspace)
+
     def unconfirmed_characters(self, project: Project) -> list[str]:
-        used = {s.narrator_id for s in project.scenes if s.narrator_id}
-        return sorted(c for c in used if c in project.characters and not project.characters[c].confirmed)
+        return self.character_source(project).unconfirmed()
 
     def preview_voice(self, text: str, voice: str = "default", speed: float = 1.0, language: str = "zh-TW") -> TTSResult:
         """試聽：合成單句到 workspace/voice_previews（以內容 fingerprint 命名可重用）；**不寫 manifest、不影響任何專案**。"""

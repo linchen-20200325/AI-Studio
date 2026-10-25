@@ -307,12 +307,18 @@ def create_app(settings: Settings | None = None, sync_jobs: bool = False) -> Fas
 
     @app.get("/api/projects/{pid}/cast")
     def project_cast(pid: str) -> dict[str, Any]:
-        """D-068 唯讀：Project.cast 解析結果（foundation；正式角色來源仍是 Project.characters）。"""
+        """D-068 唯讀：Project.cast 解析結果；production_source＝D-073 實際角色來源（或 fail closed 錯誤碼）。"""
         from see.core.cast import resolve_project_cast
+        from see.core.character_source import CharacterSourceError, resolve_character_source
         from see.storage.character_store import CharacterStore
 
-        rep = resolve_project_cast(_load(pid), CharacterStore(settings.workspace))
-        return {"production_source": "Project.characters", **rep.to_dict(include_snapshot=True)}
+        project = _load(pid)
+        rep = resolve_project_cast(project, CharacterStore(settings.workspace))
+        try:
+            src = resolve_character_source(project, settings.workspace).mode
+        except CharacterSourceError as e:
+            src = f"error:{e.code}"
+        return {"production_source": src, **rep.to_dict(include_snapshot=True)}
 
     @app.post("/api/projects/{pid}/scenes/{sid}/impact")
     def scene_edit_impact(pid: str, sid: str, body: SceneEditIn) -> dict[str, Any]:

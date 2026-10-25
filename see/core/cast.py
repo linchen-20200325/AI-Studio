@@ -1,7 +1,7 @@
 """Project cast resolver（D-068 Batch 3）：把 `Project.cast` 的 pinned binding 解析成 Library revision snapshot（唯讀）。
 
-**Project.cast exists but is not yet production source of truth.** 本模組不被 pipeline 呼叫；TTS、image prompt、
-voice 確認、fingerprint 仍只用 `Project.characters`。這裡只提供 readiness／檢查／匯出用的解析。
+D-073 Batch 6A：production 只經 `see/core/character_source.py`（committed migration＋cast 一致時）間接使用本 resolver；
+本模組本身仍只做唯讀解析（readiness／檢查／匯出／production source）。
 
 規則：只讀 pinned revision；不 fallback latest；revision 缺失／hash 不符 → integrity=error（fail closed）；
 reference 遺失 → generation_ready=False；archived 角色的歷史 revision 仍可解析；不自動換角色、不寫任何檔案。
