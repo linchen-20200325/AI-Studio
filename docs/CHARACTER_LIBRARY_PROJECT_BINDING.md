@@ -174,7 +174,7 @@ migration_ready＝沒有 blocking conflict、沒有 requires_human_decision、�
 - migration_ready=true＝ready for reviewed migration planning only；不代表已遷移、不代表 Batch 5 已核准。
 - 例：sd15test 的 char_01～char_04（SCRIPT_ONLY_CHARACTER）全選 create_new → migration_ready=true、4 個 placeholder、計畫改寫引用數＝基礎報告的 total_rewrite_references。
 
-### 8.6 Apply／Rollback（D-071 Batch 5；**Batch 5 engine implemented ≠ any real project migrated.**）
+### 8.6 Apply／Rollback（D-071 Batch 5；首個真實遷移：sd15test，2026-10-25 committed，未 rollback；production 仍用 Project.characters）
 - 指令：`character-migrate <pid> --dry-run --decisions <file>`（取得 `apply_confirmation_token`）→ `character-migrate <pid> --apply --decisions <file> --confirm <token>` → 需要時 `--rollback <migration_id>`；`--list-migrations` 查紀錄。
 - 寫入位置（workspace 內、不進 Git）：backup `backups/character_migrations/<pid>/<migration_id>/`；record `migrations/<pid>/<migration_id>.json`；staging `migrations/<pid>/<migration_id>.staging/`（完成即移除）。
 - 與 §8.1 原設計的差異（實作現況）：不新增 `character_binding_version`／`legacy_characters` 欄位；已遷移判定＝Project.cast 非空＋committed record；legacy→Library 對照、決定、hash、rewrite 數、backup ID 記在 record 與新角色 revision provenance。
@@ -225,6 +225,6 @@ Project 未來 pin `char_x@3`：即使 Library 已到 revision 7，重新開啟�
 | 3 | Project `cast` schema（cast_schema_version、pinned revision、role_label、alias、follow=pinned）＋`resolve_project_cast()`（revision 缺失 fail closed）；pipeline 仍只用 legacy `Project.characters` | **DONE（D-068）；not yet production source of truth** |
 | 4 | `character-migrate --dry-run`（mapping／conflict report；不寫檔） | **DONE（D-069）；only analyzes, nothing migrated** |
 | 4.1 | 人工決定檔（versioned）＋重算 migration_ready／rewrite plan（只讀；§8.5） | **DONE（D-070）；analysis-only, nothing migrated** |
-| 5 | `--apply`／rollback（備份、ID 改寫、migration log；§8.6） | **ENGINE DONE（D-071）；no real project migrated** |
+| 5 | `--apply`／rollback（備份、ID 改寫、migration log；§8.6） | **ENGINE DONE（D-071）**；sd15test committed 2026-10-25 |
 | 6 | pipeline 切換：voice／anchor／reference 由 pinned revision 解析；legacy 專案相容 | Batch 5 |
 | 7 | 角色更新 UX（保持／更新／fork）、角色庫挑選 | DG-19 |

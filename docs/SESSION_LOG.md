@@ -531,3 +531,8 @@
 - Batch: Batch 61 — D-072 客戶裁示入庫（docs only）
 - Result: PR #2 rebase merged → main `589c3ef`（D-071）；裁示 2／3 寫入 DECISIONS／BACKLOG。Batch 5 engine implemented ≠ any real project migrated.
 - Next: 客戶 Windows `character-migrate sd15test --dry-run --decisions sd15test_decisions.json`（唯讀）
+
+## 2026-10-25 — Batch 62
+- Batch: Batch 62 — sd15test 真機 migration 結果入庫（docs＋Batch 5 record notice 文字）
+- Result: 客戶 Windows `--apply` → mig_20261025T034023011925Z_18a80649 committed、rewrites 26、char_01～04 → char_fb5a2d546284／char_02fb3c6028d5／char_817f39658de6／char_fabdd19c9650；backup 存在；未 rollback。production 仍用 Project.characters；Batch 6 未開始。
+- Next: 等客戶裁示 Batch 6
