@@ -1,5 +1,5 @@
 """D-071 Batch 5：character-migrate --apply／--rollback（合成專案；不碰任何真實專案）。
-Batch 5 engine implemented ≠ any real project migrated."""
+"""
 from __future__ import annotations
 
 import json

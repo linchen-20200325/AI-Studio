@@ -1,6 +1,6 @@
 """Character migration apply／rollback（D-071 Batch 5）：依 Batch 4.1 reviewed plan 逐專案遷移，全有或全無。
 
-**Batch 5 engine implemented ≠ any real project migrated.** 本模組只在使用者明確執行
+本模組只在使用者明確執行
 `character-migrate <pid> --apply --decisions <file> --confirm <token>` 時寫入；production pipeline 仍只用 `Project.characters`
 （Project.cast 不是 production source of truth；Batch 6 才切換）。
 
@@ -32,7 +32,7 @@ from see.core.character_migration import PENDING_ID, _sha, analyze
 
 MIGRATION_RECORD_SCHEMA_VERSION = 1
 BACKUP_SCHEMA_VERSION = 1
-NOTICE = "Batch 5 engine implemented ≠ any real project migrated. Project.cast is not yet production source of truth (Batch 6)."
+NOTICE = "Character migration record. Project.cast is not yet production source of truth; production pipeline still reads Project.characters (Batch 6 not started)."
 
 # 狀態
 COMMITTING = "committing"
